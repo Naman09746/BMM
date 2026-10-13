@@ -26,7 +26,18 @@ history even after being moved to `.env`. **Treat any such value as compromised 
 rotate it immediately** (regenerate the key/password at its provider, update `.env`).
 Removing a secret from the current code does NOT remove it from history.
 
-### WordPress builds
+### WordPress production
+
+The WordPress plugin uses WordPress accounts and its own REST API. FastAPI's
+`ADMIN_PASSWORD`, `JWT_SECRET`, and proxy settings do not configure WordPress.
+WordPress injects the API URL at runtime.
+
+```sh
+npm ci --prefix wordpress/build-tools
+node scripts/build-wordpress.mjs
+```
+
+### Legacy shell builds for the standalone FastAPI backend
 
 The shell build requires an explicit backend URL:
 
@@ -41,4 +52,10 @@ Run from the repository root; no database, credentials, or third-party Python pa
 ```sh
 python3 -m unittest discover -s backend/tests -p test_booking_security.py -v
 ```
+
+### Credential rotation and history cleanup
+
+See [the security operations guide](docs/security-operations.md) for the correct
+procedure for each backend. Changing `ADMIN_PASSWORD` alone does not update an
+existing MongoDB admin account.
 
