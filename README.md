@@ -25,3 +25,20 @@ If any secret was ever hardcoded in a past commit, the old value still exists in
 history even after being moved to `.env`. **Treat any such value as compromised and
 rotate it immediately** (regenerate the key/password at its provider, update `.env`).
 Removing a secret from the current code does NOT remove it from history.
+
+### WordPress builds
+
+The shell build requires an explicit backend URL:
+
+```sh
+REACT_APP_BACKEND_URL="https://api.yourdomain.com" ./scripts/build-wordpress.sh
+```
+
+### Offline booking security checks
+
+Run from the repository root; no database, credentials, or third-party Python packages are required:
+
+```sh
+python3 -m unittest discover -s backend/tests -p test_booking_security.py -v
+```
+
