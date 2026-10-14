@@ -13,8 +13,11 @@ function bds_operations_install() {
         status varchar(20) NOT NULL DEFAULT 'new',
         notes text DEFAULT NULL,
         updated_at datetime DEFAULT NULL,
+        assigned_user_id bigint unsigned NOT NULL DEFAULT 0,
+        follow_up_date date DEFAULT NULL,
         PRIMARY KEY  (id),
-        KEY workflow (status,created_at)
+        KEY workflow (status,created_at),
+        KEY follow_up (assigned_user_id,follow_up_date)
     ) $charset;");
     dbDelta("CREATE TABLE {$wpdb->prefix}bds_mail_queue (
         id varchar(36) NOT NULL,
@@ -104,39 +107,47 @@ function bds_operations_deactivate() {
 function bds_enquiry_statuses() {
     return array('new' => 'New', 'in_progress' => 'In progress', 'waiting' => 'Waiting for customer', 'closed' => 'Closed', 'archived' => 'Archived');
 }
-function bds_save_enquiry_workflow($id, $status, $notes, $expected_updated_at) {
+function bds_save_enquiry_workflow($id, $status, $notes, $expected_updated_at, $assigned = 0, $due = '') {
     global $wpdb;
-    if (!current_user_can('manage_options')) { return new WP_Error('bds_forbidden', 'Owner access required.'); }
+    if (!bds_can_manage_enquiries()) { return new WP_Error('bds_forbidden', 'Owner access required.'); }
     if (!isset(bds_enquiry_statuses()[$status])) { return new WP_Error('bds_status', 'Invalid enquiry status.'); }
     if (strlen($notes) > 10000) { return new WP_Error('bds_notes', 'Keep internal notes below 10,000 bytes.'); }
+    $assigned = absint($assigned);
+    if ($assigned && !bds_enquiry_assignee_allowed($assigned)) { return new WP_Error('bds_assignee', 'Choose an authorised enquiry manager.'); }
+    $date = $due !== '' ? DateTimeImmutable::createFromFormat('!Y-m-d', $due) : false;
+    if ($due !== '' && (!$date || $date->format('Y-m-d') !== $due)) { return new WP_Error('bds_date', 'Choose a valid follow-up date.'); }
     $row = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$wpdb->prefix}bds_enquiries WHERE id = %s", $id), ARRAY_A);
     if (!$row) { return new WP_Error('bds_missing', 'Enquiry not found.'); }
     if ((string) ($row['updated_at'] ?? '') !== $expected_updated_at) { return new WP_Error('bds_conflict', 'Another administrator updated this enquiry. Reload before saving.'); }
     $notes = sanitize_textarea_field($notes);
-    if ($row['status'] === $status && ($row['notes'] ?? '') === $notes) { return true; }
+    if ($row['status'] === $status && ($row['notes'] ?? '') === $notes && (int) ($row['assigned_user_id'] ?? 0) === $assigned && ($row['follow_up_date'] ?? '') === $due) { return true; }
     // Monotonic timestamp also detects two saves within one second.
     $updated = gmdate('Y-m-d H:i:s', max(time(), strtotime(($row['updated_at'] ?: '1970-01-01 00:00:00') . ' UTC') + 1));
-    $saved = $wpdb->query($wpdb->prepare("UPDATE {$wpdb->prefix}bds_enquiries SET status = %s, notes = %s, updated_at = %s WHERE id = %s AND COALESCE(updated_at, '') = %s",
-        $status, $notes, $updated, $id, $expected_updated_at));
+    $saved = $wpdb->query($wpdb->prepare("UPDATE {$wpdb->prefix}bds_enquiries SET status = %s, notes = %s, assigned_user_id = %d, follow_up_date = NULLIF(%s, ''), updated_at = %s WHERE id = %s AND COALESCE(updated_at, '') = %s",
+        $status, $notes, $assigned, $due, $updated, $id, $expected_updated_at));
     if ($saved !== 1) { return new WP_Error('bds_conflict', 'The enquiry could not be saved. Reload and try again.'); }
     bds_audit($id, 'enquiry_status_' . $status);
     return true;
 }
 function bds_enquiries_page() {
-    if (!current_user_can('manage_options')) { return; }
+    if (!bds_can_manage_enquiries()) { return; }
     global $wpdb;
     echo '<div class="wrap"><h1>Enquiries</h1><p>Manage enquiries and follow-ups. Internal notes stay private. Archive hides a record from the default view; it can be restored using its status.</p>';
     if (isset($_POST['bds_workflow_save'])) {
         check_admin_referer('bds_workflow_save');
         $result = bds_save_enquiry_workflow(sanitize_text_field(wp_unslash($_POST['record_id'] ?? '')),
             sanitize_key(wp_unslash($_POST['status'] ?? '')), wp_unslash($_POST['notes'] ?? ''),
-            sanitize_text_field(wp_unslash($_POST['expected_updated_at'] ?? '')));
+            sanitize_text_field(wp_unslash($_POST['expected_updated_at'] ?? '')),
+            absint($_POST['assigned_user_id'] ?? 0), sanitize_text_field(wp_unslash($_POST['follow_up_date'] ?? '')));
         echo '<div class="notice ' . (is_wp_error($result) ? 'notice-error' : 'notice-success') . '"><p>' . esc_html(is_wp_error($result) ? $result->get_error_message() : 'Enquiry saved.') . '</p></div>';
     }
     $search = sanitize_text_field(wp_unslash($_GET['s'] ?? ''));
     $filter = sanitize_key(wp_unslash($_GET['status'] ?? 'active'));
     $page = max(1, absint($_GET['paged'] ?? 1));
     $where = '1=1'; $args = array();
+    $mine = !empty($_GET['mine']); $overdue = !empty($_GET['overdue']);
+    if ($mine) { $where .= ' AND assigned_user_id = %d'; $args[] = get_current_user_id(); }
+    if ($overdue) { $where .= " AND follow_up_date < %s AND status NOT IN ('closed','archived')"; $args[] = current_time('Y-m-d'); }
     if (isset(bds_enquiry_statuses()[$filter])) { $where .= ' AND status = %s'; $args[] = $filter; }
     elseif ($filter !== 'all') { $where .= " AND status <> 'archived'"; }
     if ($search !== '') { $where .= ' AND (data LIKE %s OR notes LIKE %s)'; $like = '%' . $wpdb->esc_like($search) . '%'; $args[] = $like; $args[] = $like; }
@@ -149,7 +160,7 @@ function bds_enquiries_page() {
     foreach (array_merge(array('active' => 'All active', 'all' => 'All including archived'), bds_enquiry_statuses()) as $key => $label) {
         echo '<option value="' . esc_attr($key) . '" ' . selected($filter, $key, false) . '>' . esc_html($label) . '</option>';
     }
-    echo '</select></label> <button class="button">Filter</button></form><p>' . esc_html($total) . ' matching enquiries</p>';
+    echo '</select></label> <label><input type="checkbox" name="mine" value="1" ' . checked($mine, true, false) . '> Assigned to me</label> <label><input type="checkbox" name="overdue" value="1" ' . checked($overdue, true, false) . '> Overdue</label> <button class="button">Filter</button></form><p>' . esc_html($total) . ' matching enquiries</p>';
     foreach ($rows as $row) {
         $item = json_decode($row['data'], true) ?: array();
         echo '<details style="background:white;padding:15px;margin:10px 0"><summary><strong>' . esc_html(($item['type'] ?? 'Form') . ' — ' . ($item['name'] ?? '')) . '</strong> · ' . esc_html(bds_enquiry_statuses()[$row['status']] ?? $row['status']) . ' · ' . esc_html($row['created_at']) . ' UTC</summary><table class="widefat">';
@@ -161,10 +172,12 @@ function bds_enquiries_page() {
         echo '<form method="post">'; wp_nonce_field('bds_workflow_save');
         echo '<input type="hidden" name="record_id" value="' . esc_attr($row['id']) . '"><input type="hidden" name="expected_updated_at" value="' . esc_attr($row['updated_at'] ?? '') . '"><p><label>Status <select name="status">';
         foreach (bds_enquiry_statuses() as $key => $label) { echo '<option value="' . esc_attr($key) . '" ' . selected($row['status'], $key, false) . '>' . esc_html($label) . '</option>'; }
-        echo '</select></label></p><p><label>Private follow-up notes<textarea name="notes" rows="4" class="large-text" maxlength="10000">' . esc_textarea($row['notes'] ?? '') . '</textarea></label></p><button class="button button-primary" name="bds_workflow_save" value="1">Save enquiry</button></form></details>';
+        echo '</select></label></p>';
+        bds_enquiry_assignment_fields($row);
+        echo '<p><label>Private follow-up notes<textarea name="notes" rows="4" class="large-text" maxlength="10000">' . esc_textarea($row['notes'] ?? '') . '</textarea></label></p><button class="button button-primary" name="bds_workflow_save" value="1">Save enquiry</button></form></details>';
     }
     for ($i = max(1, $page - 3); $i <= min((int) ceil($total / 25), $page + 3); $i++) {
-        echo '<a class="button" ' . ($i === $page ? 'aria-current="page" ' : '') . 'href="' . esc_url(add_query_arg(array('page' => 'bds-submissions', 's' => $search, 'status' => $filter, 'paged' => $i), admin_url('admin.php'))) . '">' . esc_html($i) . '</a> ';
+        echo '<a class="button" ' . ($i === $page ? 'aria-current="page" ' : '') . 'href="' . esc_url(add_query_arg(array('page' => 'bds-submissions', 's' => $search, 'status' => $filter, 'paged' => $i, 'mine' => $mine ? 1 : 0, 'overdue' => $overdue ? 1 : 0), admin_url('admin.php'))) . '">' . esc_html($i) . '</a> ';
     }
     echo '</div>';
 }
@@ -199,5 +212,7 @@ function bds_operations_page() {
     }
     echo '<h2>Recent activity</h2><table class="widefat striped"><thead><tr><th>Time (UTC)</th><th>User ID</th><th>Record</th><th>Action</th></tr></thead><tbody>';
     foreach ($wpdb->get_results("SELECT * FROM {$wpdb->prefix}bds_audit ORDER BY id DESC LIMIT 100", ARRAY_A) as $row) { echo '<tr><td>' . esc_html($row['created_at']) . '</td><td>' . esc_html($row['user_id']) . '</td><td>' . esc_html($row['record_id']) . '</td><td>' . esc_html($row['action']) . '</td></tr>'; }
-    echo '</tbody></table></div>';
+    echo '</tbody></table>';
+    bds_payment_operations();
+    echo '</div>';
 }

@@ -27,6 +27,9 @@ require_once BDSM_APP_DIR . 'includes/admin.php';
 require_once BDSM_APP_DIR . 'includes/content.php';
 require_once BDSM_APP_DIR . 'includes/seo.php';
 require_once BDSM_APP_DIR . 'includes/operations.php';
+require_once BDSM_APP_DIR . 'includes/payments.php';
+require_once BDSM_APP_DIR . 'includes/customers.php';
+require_once BDSM_APP_DIR . 'includes/security.php';
 register_activation_hook(__FILE__, 'bds_install');
 register_deactivation_hook(__FILE__, 'bds_operations_deactivate');
 

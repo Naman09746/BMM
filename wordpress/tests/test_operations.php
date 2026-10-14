@@ -4,6 +4,8 @@
 define('ABSPATH', __DIR__ . '/'); define('ARRAY_A', 'ARRAY_A');
 define('MINUTE_IN_SECONDS', 60); define('HOUR_IN_SECONDS', 3600); define('DAY_IN_SECONDS', 86400);
 $allowed = true; $mail_ok = true; $mail_calls = 0; $options = array(); $events = array(); $schemas = array();
+function absint($value) { return abs((int) $value); }
+function user_can($user, $cap) { return false; }
 function add_action(...$args) {} function add_filter(...$args) {}
 function dbDelta($sql) { global $schemas; $schemas[] = $sql; }
 function current_user_can($cap) { global $allowed; return $allowed; }
@@ -30,7 +32,7 @@ class TestDB {
     function __construct() {
         $this->db = new PDO('sqlite::memory:'); $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $this->db->exec("CREATE TABLE wp_bds_mail_queue (id TEXT PRIMARY KEY, record_id TEXT, status TEXT, attempts INTEGER, available_at TEXT, updated_at TEXT, created_at TEXT, payload TEXT);
-          CREATE TABLE wp_bds_enquiries (id TEXT PRIMARY KEY, type TEXT, created_at TEXT, data TEXT, status TEXT DEFAULT 'new', notes TEXT, updated_at TEXT);
+          CREATE TABLE wp_bds_enquiries (id TEXT PRIMARY KEY, type TEXT, created_at TEXT, data TEXT, status TEXT DEFAULT 'new', notes TEXT, updated_at TEXT, assigned_user_id INTEGER DEFAULT 0, follow_up_date TEXT);
           CREATE TABLE wp_bds_audit (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, record_id TEXT, action TEXT, created_at TEXT);");
     }
     function get_charset_collate() { return ''; }
@@ -60,6 +62,7 @@ $wpdb = new TestDB();
 class WP_REST_Response { public $data; public $status; function __construct($data, $status = 200) { $this->data = $data; $this->status = $status; } }
 require __DIR__ . '/../bds-marvel-app/includes/api.php';
 require __DIR__ . '/../bds-marvel-app/includes/operations.php';
+require __DIR__ . '/../bds-marvel-app/includes/customers.php';
 $n = 0;
 function check($name, $condition) { global $n; if (!$condition) { throw new Exception($name); } $n++; echo "PASS $name\n"; }
 function mail_row() { global $wpdb; return $wpdb->get_row('SELECT * FROM wp_bds_mail_queue LIMIT 1'); }

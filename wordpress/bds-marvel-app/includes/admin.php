@@ -2,19 +2,24 @@
 if (!defined('ABSPATH')) { exit; }
 add_action('admin_init', function () {
     register_setting('bds_settings', 'bds_notification_email', array('type' => 'string', 'sanitize_callback' => 'sanitize_email', 'default' => get_option('admin_email')));
+    register_setting('bds_settings', 'bds_razorpay_webhook_secret', array('type' => 'string', 'sanitize_callback' => 'bds_save_webhook_secret', 'default' => ''));
     register_setting('bds_settings', 'bds_allow_registration', array('type' => 'integer', 'sanitize_callback' => 'absint', 'default' => 1));
     register_setting('bds_settings', 'bds_razorpay_key_id', array('type' => 'string', 'sanitize_callback' => 'sanitize_text_field', 'default' => ''));
     register_setting('bds_settings', 'bds_razorpay_key_secret', array('type' => 'string', 'sanitize_callback' => 'bds_save_razorpay_secret', 'default' => ''));
 });
+function bds_save_webhook_secret($value) {
+    $value = trim(sanitize_text_field((string) $value));
+    return $value === '' ? get_option('bds_razorpay_webhook_secret', '') : $value;
+}
 function bds_save_razorpay_secret($value) {
     $value = trim(sanitize_text_field((string) $value));
     return $value === '' ? get_option('bds_razorpay_key_secret', '') : $value;
 }
 add_action('admin_menu', function () {
-    add_menu_page('BDS Marvel', 'BDS Marvel', 'manage_options', 'bds-marvel', 'bds_admin_page', 'dashicons-building');
+    add_menu_page('BDS Marvel', 'BDS Marvel', 'bds_manage_enquiries', 'bds-marvel', 'bds_admin_page', 'dashicons-building');
 });
 function bds_admin_page() {
-    if (!current_user_can('manage_options')) { return; }
+    if (!current_user_can('manage_options')) { if (bds_can_manage_enquiries()) { bds_enquiries_page(); } return; }
     global $wpdb;
     echo '<div class="wrap"><h1>BDS Marvel</h1><p><a class="button button-primary" href="' . esc_url(home_url('/owner')) . '">Open owner dashboard</a></p>';
     echo '<h2>Settings</h2><form action="options.php" method="post">';
@@ -24,6 +29,7 @@ function bds_admin_page() {
     echo '<h3>Razorpay payments</h3><p>Use Razorpay test keys first. The key secret stays on the server and is never sent to the checkout page.</p>';
     echo '<p><label>Key ID <input type="text" name="bds_razorpay_key_id" value="' . esc_attr(get_option('bds_razorpay_key_id', '')) . '" autocomplete="off" class="regular-text" placeholder="rzp_test_…"></label></p>';
     echo '<p><label>Key secret <input type="password" name="bds_razorpay_key_secret" value="" autocomplete="new-password" class="regular-text" placeholder="' . (get_option('bds_razorpay_key_secret', '') ? 'Saved; leave blank to keep current key' : 'Paste the Razorpay key secret') . '"></label></p>';
+    echo '<p><label>Webhook secret <input type="password" name="bds_razorpay_webhook_secret" value="" autocomplete="new-password" class="regular-text" placeholder="Leave blank to keep current secret"></label></p><p>Use a separate webhook secret in Razorpay. Subscribe to payment.captured, refund.processed and refund.failed at <code>' . esc_html(rest_url('bds/v1/payments/razorpay/webhook')) . '</code>. Configure test mode first.</p>';
     submit_button(); echo '</form><h2>Recent enquiries</h2>';
     $rows = $wpdb->get_results("SELECT data FROM {$wpdb->prefix}bds_enquiries ORDER BY created_at DESC LIMIT 100", ARRAY_A);
     echo '<table class="widefat striped"><thead><tr><th>Type</th><th>Name</th><th>Email</th><th>Details</th><th>Attachment</th></tr></thead><tbody>';
@@ -40,3 +46,4 @@ function bds_admin_page() {
     }
     echo '</tbody></table><p>Bookings and enquiries remain saved if you change themes or deactivate this plugin. Email is sent through WordPress; configure your hosting mail service or SMTP for delivery.</p></div>';
 }
+

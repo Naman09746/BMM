@@ -119,7 +119,7 @@ add_action('save_post',function($id,$post){
     if($post->post_type==='bds_stay'){$data['guests']=max(1,(int)($data['guests']??1));$data['price']='₹'.max(0,(int)preg_replace('/[^0-9]/','',$data['price']??''));$data['bedrooms']=max(0,(int)($data['bedrooms']??1));$data['bookingMode']=($data['bookingMode']??'request')==='instant'?'instant':'request';}
     update_post_meta($id,'_bds_fields',wp_slash(wp_json_encode($data)));
 },10,2);
-add_action('admin_menu',function(){add_submenu_page('bds-marvel','Bookings','Bookings','manage_options','bds-bookings',function(){echo '<div class="wrap"><h1>Bookings</h1><iframe title="BDS booking management" src="'.esc_url(home_url('/owner')).'" style="width:100%;height:1100px;border:0"></iframe></div>';});add_submenu_page('bds-marvel','Text & links','Text & links','manage_options','bds-copy','bds_copy_page');add_submenu_page('bds-marvel','Submissions','Submissions','manage_options','bds-submissions','bds_submissions_page');});
+add_action('admin_menu',function(){add_submenu_page('bds-marvel','Bookings','Bookings','manage_options','bds-bookings',function(){echo '<div class="wrap"><h1>Bookings</h1><iframe title="BDS booking management" src="'.esc_url(home_url('/owner')).'" style="width:100%;height:1100px;border:0"></iframe></div>';});add_submenu_page('bds-marvel','Text & links','Text & links','manage_options','bds-copy','bds_copy_page');add_submenu_page('bds-marvel','Submissions','Submissions','bds_manage_enquiries','bds-submissions','bds_submissions_page');});
 function bds_copy_page() {
     if(!current_user_can('manage_options')){return;}
     $overrides=get_option('bds_copy_overrides',array());
