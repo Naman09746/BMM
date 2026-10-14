@@ -1,7 +1,7 @@
 <?php
 // Run only with wp eval-file on the disposable CI WordPress/MySQL installation.
 if (getenv('BDS_DISPOSABLE_TEST_SITE') !== '1') { throw new Exception('Disposable test site only'); }
-global $wpdb;
+global $wpdb, $checks;
 $checks = 0;
 function verify_bds($name, $ok) { global $checks; if (!$ok) { throw new Exception($name); } $checks++; echo "PASS $name\n"; }
 wp_set_current_user(1);
