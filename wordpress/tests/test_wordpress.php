@@ -57,6 +57,18 @@ verify_bds('Late payment never reopens cancellation', $data['status']==='cancell
 $conflict = ci_booking('payment_pending','instant','ci-stay');
 $data = bds_apply_captured_payment($conflict['id'],ci_payment($conflict));
 verify_bds('Overlapping paid booking flagged for refund', $data['status']==='payment_conflict' && $data['payment_status']==='paid_conflict');
+update_option('bds_razorpay_key_id','rzp_test_ci');
+update_option('bds_razorpay_key_secret','ci-key-secret');
+$verify_request = new WP_REST_Request('POST','/bds/v1/stays/payments/verify');
+$verify_request->set_header('Content-Type','application/json');
+$verify_request->set_body(wp_json_encode(array('booking_id'=>$conflict['id'],'razorpay_order_id'=>$conflict['razorpay_order_id'],
+    'razorpay_payment_id'=>ci_payment($conflict)['id'],'razorpay_signature'=>hash_hmac('sha256',$conflict['razorpay_order_id'].'|'.ci_payment($conflict)['id'],'ci-key-secret'))));
+verify_bds('Checkout retry reports paid date conflict', bds_verify_stay_payment($verify_request)->get_status()===409);
+$verify_request->set_body(wp_json_encode(array('booking_id'=>$cancelled['id'],'razorpay_order_id'=>$cancelled['razorpay_order_id'],
+    'razorpay_payment_id'=>ci_payment($cancelled)['id'],'razorpay_signature'=>hash_hmac('sha256',$cancelled['razorpay_order_id'].'|'.ci_payment($cancelled)['id'],'ci-key-secret'))));
+verify_bds('Checkout retry never reports cancelled stay as reserved', bds_verify_stay_payment($verify_request)->get_status()===409);
+// Keep the following HTTP suite on the unpaid-request path.
+delete_option('bds_razorpay_key_id'); delete_option('bds_razorpay_key_secret');
 $refund = array_merge($payment,array('amount_refunded'=>50000));
 verify_bds('Partial refund tracked', bds_apply_refund_state($b['id'],$refund)['payment_status']==='partially_refunded');
 $refund['amount_refunded']=100000;

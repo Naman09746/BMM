@@ -100,7 +100,7 @@ Deploy to staging first with a database backup. Activation or the next plugin lo
 adds tables/columns without deleting existing bookings or enquiries. There are no
 frontend asset changes. Verify enquiries, archive/restore, concurrent saves,
 notifications, cron and owner/guest permissions before promoting. This release
-does not configure SMTP, payment webhooks, refunds reconciliation, backups or hosting.
+does not configure SMTP, provider dashboard webhook subscriptions, backups or hosting.
 
 ### Payment recovery, customers and security
 

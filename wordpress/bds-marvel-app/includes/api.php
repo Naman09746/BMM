@@ -330,7 +330,10 @@ function bds_verify_stay_payment($request) {
     $key = bds_razorpay_credentials();
     $expected = hash_hmac('sha256', $order_id . '|' . $payment_id, $key[1]);
     if (!hash_equals($expected, $signature)) { return bds_error('Payment signature could not be verified.', 400); }
-    if (!empty($data['payment_id']) && $data['payment_id'] === $payment_id && ($data['payment_status'] ?? '') !== 'pending') { return bds_booking_row($row); }
+    if (!empty($data['payment_id']) && $data['payment_id'] === $payment_id && ($data['payment_status'] ?? '') !== 'pending') {
+        if (($data['payment_status'] ?? '') === 'paid_conflict' || in_array($row['status'], array('cancelled','declined'), true)) { return bds_error('This paid booking needs owner review. Contact BDS Marvel.', 409); }
+        return bds_booking_row($row);
+    }
     $payment = bds_razorpay_result(bds_razorpay_request('GET', 'payments/' . rawurlencode($payment_id)));
     if (!$payment || ($payment['order_id'] ?? '') !== $order_id || (int) ($payment['amount'] ?? 0) !== (int) $data['total'] * 100 || ($payment['currency'] ?? '') !== 'INR') {
         return bds_error('Payment amount or order does not match this stay.', 400);
@@ -339,7 +342,11 @@ function bds_verify_stay_payment($request) {
         $payment = bds_razorpay_result(bds_razorpay_request('POST', 'payments/' . rawurlencode($payment_id) . '/capture', array('amount' => (int) $data['total'] * 100, 'currency' => 'INR')));
     }
     if (!$payment || ($payment['status'] ?? '') !== 'captured') { return bds_error('Razorpay has not confirmed this captured payment yet. Please retry shortly.', 409); }
-    return bds_apply_captured_payment($id, $payment);
+    $result = bds_apply_captured_payment($id, $payment);
+    if (is_array($result) && (($result['payment_status'] ?? '') === 'paid_conflict' || in_array($result['status'], array('cancelled','declined'), true))) {
+        return bds_error('Payment was received, but this booking could not be reserved. Contact BDS Marvel for review and any refund owed.', 409);
+    }
+    return $result;
 }
 function bds_update_booking($request) {
     global $wpdb;
