@@ -129,12 +129,7 @@ function bds_copy_page() {
     foreach(array_slice($entries,($page-1)*40,40) as $entry){$original=$entry['original'];echo '<p><label><strong>'.esc_html($entry['section']).'</strong><br><span>'.esc_html($original).'</span><br><textarea name="bds_copy['.esc_attr(base64_encode($original)).']" rows="2" class="large-text">'.esc_textarea($overrides[$original]??$original).'</textarea></label></p>';}
     submit_button('Save text & links','primary','bds_copy_save');echo '</form><p>';for($i=1;$i<=ceil(count($entries)/40);$i++){echo '<a style="margin-right:10px" href="'.esc_url(add_query_arg(array('page'=>'bds-copy','s'=>$q,'paged'=>$i),admin_url('admin.php'))).'">'.$i.'</a>'; }echo '</p></div>';
 }
-function bds_submissions_page() {
-    if(!current_user_can('manage_options')){return;}global $wpdb;
-    if(isset($_POST['bds_delete_enquiry'])){check_admin_referer('bds_delete_enquiry');$wpdb->delete($wpdb->prefix.'bds_enquiries',array('id'=>sanitize_text_field(wp_unslash($_POST['bds_delete_enquiry']))));echo '<div class="notice notice-success"><p>Submission removed.</p></div>';}
-    echo '<div class="wrap"><h1>Form submissions</h1><p>All website form submissions are stored here. Bookings are managed in the <a href="'.esc_url(home_url('/owner')).'">owner dashboard</a>.</p>';
-    foreach($wpdb->get_results("SELECT id,data FROM {$wpdb->prefix}bds_enquiries ORDER BY created_at DESC LIMIT 200",ARRAY_A) as $row){$item=json_decode($row['data'],true);echo '<details style="background:white;padding:15px;margin:10px 0"><summary><strong>'.esc_html(($item['type']??'Form').' — '.($item['name']??'')).'</strong> · '.esc_html($item['email']??'').'</summary><table class="widefat">';foreach($item as $k=>$v){if(is_scalar($v)){echo '<tr><th>'.esc_html($k).'</th><td>'.esc_html($v).'</td></tr>';}}echo '</table><form method="post">';wp_nonce_field('bds_delete_enquiry');echo '<button class="button" name="bds_delete_enquiry" value="'.esc_attr($row['id']).'" onclick="return confirm(\'Permanently remove this submission?\')">Delete submission</button></form></details>'; }echo '</div>';
-}
+function bds_submissions_page() { bds_enquiries_page(); }
 // Additional forms can be placed in ordinary WordPress pages without rebuilding React.
 add_action('rest_api_init',function(){register_rest_route('bds/v1','/forms/(?P<slug>[a-z0-9-]+)',array('methods'=>'POST','permission_callback'=>'bds_permission','callback'=>function($request){
     $slug=$request['slug'];$config=bds_form_config($slug);if(!$config||empty($config['enabled'])){return bds_error('This form is currently unavailable.',410);}
@@ -158,3 +153,4 @@ add_shortcode('bds_marvel_form',function($atts){
     }
     return $html.'<button type="submit">'.esc_html($config['submit_label']??'Send').'</button><p class="bds-form-result" role="status"></p></form>';
 });
+

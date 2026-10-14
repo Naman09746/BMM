@@ -25,10 +25,11 @@ function bds_install() {
         data longtext NOT NULL,
         PRIMARY KEY  (id)
     ) $charset;");
-    update_option('bds_db_version', '2.0.0');
+    bds_operations_install();
+    update_option('bds_db_version', '2.1.0');
 }
 add_action('plugins_loaded', function () {
-    if (get_option('bds_db_version') !== '2.0.0') { bds_install(); }
+    if (get_option('bds_db_version') !== '2.1.0') { bds_install(); }
 });
 add_action('init', function () {
     register_post_type('bds_upload', array('public' => false, 'show_ui' => false, 'label' => 'Private BDS uploads'));
@@ -169,12 +170,12 @@ function bds_notify($data, $subject, $guest = false) {
     }
     $form = !empty($data['form_slug']) ? bds_form_config($data['form_slug']) : null;
     $owner = is_email($form['notification_email'] ?? '') ? $form['notification_email'] : get_option('bds_notification_email', get_option('admin_email'));
-    wp_mail($owner, $subject, implode("\n", $lines), array('Reply-To: ' . sanitize_email($data['email'] ?? $owner)));
+    bds_queue_mail($owner, $subject, implode("\n", $lines), array('Reply-To: ' . sanitize_email($data['email'] ?? $owner)), $data['id'] ?? '');
     if ($guest && is_email($data['email'] ?? '')) {
         $url = home_url('/#/stays/trips/' . $data['id']);
         // The companion theme uses clean paths; shortcode embeds use hash paths.
         if (get_option('stylesheet') === 'bds-marvel-theme') { $url = home_url('/stays/trips/' . $data['id']); }
-        wp_mail($data['email'], $subject, implode("\n", $lines) . "\n\nView your trip: " . $url);
+        bds_queue_mail($data['email'], $subject, implode("\n", $lines) . "\n\nView your trip: " . $url, array(), $data['id'] ?? '');
     }
 }
 function bds_create_booking($request) {
@@ -401,43 +402,7 @@ function bds_api($request) {
         return bds_user_data($user);
     }
     if ($path === '/auth/session') {
-        if (!bds_limit('google_auth', 15)) { return bds_error('Too many sign-in attempts. Try again later.', 429); }
-        $session_id = $input['session_id'] ?? '';
-        if (!is_string($session_id) || strlen($session_id) < 8 || strlen($session_id) > 2048 || preg_match('/[\r\n]/', $session_id)) {
-            return bds_error('Google sign-in failed. Please try again.', 401);
-        }
-        $provider = wp_remote_get('https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data', array(
-            'timeout' => 20,
-            'redirection' => 0,
-            'headers' => array('X-Session-ID' => $session_id, 'Accept' => 'application/json'),
-        ));
-        if (is_wp_error($provider) || wp_remote_retrieve_response_code($provider) !== 200) {
-            return bds_error('Google sign-in failed. Please try again.', 401);
-        }
-        $identity = json_decode(wp_remote_retrieve_body($provider), true);
-        $email = is_array($identity) && is_string($identity['email'] ?? null) ? sanitize_email($identity['email']) : '';
-        if (!is_email($email) || !is_string($identity['session_token'] ?? null) || $identity['session_token'] === '') {
-            return bds_error('Google sign-in failed. Please try again.', 401);
-        }
-        $user = get_user_by('email', $email);
-        if (!$user) {
-            if (!get_option('bds_allow_registration', 1)) { return bds_error('New account registration is currently closed.', 403); }
-            $name = is_string($identity['name'] ?? null) ? sanitize_text_field($identity['name']) : '';
-            $id = wp_insert_user(array(
-                'user_login' => 'bds_' . wp_generate_password(24, false),
-                'user_email' => $email,
-                'user_pass' => wp_generate_password(48, true, true),
-                'display_name' => $name ?: $email,
-                'role' => 'subscriber',
-            ));
-            if (is_wp_error($id)) { return bds_error('Unable to create this account. Please try again.', 409); }
-            $user = get_userdata($id);
-        }
-        if (is_string($identity['picture'] ?? null) && filter_var($identity['picture'], FILTER_VALIDATE_URL)) {
-            update_user_meta($user->ID, 'bds_google_picture', esc_url_raw($identity['picture']));
-        }
-        bds_session($user);
-        return bds_user_data($user);
+        return bds_error('Emergent sign-in is disabled. Use WordPress email and password sign-in.', 410);
     }
     if ($path === '/auth/status') { return array('user' => $user ? bds_user_data($user) : null); }
     if ($path === '/auth/me') { return $user ? bds_user_data($user) : bds_error('Please sign in.', 401); }
@@ -563,3 +528,4 @@ add_filter('rest_pre_serve_request', function ($served, $result, $request) {
     echo base64_decode($post->post_content);
     return true;
 }, 10, 3);
+

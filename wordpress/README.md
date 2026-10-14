@@ -71,3 +71,33 @@ The build writes the production assets into `wordpress/bds-marvel-app/build/`. P
 ## Verification
 
 See `VERIFICATION.md` for the checks performed. The live Razorpay checkout requires valid account keys; when keys are absent, the unpaid-request path is used. Live payment processing must be tested after configuring Razorpay credentials.
+
+
+## Backend operations (3.4.0)
+
+**BDS Marvel → Submissions** now supports search, paginated results, enquiry statuses,
+private follow-up notes and reversible archiving. Existing records start as New.
+Two administrators saving the same enquiry receive a conflict instead of silently
+replacing each other's changes. This replaces the permanent-delete button.
+Notes and workflow columns are separate from public submission payloads.
+
+Notifications are stored in a database outbox before being dispatched. WordPress
+cron processes up to ten messages per run, with five attempts and exponential
+retry delays. **BDS Marvel → Operations** displays queue counts, the last worker
+run, failed messages with manual retry, and enquiry/mail activity. An accepted
+`wp_mail` call is transport acceptance, not proof of inbox delivery. The outbox
+provides at-least-once attempts: a worker interrupted after sending can produce a
+duplicate. Configure SMTP and a host cron runner for dependable low-traffic operation.
+Sent message bodies are cleared after 30 days; failed messages remain for review.
+Audit entries store user/record IDs and action names, never enquiry text or secrets.
+This release tracks enquiry changes and mail failures/retries, not all WordPress activity.
+
+The unused Emergent `/auth/session` route returns HTTP 410. WordPress email/password
+sign-in and password reset remain available. Existing Emergent identity assertions
+can no longer create a WordPress session or link to an existing account by email.
+
+Deploy to staging first with a database backup. Activation or the next plugin load
+adds tables/columns without deleting existing bookings or enquiries. There are no
+frontend asset changes. Verify enquiries, archive/restore, concurrent saves,
+notifications, cron and owner/guest permissions before promoting. This release
+does not configure SMTP, payment webhooks, refunds reconciliation, backups or hosting.

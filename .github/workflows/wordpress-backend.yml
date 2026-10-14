@@ -1,0 +1,25 @@
+name: WordPress backend checks
+on:
+  pull_request:
+    paths: ['wordpress/**', '.github/workflows/wordpress-backend.yml']
+  push:
+    paths: ['wordpress/**', '.github/workflows/wordpress-backend.yml']
+permissions:
+  contents: read
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php: ['7.4', '8.3', '8.4']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: pdo_sqlite
+          coverage: none
+      - name: Check PHP syntax
+        run: find wordpress/bds-marvel-app wordpress/bds-marvel-theme -name '*.php' -print0 | xargs -0 -n1 php -l
+      - name: Exercise backend operations offline
+        run: php wordpress/tests/test_operations.php
