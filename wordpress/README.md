@@ -71,3 +71,72 @@ The build writes the production assets into `wordpress/bds-marvel-app/build/`. P
 ## Verification
 
 See `VERIFICATION.md` for the checks performed. The live Razorpay checkout requires valid account keys; when keys are absent, the unpaid-request path is used. Live payment processing must be tested after configuring Razorpay credentials.
+
+
+## Backend operations (3.4.0)
+
+**BDS Marvel → Submissions** now supports search, paginated results, enquiry statuses,
+private follow-up notes and reversible archiving. Existing records start as New.
+Two administrators saving the same enquiry receive a conflict instead of silently
+replacing each other's changes. This replaces the permanent-delete button.
+Notes and workflow columns are separate from public submission payloads.
+
+Notifications are stored in a database outbox before being dispatched. WordPress
+cron processes up to ten messages per run, with five attempts and exponential
+retry delays. **BDS Marvel → Operations** displays queue counts, the last worker
+run, failed messages with manual retry, and enquiry/mail activity. An accepted
+`wp_mail` call is transport acceptance, not proof of inbox delivery. The outbox
+provides at-least-once attempts: a worker interrupted after sending can produce a
+duplicate. Configure SMTP and a host cron runner for dependable low-traffic operation.
+Sent message bodies are cleared after 30 days; failed messages remain for review.
+Audit entries store user/record IDs and action names, never enquiry text or secrets.
+This release tracks enquiry changes and mail failures/retries, not all WordPress activity.
+
+The unused Emergent `/auth/session` route returns HTTP 410. WordPress email/password
+sign-in and password reset remain available. Existing Emergent identity assertions
+can no longer create a WordPress session or link to an existing account by email.
+
+Deploy to staging first with a database backup. Activation or the next plugin load
+adds tables/columns without deleting existing bookings or enquiries. There are no
+frontend asset changes. Verify enquiries, archive/restore, concurrent saves,
+notifications, cron and owner/guest permissions before promoting. This release
+does not configure SMTP, provider dashboard webhook subscriptions, backups or hosting.
+
+### Payment recovery, customers and security
+
+Configure a separate Razorpay webhook secret in **BDS Marvel** settings and subscribe
+to `payment.captured`, `refund.processed` and `refund.failed` at
+`/wp-json/bds/v1/payments/razorpay/webhook`. Signatures are checked against the raw
+body; event IDs and body hashes prevent duplicate processing. Captured callbacks
+and checkout verification share a lock and re-read the current booking before
+writing. Late payments never reopen cancelled/declined stays, and date conflicts
+surface for owner refund review. Refund events read current provider state and
+cannot regress completed refunds. **Operations → Reconcile payment** reads the
+provider's order/payment state without charging or refunding a guest.
+
+Declining a paid request retains the existing full-refund behavior and uses a
+stable Razorpay refund idempotency key. Cancelling a paid reservation flags an owner
+review rather than inventing a cancellation refund policy. Test and live webhook
+configuration must be done separately. Keep automatic capture configured in
+Razorpay if you expect closed-browser payments to complete without checkout verification.
+
+Enquiries support an assigned manager, follow-up date, Assigned to me and Overdue
+filters. **Customer history** looks up matching enquiries and bookings by exact
+email. The optional **BDS enquiry manager** role manages enquiries and private
+attachments but cannot edit the website, access booking payments or change plugin
+settings. No existing user's role is changed. Administrators must deliberately
+assign this role to trusted staff; enquiry managers can access all enquiries, not
+only their assigned ones. History is bounded to 200 matching candidates per source.
+
+Abuse limits use atomic database increments, including a separate limit per
+normalized login email. Limits reset in 15-minute windows; expired counters are
+cleaned by the mail cron. Anonymous uploads are bound to an HttpOnly browser cookie,
+and another browser cannot attach their file ID to a new enquiry. Existing uploads
+remain downloadable by authorized staff, but an unfinished upload from before the
+upgrade must be uploaded again before attaching it to a submission.
+
+Run `php wordpress/tests/test_operations.php` for offline checks. GitHub Actions
+also builds a disposable WordPress/MySQL installation, upgrades legacy enquiry
+data and exercises real plugin migrations, payment callbacks, permissions and
+native admin rendering. Provider calls and mail transport are simulated; actual
+Razorpay test-mode and inbox-delivery checks still require configured accounts.

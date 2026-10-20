@@ -119,7 +119,7 @@ add_action('save_post',function($id,$post){
     if($post->post_type==='bds_stay'){$data['guests']=max(1,(int)($data['guests']??1));$data['price']='₹'.max(0,(int)preg_replace('/[^0-9]/','',$data['price']??''));$data['bedrooms']=max(0,(int)($data['bedrooms']??1));$data['bookingMode']=($data['bookingMode']??'request')==='instant'?'instant':'request';}
     update_post_meta($id,'_bds_fields',wp_slash(wp_json_encode($data)));
 },10,2);
-add_action('admin_menu',function(){add_submenu_page('bds-marvel','Bookings','Bookings','manage_options','bds-bookings',function(){echo '<div class="wrap"><h1>Bookings</h1><iframe title="BDS booking management" src="'.esc_url(home_url('/owner')).'" style="width:100%;height:1100px;border:0"></iframe></div>';});add_submenu_page('bds-marvel','Text & links','Text & links','manage_options','bds-copy','bds_copy_page');add_submenu_page('bds-marvel','Submissions','Submissions','manage_options','bds-submissions','bds_submissions_page');});
+add_action('admin_menu',function(){add_submenu_page('bds-marvel','Bookings','Bookings','manage_options','bds-bookings',function(){echo '<div class="wrap"><h1>Bookings</h1><iframe title="BDS booking management" src="'.esc_url(home_url('/owner')).'" style="width:100%;height:1100px;border:0"></iframe></div>';});add_submenu_page('bds-marvel','Text & links','Text & links','manage_options','bds-copy','bds_copy_page');add_submenu_page('bds-marvel','Submissions','Submissions','bds_manage_enquiries','bds-submissions','bds_submissions_page');});
 function bds_copy_page() {
     if(!current_user_can('manage_options')){return;}
     $overrides=get_option('bds_copy_overrides',array());
@@ -129,12 +129,7 @@ function bds_copy_page() {
     foreach(array_slice($entries,($page-1)*40,40) as $entry){$original=$entry['original'];echo '<p><label><strong>'.esc_html($entry['section']).'</strong><br><span>'.esc_html($original).'</span><br><textarea name="bds_copy['.esc_attr(base64_encode($original)).']" rows="2" class="large-text">'.esc_textarea($overrides[$original]??$original).'</textarea></label></p>';}
     submit_button('Save text & links','primary','bds_copy_save');echo '</form><p>';for($i=1;$i<=ceil(count($entries)/40);$i++){echo '<a style="margin-right:10px" href="'.esc_url(add_query_arg(array('page'=>'bds-copy','s'=>$q,'paged'=>$i),admin_url('admin.php'))).'">'.$i.'</a>'; }echo '</p></div>';
 }
-function bds_submissions_page() {
-    if(!current_user_can('manage_options')){return;}global $wpdb;
-    if(isset($_POST['bds_delete_enquiry'])){check_admin_referer('bds_delete_enquiry');$wpdb->delete($wpdb->prefix.'bds_enquiries',array('id'=>sanitize_text_field(wp_unslash($_POST['bds_delete_enquiry']))));echo '<div class="notice notice-success"><p>Submission removed.</p></div>';}
-    echo '<div class="wrap"><h1>Form submissions</h1><p>All website form submissions are stored here. Bookings are managed in the <a href="'.esc_url(home_url('/owner')).'">owner dashboard</a>.</p>';
-    foreach($wpdb->get_results("SELECT id,data FROM {$wpdb->prefix}bds_enquiries ORDER BY created_at DESC LIMIT 200",ARRAY_A) as $row){$item=json_decode($row['data'],true);echo '<details style="background:white;padding:15px;margin:10px 0"><summary><strong>'.esc_html(($item['type']??'Form').' — '.($item['name']??'')).'</strong> · '.esc_html($item['email']??'').'</summary><table class="widefat">';foreach($item as $k=>$v){if(is_scalar($v)){echo '<tr><th>'.esc_html($k).'</th><td>'.esc_html($v).'</td></tr>';}}echo '</table><form method="post">';wp_nonce_field('bds_delete_enquiry');echo '<button class="button" name="bds_delete_enquiry" value="'.esc_attr($row['id']).'" onclick="return confirm(\'Permanently remove this submission?\')">Delete submission</button></form></details>'; }echo '</div>';
-}
+function bds_submissions_page() { bds_enquiries_page(); }
 // Additional forms can be placed in ordinary WordPress pages without rebuilding React.
 add_action('rest_api_init',function(){register_rest_route('bds/v1','/forms/(?P<slug>[a-z0-9-]+)',array('methods'=>'POST','permission_callback'=>'bds_permission','callback'=>function($request){
     $slug=$request['slug'];$config=bds_form_config($slug);if(!$config||empty($config['enabled'])){return bds_error('This form is currently unavailable.',410);}
@@ -158,3 +153,4 @@ add_shortcode('bds_marvel_form',function($atts){
     }
     return $html.'<button type="submit">'.esc_html($config['submit_label']??'Send').'</button><p class="bds-form-result" role="status"></p></form>';
 });
+

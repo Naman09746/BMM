@@ -14,7 +14,9 @@ function bds_install() {
         check_out date NOT NULL,
         created_at datetime NOT NULL,
         data longtext NOT NULL,
+        payment_order_id varchar(80) DEFAULT NULL,
         PRIMARY KEY  (id),
+        KEY payment_order (payment_order_id),
         KEY user_id (user_id),
         KEY availability (stay_slug,status,check_in,check_out)
     ) $charset;");
@@ -25,10 +27,13 @@ function bds_install() {
         data longtext NOT NULL,
         PRIMARY KEY  (id)
     ) $charset;");
-    update_option('bds_db_version', '2.0.0');
+    bds_operations_install();
+    bds_payment_install();
+    bds_security_install();
+    update_option('bds_db_version', '2.2.0');
 }
 add_action('plugins_loaded', function () {
-    if (get_option('bds_db_version') !== '2.0.0') { bds_install(); }
+    if (get_option('bds_db_version') !== '2.2.0') { bds_install(); }
 });
 add_action('init', function () {
     register_post_type('bds_upload', array('public' => false, 'show_ui' => false, 'label' => 'Private BDS uploads'));
@@ -37,19 +42,22 @@ add_action('init', function () {
 function bds_error($message, $status = 422) {
     return new WP_REST_Response(array('detail' => $message), $status);
 }
-function bds_limit($bucket, $max = 15) {
-    $key = 'bds_rl_' . hash('sha256', $bucket . '|' . ($_SERVER['REMOTE_ADDR'] ?? 'local'));
-    $count = (int) get_transient($key);
-    if ($count >= $max) { return false; }
-    set_transient($key, $count + 1, 15 * MINUTE_IN_SECONDS);
-    return true;
+function bds_limit($bucket, $max = 15, $identity = null) {
+    global $wpdb;
+    $window = (int) floor(time() / (15 * MINUTE_IN_SECONDS));
+    $key = hash('sha256', $bucket . '|' . ($identity ?? ($_SERVER['REMOTE_ADDR'] ?? 'local')) . '|' . $window);
+    $table = $wpdb->prefix . 'bds_rate_limits';
+    $created = $wpdb->query($wpdb->prepare("INSERT IGNORE INTO $table (id, attempts, expires_at) VALUES (%s, 1, %d)", $key, ($window + 2) * 15 * MINUTE_IN_SECONDS));
+    if ($created === 1) { return true; }
+    // A conditional increment grants at most max attempts even under parallel requests.
+    return $wpdb->query($wpdb->prepare("UPDATE $table SET attempts = attempts + 1 WHERE id = %s AND attempts < %d", $key, $max)) === 1;
 }
 function bds_user() {
     $token = $_COOKIE['bds_session'] ?? '';
     if (is_string($token) && preg_match('/^[a-f0-9]{64}$/', $token)) {
         $session = get_transient('bds_session_' . hash('sha256', $token));
         $account = is_array($session) ? get_userdata((int) $session['id']) : false;
-        if ($account && hash_equals($session['password_hash'], hash('sha256', $account->user_pass))) { return $account; }
+        if ($account && is_string($session['password_hash'] ?? null) && hash_equals($session['password_hash'], hash('sha256', $account->user_pass))) { return $account; }
     }
     return is_user_logged_in() ? wp_get_current_user() : false;
 }
@@ -84,6 +92,7 @@ function bds_permission($request) {
     }
     $route = $request->get_route();
     $user = bds_user();
+    if (strpos($route, '/files/') !== false && $user && user_can($user, 'bds_manage_enquiries')) { return true; }
     if (strpos($route, '/admin/') !== false || strpos($route, '/files/') !== false) {
         if (!$user || !user_can($user, 'manage_options')) {
             return new WP_Error('bds_forbidden', 'Owner access required.', array('status' => 403));
@@ -140,11 +149,12 @@ function bds_razorpay_credentials() {
     $secret = trim((string) get_option('bds_razorpay_key_secret', ''));
     return ($key && $secret) ? array($key, $secret) : false;
 }
-function bds_razorpay_request($method, $path, $body = null) {
+function bds_razorpay_request($method, $path, $body = null, $extra_headers = array()) {
     $credentials = bds_razorpay_credentials();
     if (!$credentials) { return new WP_Error('bds_razorpay_config', 'Razorpay is not configured.'); }
     $args = array('method' => $method, 'timeout' => 20, 'redirection' => 0,
         'headers' => array('Authorization' => 'Basic ' . base64_encode($credentials[0] . ':' . $credentials[1]), 'Content-Type' => 'application/json', 'Accept' => 'application/json'));
+    $args['headers'] = array_merge($args['headers'], $extra_headers);
     if ($body !== null) { $args['body'] = wp_json_encode($body); }
     return wp_remote_request('https://api.razorpay.com/v1/' . ltrim($path, '/'), $args);
 }
@@ -169,12 +179,12 @@ function bds_notify($data, $subject, $guest = false) {
     }
     $form = !empty($data['form_slug']) ? bds_form_config($data['form_slug']) : null;
     $owner = is_email($form['notification_email'] ?? '') ? $form['notification_email'] : get_option('bds_notification_email', get_option('admin_email'));
-    wp_mail($owner, $subject, implode("\n", $lines), array('Reply-To: ' . sanitize_email($data['email'] ?? $owner)));
+    bds_queue_mail($owner, $subject, implode("\n", $lines), array('Reply-To: ' . sanitize_email($data['email'] ?? $owner)), $data['id'] ?? '');
     if ($guest && is_email($data['email'] ?? '')) {
         $url = home_url('/#/stays/trips/' . $data['id']);
         // The companion theme uses clean paths; shortcode embeds use hash paths.
         if (get_option('stylesheet') === 'bds-marvel-theme') { $url = home_url('/stays/trips/' . $data['id']); }
-        wp_mail($data['email'], $subject, implode("\n", $lines) . "\n\nView your trip: " . $url);
+        bds_queue_mail($data['email'], $subject, implode("\n", $lines) . "\n\nView your trip: " . $url, array(), $data['id'] ?? '');
     }
 }
 function bds_create_booking($request) {
@@ -295,7 +305,7 @@ function bds_create_stay_payment_order($request) {
             'email' => sanitize_email($input['email']), 'phone' => sanitize_text_field($input['phone']),
             'message' => sanitize_textarea_field($input['message'] ?? ''), 'created_at' => gmdate('c'));
         $saved = $wpdb->insert($wpdb->prefix . 'bds_bookings', array('id' => $id, 'user_id' => $user->ID,
-            'stay_slug' => $stay['slug'], 'status' => 'payment_pending', 'check_in' => $input['check_in'], 'check_out' => $input['check_out'],
+            'stay_slug' => $stay['slug'], 'payment_order_id' => $remote['id'], 'status' => 'payment_pending', 'check_in' => $input['check_in'], 'check_out' => $input['check_out'],
             'created_at' => current_time('mysql', true), 'data' => wp_json_encode($data)));
         if (!$saved) { return bds_error('The booking could not be saved. Please try again.', 500); }
     } finally { bds_unlock($lock); }
@@ -320,7 +330,10 @@ function bds_verify_stay_payment($request) {
     $key = bds_razorpay_credentials();
     $expected = hash_hmac('sha256', $order_id . '|' . $payment_id, $key[1]);
     if (!hash_equals($expected, $signature)) { return bds_error('Payment signature could not be verified.', 400); }
-    if (($data['payment_status'] ?? '') === 'paid') { return bds_booking_row($row); }
+    if (!empty($data['payment_id']) && $data['payment_id'] === $payment_id && ($data['payment_status'] ?? '') !== 'pending') {
+        if (($data['payment_status'] ?? '') === 'paid_conflict' || in_array($row['status'], array('cancelled','declined'), true)) { return bds_error('This paid booking needs owner review. Contact BDS Marvel.', 409); }
+        return bds_booking_row($row);
+    }
     $payment = bds_razorpay_result(bds_razorpay_request('GET', 'payments/' . rawurlencode($payment_id)));
     if (!$payment || ($payment['order_id'] ?? '') !== $order_id || (int) ($payment['amount'] ?? 0) !== (int) $data['total'] * 100 || ($payment['currency'] ?? '') !== 'INR') {
         return bds_error('Payment amount or order does not match this stay.', 400);
@@ -329,46 +342,41 @@ function bds_verify_stay_payment($request) {
         $payment = bds_razorpay_result(bds_razorpay_request('POST', 'payments/' . rawurlencode($payment_id) . '/capture', array('amount' => (int) $data['total'] * 100, 'currency' => 'INR')));
     }
     if (!$payment || ($payment['status'] ?? '') !== 'captured') { return bds_error('Razorpay has not confirmed this captured payment yet. Please retry shortly.', 409); }
-    $lock = bds_lock($row['stay_slug']);
-    if (!$lock) { return bds_error('Payment is received and being verified. Please retry shortly.', 409); }
-    try {
-        if (bds_active_overlap($row['stay_slug'], $row['check_in'], $row['check_out'], $id)) {
-            $data['status'] = 'payment_conflict'; $data['payment_status'] = 'paid_conflict'; $data['payment_id'] = $payment_id;
-            $wpdb->update($wpdb->prefix . 'bds_bookings', array('status' => 'payment_conflict', 'data' => wp_json_encode($data)), array('id' => $id));
-            return bds_error('Payment was received, but these dates were just taken. Please contact BDS Marvel for a refund.', 409);
-        }
-        $data['status'] = $data['mode'] === 'instant' ? 'confirmed' : 'requested';
-        $data['payment_status'] = 'paid'; $data['payment_id'] = $payment_id; $data['paid_at'] = gmdate('c');
-        if ($wpdb->update($wpdb->prefix . 'bds_bookings', array('status' => $data['status'], 'data' => wp_json_encode($data)), array('id' => $id)) === false) { return bds_error('Payment was verified, but the booking needs owner review.', 500); }
-    } finally { bds_unlock($lock); }
-    bds_notify($data, 'BDS Marvel — ' . ($data['status'] === 'confirmed' ? 'paid reservation' : 'paid booking request') . ' (' . $data['reference'] . ')', true);
-    $row['data'] = wp_json_encode($data); $row['status'] = $data['status'];
-    return bds_booking_row($row);
+    $result = bds_apply_captured_payment($id, $payment);
+    if (is_array($result) && (($result['payment_status'] ?? '') === 'paid_conflict' || in_array($result['status'], array('cancelled','declined'), true))) {
+        return bds_error('Payment was received, but this booking could not be reserved. Contact BDS Marvel for review and any refund owed.', 409);
+    }
+    return $result;
 }
 function bds_update_booking($request) {
     global $wpdb;
-    $row = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$wpdb->prefix}bds_bookings WHERE id = %s", $request['id']), ARRAY_A);
+    $id = $request['id'];
+    $row = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$wpdb->prefix}bds_bookings WHERE id = %s", $id), ARRAY_A);
     if (!$row) { return bds_error('Booking not found.', 404); }
     $status = $request->get_param('status');
     if (!in_array($status, array('requested', 'confirmed', 'declined', 'cancelled'), true)) { return bds_error('Invalid booking status.'); }
     $lock = bds_lock($row['stay_slug']);
     if (!$lock) { return bds_error('Please try again in a moment.', 409); }
     try {
-        if ($status === 'confirmed' && bds_active_overlap($row['stay_slug'], $row['check_in'], $row['check_out'], $row['id'])) { return bds_error('Those dates are already reserved or being paid for another guest.', 409); }
-        if ($wpdb->update($wpdb->prefix . 'bds_bookings', array('status' => $status), array('id' => $row['id'])) === false) { return bds_error('Could not update booking.', 500); }
-    } finally { bds_unlock($lock); }
-    $row['status'] = $status;
-    $data = bds_booking_row($row);
-    if ($status === 'declined' && ($data['payment_status'] ?? '') === 'paid' && !empty($data['payment_id'])) {
-        $refund = bds_razorpay_result(bds_razorpay_request('POST', 'payments/' . rawurlencode($data['payment_id']) . '/refund', array(
-            'amount' => (int) $data['total'] * 100, 'notes' => array('booking_reference' => $data['reference'], 'reason' => 'Stay request declined by host'))));
-        if ($refund && !empty($refund['id'])) {
-            $data['payment_status'] = 'refund_pending'; $data['refund_id'] = $refund['id']; $data['refund_requested_at'] = gmdate('c');
-        } else {
-            $data['payment_status'] = 'refund_failed'; $data['refund_attention'] = 'Owner must arrange guest refund';
+        // Read after acquiring the lock so webhook updates are never overwritten.
+        $row = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$wpdb->prefix}bds_bookings WHERE id = %s", $id), ARRAY_A);
+        $data = bds_booking_row($row);
+        if ($row['status'] === $status) { return $data; }
+        $allowed = array('payment_pending' => array('cancelled'), 'requested' => array('confirmed','declined','cancelled'),
+            'confirmed' => array('cancelled'), 'payment_conflict' => array('cancelled'), 'declined' => array(), 'cancelled' => array());
+        if (!in_array($status, $allowed[$row['status']] ?? array(), true)) { return bds_error('This booking cannot make that status change.', 409); }
+        if ($status === 'confirmed' && ($data['payment_provider'] ?? '') === 'razorpay' && ($data['payment_status'] ?? '') !== 'paid') {
+            return bds_error('Verify the captured payment before confirming this booking.', 409);
         }
-        $wpdb->update($wpdb->prefix . 'bds_bookings', array('data' => wp_json_encode($data)), array('id' => $row['id']));
-    }
+        if ($status === 'confirmed' && bds_active_overlap($row['stay_slug'], $row['check_in'], $row['check_out'], $id)) { return bds_error('Those dates are already reserved or being paid for another guest.', 409); }
+        $data['status'] = $status;
+        if ($status === 'declined' && ($data['payment_status'] ?? '') === 'paid') { $data['refund_attention'] = 'Full refund required for declined request. Verify completion in Razorpay.'; }
+        if ($status === 'cancelled' && ($data['payment_status'] ?? '') === 'paid') { $data['refund_attention'] = 'Review cancellation policy and arrange any refund owed.'; }
+        if ($wpdb->update($wpdb->prefix . 'bds_bookings', array('status' => $status, 'data' => wp_json_encode($data)), array('id' => $id)) === false) { return bds_error('Could not update booking.', 500); }
+        bds_audit($id, 'booking_' . $status);
+    } finally { bds_unlock($lock); }
+    if ($status === 'declined' && ($data['payment_status'] ?? '') === 'paid') { $data = bds_refund_declined_booking($id); }
+    if ($data instanceof WP_REST_Response || is_wp_error($data)) { return $data; }
     bds_notify($data, 'BDS Marvel — booking ' . $status . ' (' . $data['reference'] . ')', true);
     return $data;
 }
@@ -384,6 +392,7 @@ function bds_api($request) {
         $email = is_string($input['email'] ?? null) ? sanitize_email($input['email']) : '';
         $password = $input['password'] ?? '';
         if (!is_email($email) || !is_string($password) || strlen($password) > 4096) { return bds_error('Enter a valid email and password.'); }
+        if (!bds_limit('auth_account', 15, strtolower($email))) { return bds_error('Too many sign-in attempts for this account. Try again later.', 429); }
         if ($path === '/auth/register') {
             if (!get_option('bds_allow_registration', 1)) { return bds_error('New account registration is currently closed.', 403); }
             $name = is_string($input['name'] ?? null) ? sanitize_text_field($input['name']) : '';
@@ -401,43 +410,7 @@ function bds_api($request) {
         return bds_user_data($user);
     }
     if ($path === '/auth/session') {
-        if (!bds_limit('google_auth', 15)) { return bds_error('Too many sign-in attempts. Try again later.', 429); }
-        $session_id = $input['session_id'] ?? '';
-        if (!is_string($session_id) || strlen($session_id) < 8 || strlen($session_id) > 2048 || preg_match('/[\r\n]/', $session_id)) {
-            return bds_error('Google sign-in failed. Please try again.', 401);
-        }
-        $provider = wp_remote_get('https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data', array(
-            'timeout' => 20,
-            'redirection' => 0,
-            'headers' => array('X-Session-ID' => $session_id, 'Accept' => 'application/json'),
-        ));
-        if (is_wp_error($provider) || wp_remote_retrieve_response_code($provider) !== 200) {
-            return bds_error('Google sign-in failed. Please try again.', 401);
-        }
-        $identity = json_decode(wp_remote_retrieve_body($provider), true);
-        $email = is_array($identity) && is_string($identity['email'] ?? null) ? sanitize_email($identity['email']) : '';
-        if (!is_email($email) || !is_string($identity['session_token'] ?? null) || $identity['session_token'] === '') {
-            return bds_error('Google sign-in failed. Please try again.', 401);
-        }
-        $user = get_user_by('email', $email);
-        if (!$user) {
-            if (!get_option('bds_allow_registration', 1)) { return bds_error('New account registration is currently closed.', 403); }
-            $name = is_string($identity['name'] ?? null) ? sanitize_text_field($identity['name']) : '';
-            $id = wp_insert_user(array(
-                'user_login' => 'bds_' . wp_generate_password(24, false),
-                'user_email' => $email,
-                'user_pass' => wp_generate_password(48, true, true),
-                'display_name' => $name ?: $email,
-                'role' => 'subscriber',
-            ));
-            if (is_wp_error($id)) { return bds_error('Unable to create this account. Please try again.', 409); }
-            $user = get_userdata($id);
-        }
-        if (is_string($identity['picture'] ?? null) && filter_var($identity['picture'], FILTER_VALIDATE_URL)) {
-            update_user_meta($user->ID, 'bds_google_picture', esc_url_raw($identity['picture']));
-        }
-        bds_session($user);
-        return bds_user_data($user);
+        return bds_error('Emergent sign-in is disabled. Use WordPress email and password sign-in.', 410);
     }
     if ($path === '/auth/status') { return array('user' => $user ? bds_user_data($user) : null); }
     if ($path === '/auth/me') { return $user ? bds_user_data($user) : bds_error('Please sign in.', 401); }
@@ -500,6 +473,7 @@ function bds_api($request) {
             'post_title' => sanitize_file_name($file['name']), 'post_content' => base64_encode(file_get_contents($file['tmp_name']))), true);
         if (is_wp_error($post) || !$post) { return bds_error('Upload could not be saved.', 500); }
         update_post_meta($post, '_bds_mime', $actual);
+        update_post_meta($post, '_bds_upload_owner', hash('sha256', bds_upload_token(true)));
         return array('id' => $id, 'filename' => sanitize_file_name($file['name']));
     }
     if (preg_match('#^/files/([^/]+)$#', $path, $m)) {
@@ -513,6 +487,7 @@ function bds_api($request) {
         if (!bds_limit('enquiries', 20)) { return bds_error('Too many requests. Try again later.', 429); }
         if (strlen($request->get_body()) > 50000) { return bds_error('Please shorten the request.', 413); }
         $data = bds_clean($input);
+        if (!bds_validate_attachment($data)) { return bds_error('Upload your attachment again from this browser.', 403); }
         if (empty($data['name']) || !is_email($data['email'] ?? '')) { return bds_error('Enter your name and a valid email address.'); }
         $config=bds_form_config(ltrim($path,'/'));
         if (!$config || empty($config['enabled'])) { return bds_error('This form is currently unavailable.',410); }
@@ -563,3 +538,4 @@ add_filter('rest_pre_serve_request', function ($served, $result, $request) {
     echo base64_decode($post->post_content);
     return true;
 }, 10, 3);
+

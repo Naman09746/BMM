@@ -1,0 +1,75 @@
+name: WordPress backend checks
+on:
+  pull_request:
+    paths: ['wordpress/**', '.github/workflows/wordpress-backend.yml']
+  push:
+    paths: ['wordpress/**', '.github/workflows/wordpress-backend.yml']
+permissions:
+  contents: read
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php: ['7.4', '8.3', '8.4']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: pdo_sqlite
+          coverage: none
+      - name: Check PHP syntax
+        run: find wordpress/bds-marvel-app wordpress/bds-marvel-theme -name '*.php' -print0 | xargs -0 -n1 php -l
+      - name: Exercise backend operations offline
+        run: php wordpress/tests/test_operations.php
+  wordpress-mysql:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: disposable-ci-password
+          MYSQL_DATABASE: bds_test
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -pdisposable-ci-password"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+    env:
+      BDS_DISPOSABLE_TEST_SITE: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mysqli, pdo_mysql
+          tools: wp-cli
+          coverage: none
+      - name: Install disposable WordPress with legacy enquiry data
+        run: |
+          wp core download --path=/tmp/bds-wp
+          wp config create --path=/tmp/bds-wp --dbname=bds_test --dbuser=root --dbpass=disposable-ci-password --dbhost=127.0.0.1:3306
+          wp core install --path=/tmp/bds-wp --url=http://127.0.0.1:9401 --title='Disposable BDS test' --admin_user=owner --admin_email=owner@example.test --admin_password=bds-test-owner-pass --skip-email
+          wp eval-file "$GITHUB_WORKSPACE/wordpress/tests/seed_legacy.php" --path=/tmp/bds-wp
+          cp -R wordpress/bds-marvel-app /tmp/bds-wp/wp-content/plugins/
+          wp plugin activate bds-marvel-app --path=/tmp/bds-wp
+          cp -R wordpress/bds-marvel-theme /tmp/bds-wp/wp-content/themes/
+          wp theme activate bds-marvel-theme --path=/tmp/bds-wp
+          wp rewrite structure '/%postname%/' --path=/tmp/bds-wp
+          wp config set DISABLE_WP_CRON true --raw --path=/tmp/bds-wp
+      - name: Exercise migration, payments, permissions and admin rendering
+        run: wp eval-file "$GITHUB_WORKSPACE/wordpress/tests/test_wordpress.php" --path=/tmp/bds-wp
+      - name: Exercise HTTP accounts, forms, bookings, files and page routes
+        run: |
+          cat > /tmp/bds-wp/router.php <<'PHP'
+          <?php
+          $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+          if ($path !== '/' && is_file(__DIR__ . $path)) { return false; }
+          require __DIR__ . '/index.php';
+          PHP
+          php -S 127.0.0.1:9401 -t /tmp/bds-wp /tmp/bds-wp/router.php > /tmp/bds-http.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:9401/wp-json/bds/v1/auth/status >/dev/null; then break; fi
+            sleep 1
+          done
+          python3 wordpress/tests/test_api.py
