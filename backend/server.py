@@ -560,7 +560,11 @@ def put_object(path: str, data: bytes, content_type: str) -> dict:
 
 
 def get_object(path: str):
-    local_path = ROOT_DIR / path
+    local_path = (ROOT_DIR / path).resolve()
+    try:
+        local_path.relative_to(ROOT_DIR.resolve())
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid path")
     if local_path.exists() and local_path.is_file():
         ext = path.rsplit(".", 1)[-1].lower() if "." in path else ""
         return local_path.read_bytes(), _MIME_TYPES.get(ext, "application/octet-stream")
@@ -570,6 +574,7 @@ def get_object(path: str):
     resp = requests.get(f"{STORAGE_URL}/objects/{path}", headers={"X-Storage-Key": key}, timeout=60)
     resp.raise_for_status()
     return resp.content, resp.headers.get("Content-Type", "application/octet-stream")
+
 
 
 @api_router.post("/consultations/upload")
@@ -1293,6 +1298,8 @@ async def google_session(payload: SessionIn, response: Response):
     email = data["email"].lower()
     existing = await db.users.find_one({"email": email}, {"_id": 0})
     if existing:
+        if existing.get("role") == "admin":
+            raise HTTPException(status_code=403, detail="Admin accounts must sign in via the Owner Security Gate.")
         user_id = existing["user_id"]
         await db.users.update_one({"user_id": user_id}, {"$set": {"name": existing.get("name") or data.get("name"), "picture": data.get("picture")}})
     else:
@@ -1441,6 +1448,8 @@ def _guest_booking_email_html(bk: "StayBooking", trip_url: str | None) -> str:
 
 @api_router.post("/stays/bookings", response_model=StayBooking, status_code=201)
 async def create_stay_booking(payload: StayBookingCreate, request: Request, user: dict = Depends(get_current_user)):
+    if callable(globals().get("rate_limit")):
+        await rate_limit("stay_bookings", max_requests=20, window_seconds=600)(request)
     stay_record = await db.stays.find_one({"$or": [{"slug": payload.stay_slug}, {"name": payload.stay_slug}]}, {"_id": 0})
     if not stay_record:
         try:
@@ -1769,12 +1778,15 @@ RAZORPAY_WEBHOOK_SECRET = os.environ.get("RAZORPAY_WEBHOOK_SECRET", "")
 
 @api_router.post("/stays/payments/webhook")
 async def razorpay_webhook(request: Request):
+    if not RAZORPAY_WEBHOOK_SECRET:
+        raise HTTPException(status_code=503, detail="Payment webhook is not configured.")
     raw_body = await request.body()
     signature = request.headers.get("X-Razorpay-Signature", "")
-    if RAZORPAY_WEBHOOK_SECRET:
-        expected = hmac.new(RAZORPAY_WEBHOOK_SECRET.encode(), raw_body, hashlib.sha256).hexdigest()
-        if not hmac.compare_digest(expected, signature):
-            raise HTTPException(status_code=400, detail="Invalid webhook signature")
+    if not signature:
+        raise HTTPException(status_code=400, detail="Missing webhook signature.")
+    expected = hmac.new(RAZORPAY_WEBHOOK_SECRET.encode(), raw_body, hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(expected, signature):
+        raise HTTPException(status_code=400, detail="Invalid webhook signature.")
     try:
         event_data = json.loads(raw_body)
     except json.JSONDecodeError:
@@ -2307,7 +2319,7 @@ async def admin_upload_media(file: UploadFile = File(...), admin: dict = Depends
 
 @api_router.get("/media/{filename}")
 async def get_media_file(filename: str):
-    if ".." in filename or "/" in filename or "\\" in filename:
+    if not re.fullmatch(r"^[a-zA-Z0-9_\-\.]+$", filename) or ".." in filename:
         raise HTTPException(status_code=400, detail="Invalid filename")
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
     ct = _MIME_TYPES.get(ext, "image/jpeg")
@@ -2390,7 +2402,10 @@ async def startup_auth():
         admins = await db.users.count_documents({"role": "admin"})
         totp_sec = os.environ.get("ADMIN_TOTP_SECRET", "").strip()
         if admins == 0 and not existing:
-            admin_password = os.environ.get("ADMIN_PASSWORD", "admin123456")
+            admin_password = os.environ.get("ADMIN_PASSWORD")
+            if not admin_password:
+                admin_password = secrets.token_urlsafe(24)
+                logger.critical("SECURITY ALERT: No ADMIN_PASSWORD set in environment. Generated one-time password: %s", admin_password)
             doc = {
                 "user_id": f"user_{uuid.uuid4().hex[:12]}",
                 "email": admin_email,
@@ -2418,6 +2433,12 @@ ALLOWED_ORIGINS = [o.strip().rstrip("/") for o in cors_env.split(",") if o.strip
 
 @app.middleware("http")
 async def origin_guard_and_headers(request: Request, call_next):
+    cl = request.headers.get("content-length")
+    if cl and cl.isdigit():
+        max_bytes = 20 * 1024 * 1024 if request.url.path.endswith("/upload") else 2 * 1024 * 1024
+        if int(cl) > max_bytes:
+            return Response(content='{"detail":"Payload too large"}', status_code=413, media_type="application/json")
+
     origin = request.headers.get("origin")
     if request.method in ("POST", "PUT", "PATCH", "DELETE") and origin:
         host = request.headers.get("x-forwarded-host") or request.headers.get("host", "")
@@ -2428,6 +2449,8 @@ async def origin_guard_and_headers(request: Request, call_next):
     response.headers.setdefault("X-Frame-Options", "DENY")
     response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
     response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+    response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=(self 'https://api.razorpay.com')")
+    response.headers.setdefault("X-XSS-Protection", "1; mode=block")
     if request.method == "GET" and (request.url.path == "/api/stays/availability" or request.url.path.startswith("/api/media/")) and response.status_code < 400:
         response.headers["Cache-Control"] = "public, max-age=86400, stale-while-revalidate=86400"
     else:

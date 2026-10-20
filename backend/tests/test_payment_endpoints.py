@@ -241,6 +241,26 @@ class PaymentEndpointsTests(unittest.TestCase):
         self.assertEqual(res, {"status": "ok"})
         self.db.bookings.update_one.assert_awaited()
 
+    def test_razorpay_webhook_rejects_unconfigured_secret(self):
+        self.ns["RAZORPAY_WEBHOOK_SECRET"] = ""
+        req = SimpleNamespace(body=AsyncMock(return_value=b"{}"), headers={})
+        with self.assertRaises(HTTPError) as err:
+            asyncio.run(self.ns["razorpay_webhook"](req))
+        self.assertEqual(err.exception.status_code, 503)
+
+    def test_razorpay_webhook_rejects_missing_or_invalid_signature(self):
+        self.ns["RAZORPAY_WEBHOOK_SECRET"] = "valid_secret"
+        req_missing = SimpleNamespace(body=AsyncMock(return_value=b"{}"), headers={})
+        with self.assertRaises(HTTPError) as err:
+            asyncio.run(self.ns["razorpay_webhook"](req_missing))
+        self.assertEqual(err.exception.status_code, 400)
+
+        req_forged = SimpleNamespace(body=AsyncMock(return_value=b"{}"), headers={"X-Razorpay-Signature": "forged"})
+        with self.assertRaises(HTTPError) as err:
+            asyncio.run(self.ns["razorpay_webhook"](req_forged))
+        self.assertEqual(err.exception.status_code, 400)
+
 
 if __name__ == "__main__":
+
     unittest.main()
