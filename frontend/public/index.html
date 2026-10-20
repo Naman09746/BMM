@@ -8,28 +8,56 @@
         <meta property="og:title" content="BDSM · BDS Marvel — Marble & Stone, Flooring, Construction & Interior Design" />
         <meta property="og:description" content="One studio for marble and stone, flooring, turnkey construction and interior decor — designed and built by a single in-house team across India." />
         <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://bdsmarvel.com/" />
+        <meta property="og:site_name" content="BDS Marvel" />
+        <meta property="og:image" content="%PUBLIC_URL%/og-image.jpg" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="BDSM · BDS Marvel | Design & Build Studio" />
+        <meta name="twitter:description" content="Turnkey construction, marble & stone, flooring, and interior design studio across India." />
+        <meta name="twitter:image" content="%PUBLIC_URL%/og-image.jpg" />
         <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
         <link rel="canonical" href="https://bdsmarvel.com/" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600&display=swap" rel="stylesheet" />
         <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
-        <!--
-        manifest.json provides metadata used when your web app is installed on a
-        user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
-        -->
-        <!--
-        Notice the use of %PUBLIC_URL% in the tags above.
-        It will be replaced with the URL of the `public` folder during the build.
-        Only files inside the `public` folder can be referenced from the HTML.
-
-        Unlike "/favicon.ico" or "favicon.ico", "%PUBLIC_URL%/favicon.ico" will
-        work correctly both with client-side routing and a non-root public URL.
-        Learn how to configure a non-root public URL by running `npm run build`.
-        -->
         <title>BDSM · BDS Marvel | Marble & Stone, Flooring, Construction & Interiors</title>
+        <script type="application/ld+json">
+        {
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "Organization",
+              "@id": "https://bdsmarvel.com/#organization",
+              "name": "BDS Marvel",
+              "alternateName": "BDSM",
+              "url": "https://bdsmarvel.com",
+              "logo": "https://bdsmarvel.com/logo192.png",
+              "contactPoint": {
+                "@type": "ContactPoint",
+                "email": "info@bdsmarvel.com",
+                "contactType": "Customer Service",
+                "areaServed": "IN"
+              }
+            },
+            {
+              "@type": "LocalBusiness",
+              "@id": "https://bdsmarvel.com/#business",
+              "name": "BDS Marvel - Design & Build Studio",
+              "email": "info@bdsmarvel.com",
+              "address": {
+                "@type": "PostalAddress",
+                "addressLocality": "Kishangarh",
+                "addressRegion": "Rajasthan",
+                "addressCountry": "IN"
+              },
+              "priceRange": "$$$$"
+            }
+          ]
+        }
+        </script>
         <script>window.addEventListener("error",function(e){if(e.error instanceof DOMException&&e.error.name==="DataCloneError"&&e.message&&e.message.includes("PerformanceServerTiming")){e.stopImmediatePropagation();e.preventDefault()}},true);</script>
-        <script src="https://assets.emergent.sh/scripts/emergent-main.js"></script>
+        <script src="https://assets.emergent.sh/scripts/emergent-main.js" onerror="this.remove()"></script>
     </head>
     <body>
         <noscript>You need to enable JavaScript to run this app.</noscript>
@@ -106,14 +134,16 @@
                     }),
                     (e.__SV = 1));
             })(document, window.posthog || []);
-            posthog.init("phc_DbsPb39SRc8z3EiQ6Dhj6ikv4H4rTKcht9d4sZSesceP", {
-                api_host: "https://ap.emergent.sh",
-                person_profiles: "identified_only", // or 'always' to create profiles for anonymous users as well,
-                session_recording: {
-                    recordCrossOriginIframes: true,
-                    capturePerformance: false,
-                },
-            });
+            if (window.REACT_APP_POSTHOG_KEY) {
+                posthog.init(window.REACT_APP_POSTHOG_KEY, {
+                    api_host: window.REACT_APP_POSTHOG_HOST || "https://ap.emergent.sh",
+                    person_profiles: "identified_only",
+                    session_recording: {
+                        recordCrossOriginIframes: true,
+                        capturePerformance: false,
+                    },
+                });
+            }
         </script>
     </body>
 </html>

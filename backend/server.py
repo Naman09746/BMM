@@ -19,6 +19,11 @@ import ipaddress
 import json
 import httpx
 import requests
+import hmac
+import hashlib
+import base64
+import struct
+import time
 from html import escape
 from html.parser import HTMLParser
 from urllib.parse import urlparse
@@ -29,9 +34,9 @@ ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
 # MongoDB connection
-mongo_url = os.environ['MONGO_URL']
+mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
 client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
+db = client[os.environ.get('DB_NAME', 'bdsm_database')]
 
 # Create the main app without a prefix
 app = FastAPI()
@@ -145,13 +150,17 @@ async def root():
     return {"message": "Hello World"}
 
 
-# --- Email notifications (Emergent managed Resend) ---
+# --- Email notifications (Emergent managed Resend / Direct Resend) ---
 
-EMAIL_BASE_URL = "https://integrations.emergentagent.com"
-EMAIL_KEY = os.environ["EMERGENT_EMAIL_KEY"]
-EMAIL_FROM_NAME = os.environ["EMAIL_FROM_NAME"]
+EMAIL_BASE_URL = os.environ.get("EMAIL_BASE_URL", "https://integrations.emergentagent.com")
+EMAIL_KEY = os.environ.get("EMERGENT_EMAIL_KEY", os.environ.get("RESEND_API_KEY", ""))
+EMAIL_FROM_NAME = os.environ.get("EMAIL_FROM_NAME", "BDS Marvel")
 EMAIL_REPLY_TO = os.environ.get("EMAIL_REPLY_TO")
-OWNER_EMAIL = os.environ["OWNER_EMAIL"]
+OWNER_EMAIL = os.environ.get("OWNER_EMAIL", "info@bdsmarvel.com")
+
+# Razorpay payments configuration (optional)
+RAZORPAY_KEY_ID = os.environ.get("RAZORPAY_KEY_ID", "")
+RAZORPAY_KEY_SECRET = os.environ.get("RAZORPAY_KEY_SECRET", "")
 
 _SHORTENERS = ("bit.ly", "tinyurl.com", "t.co", "is.gd", "cutt.ly", "goo.gl", "rebrand.ly")
 _CRED_ASK = ("reply with your password", "reply with the code", "send your password", "cvv",
@@ -224,11 +233,35 @@ def _assert_safe_email(subject: str, html: str) -> None:
 
 async def send_email(*, to: str, subject: str, html: str, reply_to: str | None = None) -> str | None:
     _assert_safe_email(subject, html)
+    if not EMAIL_KEY or EMAIL_KEY in ("replace-with-provider-key", "placeholder"):
+        logger.info("Email dispatch skipped (no valid EMAIL_KEY configured): to=%s, subject=%s", to, subject)
+        return "skipped-no-key"
+
     payload = {"to": [to], "subject": subject, "html": html,
                "from_name": EMAIL_FROM_NAME}
     if reply_to or EMAIL_REPLY_TO:
         payload["contact_email"] = reply_to or EMAIL_REPLY_TO
+
     try:
+        if EMAIL_KEY.startswith("re_"):
+            # Direct Resend API
+            async with httpx.AsyncClient(timeout=30) as client:
+                resend_payload = {
+                    "from": f"{EMAIL_FROM_NAME} <onboarding@resend.dev>" if "resend.dev" in OWNER_EMAIL else f"{EMAIL_FROM_NAME} <{EMAIL_REPLY_TO or OWNER_EMAIL}>",
+                    "to": [to],
+                    "subject": subject,
+                    "html": html,
+                }
+                if reply_to or EMAIL_REPLY_TO:
+                    resend_payload["reply_to"] = reply_to or EMAIL_REPLY_TO
+                resp = await client.post(
+                    "https://api.resend.com/emails",
+                    headers={"Authorization": f"Bearer {EMAIL_KEY}", "Content-Type": "application/json"},
+                    json=resend_payload,
+                )
+            resp.raise_for_status()
+            return resp.json().get("id")
+
         async with httpx.AsyncClient(timeout=30) as client:
             resp = await client.post(
                 f"{EMAIL_BASE_URL}/api/v1/email/send",
@@ -478,32 +511,62 @@ def _magic_ok(ext: str, data: bytes) -> bool:
     return any(data.startswith(m) for m in _MAGIC[ext])
 
 
+UPLOAD_DIR = ROOT_DIR / "uploads"
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+
 def init_storage(force: bool = False):
     global _storage_key
     if _storage_key and not force:
         return _storage_key
-    resp = requests.post(f"{STORAGE_URL}/init", json={"emergent_key": EMERGENT_KEY}, timeout=30)
-    resp.raise_for_status()
-    _storage_key = resp.json()["storage_key"]
-    return _storage_key
+    if not EMERGENT_KEY:
+        return None
+    try:
+        resp = requests.post(f"{STORAGE_URL}/init", json={"emergent_key": EMERGENT_KEY}, timeout=30)
+        resp.raise_for_status()
+        _storage_key = resp.json()["storage_key"]
+        return _storage_key
+    except Exception as e:
+        logger.warning("Could not initialize external storage proxy (%s); using local filesystem.", e)
+        return None
 
 
 def put_object(path: str, data: bytes, content_type: str) -> dict:
     key = init_storage()
-    resp = requests.put(f"{STORAGE_URL}/objects/{path}",
-                        headers={"X-Storage-Key": key, "Content-Type": content_type},
-                        data=data, timeout=120)
-    if resp.status_code == 404:
-        key = init_storage(force=True)
+    if not key:
+        local_path = UPLOAD_DIR / Path(path).name
+        local_path.write_bytes(data)
+        return {"path": f"uploads/{local_path.name}", "size": len(data)}
+    try:
         resp = requests.put(f"{STORAGE_URL}/objects/{path}",
                             headers={"X-Storage-Key": key, "Content-Type": content_type},
                             data=data, timeout=120)
-    resp.raise_for_status()
-    return resp.json()
+        if resp.status_code == 404:
+            key = init_storage(force=True)
+            if not key:
+                local_path = UPLOAD_DIR / Path(path).name
+                local_path.write_bytes(data)
+                return {"path": f"uploads/{local_path.name}", "size": len(data)}
+            resp = requests.put(f"{STORAGE_URL}/objects/{path}",
+                                headers={"X-Storage-Key": key, "Content-Type": content_type},
+                                data=data, timeout=120)
+        resp.raise_for_status()
+        return resp.json()
+    except Exception as exc:
+        logger.warning("Remote put_object failed (%s); writing to local disk fallback.", exc)
+        local_path = UPLOAD_DIR / Path(path).name
+        local_path.write_bytes(data)
+        return {"path": f"uploads/{local_path.name}", "size": len(data)}
 
 
 def get_object(path: str):
+    local_path = ROOT_DIR / path
+    if local_path.exists() and local_path.is_file():
+        ext = path.rsplit(".", 1)[-1].lower() if "." in path else ""
+        return local_path.read_bytes(), _MIME_TYPES.get(ext, "application/octet-stream")
     key = init_storage()
+    if not key:
+        raise HTTPException(status_code=404, detail="File not found")
     resp = requests.get(f"{STORAGE_URL}/objects/{path}", headers={"X-Storage-Key": key}, timeout=60)
     resp.raise_for_status()
     return resp.content, resp.headers.get("Content-Type", "application/octet-stream")
@@ -902,7 +965,7 @@ async def list_product_inquiries(limit: int = 50, _: dict = Depends(require_admi
 # --- Auth: JWT email/password + Emergent-managed Google sign-in (shared users collection) ---
 
 JWT_ALGORITHM = "HS256"
-JWT_SECRET = os.environ["JWT_SECRET"]
+JWT_SECRET = os.environ.get("JWT_SECRET", "bdsmarvel-insecure-dev-secret-change-in-production")
 EMERGENT_SESSION_URL = "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data"
 
 
@@ -928,6 +991,56 @@ def _issue_jwt(response: Response, user_id: str):
     _set_cookie(response, "refresh_token", _jwt(user_id, "refresh", timedelta(days=7)), 604800)
 
 
+def generate_totp(secret: str, time_step: int = 30, digits: int = 6, for_time: float = None) -> str:
+    if for_time is None:
+        for_time = time.time()
+    counter = int(for_time // time_step)
+    cleaned = secret.strip().replace(" ", "").upper()
+    padding = (8 - len(cleaned) % 8) % 8
+    key = base64.b32decode(cleaned + "=" * padding)
+    msg = struct.pack(">Q", counter)
+    digest = hmac.new(key, msg, hashlib.sha1).digest()
+    offset = digest[-1] & 0x0F
+    code_int = struct.unpack(">I", digest[offset:offset+4])[0] & 0x7FFFFFFF
+    return str(code_int % (10 ** digits)).zfill(digits)
+
+
+def verify_totp(secret: str, code: str, window: int = 1) -> bool:
+    if not secret or not code:
+        return False
+    code = str(code).strip()
+    if not re.fullmatch(r"\d{6}", code):
+        return False
+    now = time.time()
+    for drift in range(-window, window + 1):
+        if hmac.compare_digest(generate_totp(secret, for_time=now + drift * 30), code):
+            return True
+    return False
+
+
+async def log_admin_action(admin: any, action: str, target: str, details: dict = None, request: Request = None):
+    try:
+        admin_dict = admin if isinstance(admin, dict) else {}
+        ip = _client_ip(request) if request and hasattr(request, "headers") else "unknown"
+        ua = (request.headers.get("user-agent", "")[:200]) if request and hasattr(request, "headers") else ""
+        entry = {
+            "id": f"aud_{uuid.uuid4().hex[:12]}",
+            "admin_id": admin_dict.get("user_id", "admin"),
+            "admin_email": admin_dict.get("email", "admin@bdsmarvel.com"),
+            "action": action,
+            "target": target,
+            "details": details or {},
+            "ip": ip,
+            "user_agent": ua,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+        if hasattr(db, "audit_logs") and hasattr(db.audit_logs, "insert_one"):
+            await db.audit_logs.insert_one(entry)
+        logger.info("AUDIT: Admin %s performed %s on %s", admin_dict.get("email"), action, target)
+    except Exception as e:
+        logger.warning("Failed to record audit log: %s", e)
+
+
 class UserOut(BaseModel):
     model_config = ConfigDict(extra="ignore")
     user_id: str
@@ -935,6 +1048,9 @@ class UserOut(BaseModel):
     name: str
     picture: Optional[str] = None
     role: str = "guest"
+    mfa_required: Optional[bool] = None
+    mfa_token: Optional[str] = None
+    totp_enabled: Optional[bool] = None
 
 
 class RegisterIn(BaseModel):
@@ -946,6 +1062,17 @@ class RegisterIn(BaseModel):
 class LoginIn(BaseModel):
     email: EmailStr
     password: str = Field(min_length=1, max_length=128)
+    totp_code: Optional[str] = None
+    mfa_token: Optional[str] = None
+
+
+class MfaVerifyIn(BaseModel):
+    mfa_token: str
+    totp_code: str = Field(min_length=6, max_length=6)
+
+
+class MfaSetupIn(BaseModel):
+    code: str = Field(min_length=6, max_length=6)
 
 
 class SessionIn(BaseModel):
@@ -1032,8 +1159,79 @@ async def login(payload: LoginIn, request: Request, response: Response, _rl=Depe
             "locked_until": (now + timedelta(minutes=15)).isoformat() if acct_count >= 20 else None,
             "updated_at": now}}, upsert=True)
         raise HTTPException(status_code=401, detail="Incorrect email or password.")
+    if user.get("role") == "admin":
+        totp_secret = user.get("totp_secret") or os.environ.get("ADMIN_TOTP_SECRET")
+        totp_enabled = bool(user.get("totp_enabled") or os.environ.get("ADMIN_TOTP_SECRET"))
+        if totp_enabled and totp_secret:
+            if not payload.totp_code:
+                mfa_token = _jwt(user["user_id"], "mfa_pending", timedelta(minutes=5))
+                return UserOut(
+                    user_id=user["user_id"],
+                    email=user["email"],
+                    name=user.get("name", "Admin"),
+                    role="admin",
+                    mfa_required=True,
+                    mfa_token=mfa_token,
+                    totp_enabled=True,
+                )
+            if not verify_totp(totp_secret, payload.totp_code):
+                count = (attempt or {}).get("count", 0) + 1
+                update = {"count": count, "locked_until": (now + timedelta(minutes=15)).isoformat() if count >= 5 else None,
+                          "updated_at": now}
+                await db.login_attempts.update_one({"identifier": identifier}, {"$set": update}, upsert=True)
+                raise HTTPException(status_code=401, detail="Invalid two-factor authentication code.")
+
     await db.login_attempts.delete_many({"identifier": {"$in": [identifier, f"acct:{email}"]}})
     _issue_jwt(response, user["user_id"])
+    if user.get("role") == "admin":
+        await log_admin_action(user, "admin_login", f"user:{user['user_id']}", request=request)
+        await _alert_new_admin_device(request)
+    return UserOut(**user)
+
+
+@api_router.post("/auth/mfa-verify", response_model=UserOut)
+async def verify_mfa(payload: MfaVerifyIn, request: Request, response: Response):
+    try:
+        decoded = jwt.decode(payload.mfa_token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        if decoded.get("type") != "mfa_pending":
+            raise HTTPException(status_code=401, detail="Invalid MFA token.")
+        user_id = decoded.get("sub")
+    except Exception:
+        raise HTTPException(status_code=401, detail="MFA session expired. Please sign in again.")
+
+    user = await db.users.find_one({"user_id": user_id}, {"_id": 0})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+
+    email = user["email"].lower()
+    identifier = f"{_client_ip(request)}:{email}"
+    attempt = await db.login_attempts.find_one({"identifier": identifier}, {"_id": 0})
+    acct = await db.login_attempts.find_one({"identifier": f"acct:{email}"}, {"_id": 0})
+    now = datetime.now(timezone.utc)
+    for a in (attempt, acct):
+        if a and a.get("locked_until"):
+            locked_until = datetime.fromisoformat(a["locked_until"])
+            if locked_until.tzinfo is None:
+                locked_until = locked_until.replace(tzinfo=timezone.utc)
+            if locked_until > now:
+                raise HTTPException(status_code=429, detail="Too many attempts. Please try again in 15 minutes.")
+            await db.login_attempts.delete_one({"identifier": a["identifier"]})
+            if a is attempt:
+                attempt = None
+            else:
+                acct = None
+
+    totp_secret = user.get("totp_secret") or os.environ.get("ADMIN_TOTP_SECRET")
+    if not totp_secret or not verify_totp(totp_secret, payload.totp_code):
+        count = (attempt or {}).get("count", 0) + 1
+        update = {"count": count, "locked_until": (now + timedelta(minutes=15)).isoformat() if count >= 5 else None,
+                  "updated_at": now}
+        await db.login_attempts.update_one({"identifier": identifier}, {"$set": update}, upsert=True)
+        raise HTTPException(status_code=401, detail="Invalid two-factor authentication code.")
+
+    await db.login_attempts.delete_many({"identifier": {"$in": [identifier, f"acct:{email}"]}})
+    _issue_jwt(response, user["user_id"])
+    await log_admin_action(user, "admin_login_mfa_success", f"user:{user['user_id']}", request=request)
     if user.get("role") == "admin":
         await _alert_new_admin_device(request)
     return UserOut(**user)
@@ -1114,14 +1312,23 @@ async def me(user: dict = Depends(get_current_user)):
     return UserOut(**user)
 
 
+@api_router.get("/config")
+async def public_config():
+    return {
+        "brand_name": "BDS Marvel",
+        "payments_enabled": bool(RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET),
+        "email_configured": bool(EMAIL_KEY),
+    }
+
+
 @api_router.get("/auth/status")
 async def auth_status(request: Request, response: Response):
-    """Quiet session probe: always 200. Returns {"user": UserOut|null}. Silently
-    refreshes the access cookie when it is expired but the refresh token is valid,
-    so public pages never log 401s from probing auth state."""
+    """Quiet session probe: always 200. Returns {"user": UserOut|null, "payments_enabled": bool}.
+    Silently refreshes the access cookie when it is expired but the refresh token is valid."""
+    payments_enabled = bool(RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET)
     try:
         user = await get_current_user(request)
-        return {"user": UserOut(**user).model_dump()}
+        return {"user": UserOut(**user).model_dump(), "payments_enabled": payments_enabled}
     except HTTPException:
         pass
     token = request.cookies.get("refresh_token")
@@ -1132,10 +1339,10 @@ async def auth_status(request: Request, response: Response):
                 user = await db.users.find_one({"user_id": payload["sub"]}, {"_id": 0, "password_hash": 0})
                 if user:
                     _set_cookie(response, "access_token", _jwt(payload["sub"], "access", timedelta(minutes=15)), 900)
-                    return {"user": UserOut(**user).model_dump()}
+                    return {"user": UserOut(**user).model_dump(), "payments_enabled": payments_enabled}
         except jwt.InvalidTokenError:
             pass
-    return {"user": None}
+    return {"user": None, "payments_enabled": payments_enabled}
 
 
 @api_router.post("/auth/refresh")
@@ -1234,12 +1441,14 @@ def _guest_booking_email_html(bk: "StayBooking", trip_url: str | None) -> str:
 
 @api_router.post("/stays/bookings", response_model=StayBooking, status_code=201)
 async def create_stay_booking(payload: StayBookingCreate, request: Request, user: dict = Depends(get_current_user)):
-    try:
-        catalogue = json.loads((ROOT_DIR / "stays.json").read_text())
-    except (OSError, json.JSONDecodeError):
-        logger.exception("Server-side stay catalogue is unavailable")
-        raise HTTPException(status_code=503, detail="Booking is temporarily unavailable.")
-    stay_record = next((item for item in catalogue if item.get("slug") == payload.stay_slug), None)
+    stay_record = await db.stays.find_one({"$or": [{"slug": payload.stay_slug}, {"name": payload.stay_slug}]}, {"_id": 0})
+    if not stay_record:
+        try:
+            catalogue = json.loads((ROOT_DIR / "stays.json").read_text())
+            stay_record = next((item for item in catalogue if item.get("slug") == payload.stay_slug or item.get("name") == payload.stay_slug), None)
+        except (OSError, json.JSONDecodeError):
+            logger.exception("Server-side stay catalogue is unavailable")
+            raise HTTPException(status_code=503, detail="Booking is temporarily unavailable.")
     if not stay_record:
         raise HTTPException(status_code=404, detail="Stay not found.")
     stay_name = str(stay_record["name"])
@@ -1311,10 +1520,399 @@ async def get_stay_booking(booking_id: str, user: dict = Depends(get_current_use
     return doc
 
 
-# --- Owner dashboard (admin only) ---
+class PaymentOrderCreate(BaseModel):
+    stay_slug: str
+    check_in: str
+    check_out: str
+    adults: int = Field(ge=1, le=20)
+    children: int = Field(default=0, ge=0, le=20)
+    infants: int = Field(default=0, ge=0, le=10)
+    pets: int = Field(default=0, ge=0, le=5)
+    name: str = Field(min_length=1, max_length=120)
+    email: EmailStr
+    phone: str = Field(min_length=5, max_length=40)
+    message: Optional[str] = Field(default=None, max_length=2000)
+
+
+class PaymentVerifyIn(BaseModel):
+    booking_id: str = Field(min_length=1, max_length=100)
+    razorpay_order_id: str = Field(min_length=1, max_length=100)
+    razorpay_payment_id: str = Field(min_length=1, max_length=100)
+    razorpay_signature: str = Field(min_length=1, max_length=128)
+
+
+@api_router.post("/stays/payments/orders", status_code=201)
+async def create_stay_payment_order(payload: PaymentOrderCreate, request: Request, user: dict = Depends(get_current_user)):
+    stay_record = await db.stays.find_one({"$or": [{"slug": payload.stay_slug}, {"name": payload.stay_slug}]}, {"_id": 0})
+    if not stay_record:
+        try:
+            catalogue = json.loads((ROOT_DIR / "stays.json").read_text())
+            stay_record = next((item for item in catalogue if item.get("slug") == payload.stay_slug or item.get("name") == payload.stay_slug), None)
+        except (OSError, json.JSONDecodeError):
+            logger.exception("Server-side stay catalogue is unavailable")
+            raise HTTPException(status_code=503, detail="Booking is temporarily unavailable.")
+    if not stay_record:
+        raise HTTPException(status_code=404, detail="Stay not found.")
+    stay_name = str(stay_record["name"])
+    nightly = max(0, int(stay_record["nightly"]))
+    capacity = max(1, int(stay_record["guests"]))
+    mode = "instant" if stay_record.get("booking_mode") == "instant" else "request"
+
+    try:
+        check_in = datetime.strptime(payload.check_in, "%Y-%m-%d").date()
+        check_out = datetime.strptime(payload.check_out, "%Y-%m-%d").date()
+    except ValueError:
+        raise HTTPException(status_code=422, detail="Dates must be YYYY-MM-DD")
+    if check_in < datetime.now(timezone.utc).date():
+        raise HTTPException(status_code=422, detail="Check-in can't be in the past.")
+    if check_out <= check_in:
+        raise HTTPException(status_code=422, detail="Check-out must be after check-in.")
+    guests = payload.adults + payload.children
+    if guests > capacity:
+        raise HTTPException(status_code=422, detail=f"This stay sleeps up to {capacity} guests.")
+    nights = (check_out - check_in).days
+    total = nightly * nights
+    booking_id = str(uuid.uuid4())
+    reference = f"BDS-{secrets.token_hex(3).upper()}"
+
+    lock_id = await _with_booking_lock(stay_record["slug"], booking_id)
+    try:
+        clash = await _confirmed_overlap(stay_name, payload.check_in, payload.check_out)
+        if clash:
+            raise HTTPException(status_code=409, detail=f"Those nights are already booked ({clash['check_in']} to {clash['check_out']}). Please pick different dates.")
+
+        if not RAZORPAY_KEY_ID or not RAZORPAY_KEY_SECRET:
+            data = {
+                "id": booking_id,
+                "reference": reference,
+                "user_id": user["user_id"],
+                "stay": stay_name,
+                "stay_slug": stay_record["slug"],
+                "mode": "request",
+                "status": "requested",
+                "payment_status": "not_required",
+                "payment_provider": "",
+                "check_in": payload.check_in,
+                "check_out": payload.check_out,
+                "nights": nights,
+                "adults": payload.adults,
+                "children": payload.children,
+                "infants": payload.infants,
+                "pets": payload.pets,
+                "guests": guests,
+                "nightly": nightly,
+                "total": total,
+                "name": payload.name,
+                "email": payload.email,
+                "phone": payload.phone,
+                "message": payload.message,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }
+            await db.bookings.insert_one(data)
+            booking_doc = {k: v for k, v in data.items() if k != "_id"}
+            try:
+                legacy = Booking(stay=stay_name, name=payload.name, email=payload.email, check_in=payload.check_in,
+                                 check_out=payload.check_out, guests=guests,
+                                 message=f"[{reference} · request · requested] {payload.message or ''}")
+                await send_email(to=OWNER_EMAIL, subject=f"New booking request - {stay_name} ({reference})",
+                                 html=_booking_email_html(legacy))
+            except Exception as e:
+                logger.error("Owner notification failed for booking request %s: %s", reference, e)
+            return {"booking": booking_doc, "payment_required": False}
+
+        amount_paise = total * 100
+        order_payload = {
+            "amount": amount_paise,
+            "currency": "INR",
+            "receipt": f"bds_{uuid.uuid4().hex[:16]}",
+            "notes": {"booking_id": booking_id, "stay_slug": stay_record["slug"], "booking_reference": reference},
+        }
+        try:
+            async with httpx.AsyncClient(timeout=15) as client:
+                res = await client.post(
+                    "https://api.razorpay.com/v1/orders",
+                    auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET),
+                    json=order_payload,
+                )
+            res.raise_for_status()
+            remote_order = res.json()
+        except Exception as e:
+            logger.error("Razorpay order creation failed: %s", e)
+            raise HTTPException(status_code=502, detail="The payment service is temporarily unavailable. Please try again.")
+
+        data = {
+            "id": booking_id,
+            "reference": reference,
+            "user_id": user["user_id"],
+            "stay": stay_name,
+            "stay_slug": stay_record["slug"],
+            "mode": mode,
+            "status": "payment_pending",
+            "payment_status": "pending",
+            "payment_provider": "razorpay",
+            "razorpay_order_id": remote_order["id"],
+            "check_in": payload.check_in,
+            "check_out": payload.check_out,
+            "nights": nights,
+            "adults": payload.adults,
+            "children": payload.children,
+            "infants": payload.infants,
+            "pets": payload.pets,
+            "guests": guests,
+            "nightly": nightly,
+            "total": total,
+            "name": payload.name,
+            "email": payload.email,
+            "phone": payload.phone,
+            "message": payload.message,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+        await db.bookings.insert_one(data)
+        booking_doc = {k: v for k, v in data.items() if k != "_id"}
+        return {
+            "booking": booking_doc,
+            "order_id": remote_order["id"],
+            "amount": amount_paise,
+            "currency": "INR",
+            "key_id": RAZORPAY_KEY_ID,
+            "payment_required": True,
+        }
+    finally:
+        await db.booking_locks.delete_one({"_id": lock_id, "owner": booking_id})
+
+
+@api_router.post("/stays/payments/verify")
+async def verify_stay_payment(payload: PaymentVerifyIn, request: Request, user: dict = Depends(get_current_user)):
+    if not RAZORPAY_KEY_SECRET:
+        raise HTTPException(status_code=503, detail="Online payment is not configured.")
+
+    target = await db.bookings.find_one({"id": payload.booking_id, "user_id": user["user_id"]}, {"_id": 0})
+    if not target:
+        raise HTTPException(status_code=404, detail="Booking not found.")
+
+    if target.get("razorpay_order_id") != payload.razorpay_order_id or target.get("payment_provider") != "razorpay":
+        raise HTTPException(status_code=400, detail="Payment order does not match this stay.")
+
+    expected_sig = hmac.new(
+        RAZORPAY_KEY_SECRET.encode(),
+        f"{payload.razorpay_order_id}|{payload.razorpay_payment_id}".encode(),
+        hashlib.sha256
+    ).hexdigest()
+    if not hmac.compare_digest(expected_sig, payload.razorpay_signature):
+        raise HTTPException(status_code=400, detail="Payment signature could not be verified.")
+
+    if target.get("payment_status") == "paid":
+        return target
+
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(
+                f"https://api.razorpay.com/v1/payments/{payload.razorpay_payment_id}",
+                auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET),
+            )
+        resp.raise_for_status()
+        payment_info = resp.json()
+    except Exception as e:
+        logger.error("Razorpay payment verification request failed: %s", e)
+        raise HTTPException(status_code=502, detail="Could not verify payment with processor.")
+
+    if payment_info.get("order_id") != payload.razorpay_order_id or int(payment_info.get("amount", 0)) != target["total"] * 100:
+        raise HTTPException(status_code=400, detail="Payment amount or order does not match this stay.")
+
+    lock_id = await _with_booking_lock(target["stay_slug"], payload.booking_id)
+    try:
+        clash = await _confirmed_overlap(target["stay"], target["check_in"], target["check_out"], exclude_id=payload.booking_id)
+        if clash:
+            await db.bookings.update_one(
+                {"id": payload.booking_id},
+                {"$set": {"status": "payment_conflict", "payment_status": "paid_conflict", "payment_id": payload.razorpay_payment_id}}
+            )
+            raise HTTPException(status_code=409, detail="Payment was received, but these dates were just taken. Please contact BDS Marvel for a refund.")
+
+        new_status = "confirmed" if target.get("mode") == "instant" else "requested"
+        now_iso = datetime.now(timezone.utc).isoformat()
+        await db.bookings.update_one(
+            {"id": payload.booking_id},
+            {"$set": {
+                "status": new_status,
+                "payment_status": "paid",
+                "payment_id": payload.razorpay_payment_id,
+                "paid_at": now_iso
+            }}
+        )
+    finally:
+        await db.booking_locks.delete_one({"_id": lock_id, "owner": payload.booking_id})
+
+    updated = await db.bookings.find_one({"id": payload.booking_id}, {"_id": 0})
+    try:
+        sb = StayBooking(**updated)
+        origin = request.headers.get("origin", "")
+        host = request.headers.get("host", "")
+        trip_url = f"{origin}/stays/trips/{updated['id']}" if origin.startswith("https://") and urlparse(origin).netloc == host else None
+        await send_email(to=updated["email"],
+                         subject=f"{'Booking confirmed' if updated['status'] == 'confirmed' else 'Booking request received'} - {updated['stay']} ({updated['reference']})",
+                         html=_guest_booking_email_html(sb, trip_url))
+        legacy = Booking(stay=updated["stay"], name=updated["name"], email=updated["email"], check_in=updated["check_in"],
+                         check_out=updated["check_out"], guests=updated["guests"],
+                         message=f"[{updated['reference']} · {updated['mode']} · {updated['status']}]")
+        await send_email(to=OWNER_EMAIL,
+                         subject=f"BDS Marvel — {'paid reservation' if updated['status'] == 'confirmed' else 'paid booking request'} ({updated['reference']})",
+                         html=_booking_email_html(legacy))
+    except Exception as e:
+        logger.error("Notification emails failed after payment verification: %s", e)
+
+    return updated
+
+
+RAZORPAY_WEBHOOK_SECRET = os.environ.get("RAZORPAY_WEBHOOK_SECRET", "")
+
+
+@api_router.post("/stays/payments/webhook")
+async def razorpay_webhook(request: Request):
+    raw_body = await request.body()
+    signature = request.headers.get("X-Razorpay-Signature", "")
+    if RAZORPAY_WEBHOOK_SECRET:
+        expected = hmac.new(RAZORPAY_WEBHOOK_SECRET.encode(), raw_body, hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(expected, signature):
+            raise HTTPException(status_code=400, detail="Invalid webhook signature")
+    try:
+        event_data = json.loads(raw_body)
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Invalid JSON payload")
+
+    event = event_data.get("event")
+    if event in ("payment.captured", "order.paid"):
+        payment_entity = event_data.get("payload", {}).get("payment", {}).get("entity", {})
+        order_id = payment_entity.get("order_id")
+        payment_id = payment_entity.get("id")
+        if order_id:
+            target = await db.bookings.find_one({"razorpay_order_id": order_id}, {"_id": 0})
+            if target and target.get("payment_status") != "paid":
+                lock_id = await _with_booking_lock(target["stay_slug"], target["id"])
+                try:
+                    clash = await _confirmed_overlap(target["stay"], target["check_in"], target["check_out"], exclude_id=target["id"])
+                    if clash:
+                        await db.bookings.update_one(
+                            {"id": target["id"]},
+                            {"$set": {"status": "payment_conflict", "payment_status": "paid_conflict", "payment_id": payment_id}}
+                        )
+                        logger.warning("Webhook: payment for %s conflicted with existing booking", target["id"])
+                    else:
+                        new_status = "confirmed" if target.get("mode") == "instant" else "requested"
+                        await db.bookings.update_one(
+                            {"id": target["id"]},
+                            {"$set": {
+                                "status": new_status,
+                                "payment_status": "paid",
+                                "payment_id": payment_id,
+                                "paid_at": datetime.now(timezone.utc).isoformat()
+                            }}
+                        )
+                        logger.info("Webhook: booking %s marked %s via %s", target["id"], new_status, event)
+                finally:
+                    await db.booking_locks.delete_one({"_id": lock_id, "owner": target["id"]})
+    elif event == "payment.failed":
+        payment_entity = event_data.get("payload", {}).get("payment", {}).get("entity", {})
+        order_id = payment_entity.get("order_id")
+        if order_id:
+            await db.bookings.update_one(
+                {"razorpay_order_id": order_id, "payment_status": {"$ne": "paid"}},
+                {"$set": {"payment_status": "failed"}}
+            )
+            logger.info("Webhook: booking payment for order %s failed", order_id)
+    elif event == "refund.processed":
+        refund_entity = event_data.get("payload", {}).get("refund", {}).get("entity", {})
+        payment_id = refund_entity.get("payment_id")
+        refund_id = refund_entity.get("id")
+        if payment_id:
+            await db.bookings.update_one(
+                {"payment_id": payment_id},
+                {"$set": {
+                    "payment_status": "refunded",
+                    "status": "cancelled",
+                    "refund_id": refund_id,
+                    "refunded_at": datetime.now(timezone.utc).isoformat()
+                }}
+            )
+            logger.info("Webhook: refund processed for payment %s (refund %s)", payment_id, refund_id)
+    elif event == "refund.failed":
+        refund_entity = event_data.get("payload", {}).get("refund", {}).get("entity", {})
+        payment_id = refund_entity.get("payment_id")
+        if payment_id:
+            await db.bookings.update_one(
+                {"payment_id": payment_id},
+                {"$set": {"payment_status": "refund_failed"}}
+            )
+            logger.warning("Webhook: refund failed for payment %s", payment_id)
+
+    return {"status": "ok"}
+
 
 class AdminStatusUpdate(BaseModel):
     status: Literal["requested", "confirmed", "declined", "cancelled"]
+
+
+@api_router.get("/admin/2fa/status")
+async def admin_2fa_status(admin: dict = Depends(require_admin)):
+    user = await db.users.find_one({"user_id": admin["user_id"]}, {"_id": 0})
+    enabled = bool((user or {}).get("totp_enabled") or os.environ.get("ADMIN_TOTP_SECRET"))
+    return {
+        "enabled": enabled,
+        "email": admin.get("email"),
+    }
+
+
+@api_router.post("/admin/2fa/setup")
+async def admin_2fa_setup(admin: dict = Depends(require_admin)):
+    raw_secret = base64.b32encode(secrets.token_bytes(20)).decode("utf-8").rstrip("=")
+    await db.users.update_one({"user_id": admin["user_id"]}, {"$set": {"temp_totp_secret": raw_secret}})
+    issuer = "BDS Marvel"
+    otpauth_url = f"otpauth://totp/{issuer}:{admin['email']}?secret={raw_secret}&issuer={issuer}"
+    return {
+        "secret": raw_secret,
+        "otpauth_url": otpauth_url
+    }
+
+
+@api_router.post("/admin/2fa/enable")
+async def admin_2fa_enable(payload: MfaSetupIn, admin: dict = Depends(require_admin), request: Request = None):
+    user = await db.users.find_one({"user_id": admin["user_id"]})
+    secret = (user or {}).get("temp_totp_secret") or (user or {}).get("totp_secret")
+    if not secret:
+        raise HTTPException(status_code=400, detail="No 2FA setup in progress. Call setup first.")
+    if not verify_totp(secret, payload.code):
+        raise HTTPException(status_code=400, detail="Invalid 6-digit verification code. Please check your authenticator app.")
+
+    await db.users.update_one(
+        {"user_id": admin["user_id"]},
+        {"$set": {"totp_secret": secret, "totp_enabled": True}, "$unset": {"temp_totp_secret": ""}}
+    )
+    await log_admin_action(admin, "enable_2fa", f"user:{admin['user_id']}", request=request)
+    return {"status": "ok", "message": "Two-factor authentication successfully enabled."}
+
+
+@api_router.post("/admin/2fa/disable")
+async def admin_2fa_disable(payload: dict, admin: dict = Depends(require_admin), request: Request = None):
+    code = payload.get("code", "")
+    password = payload.get("password", "")
+    user = await db.users.find_one({"user_id": admin["user_id"]})
+    if not user or not verify_password(password, user.get("password_hash", "")):
+        raise HTTPException(status_code=401, detail="Incorrect password.")
+    secret = (user or {}).get("totp_secret") or os.environ.get("ADMIN_TOTP_SECRET")
+    if not secret or not verify_totp(secret, code):
+        raise HTTPException(status_code=400, detail="Invalid two-factor verification code.")
+    await db.users.update_one(
+        {"user_id": admin["user_id"]},
+        {"$set": {"totp_enabled": False}}
+    )
+    await log_admin_action(admin, "disable_2fa", f"user:{admin['user_id']}", request=request)
+    return {"status": "ok", "message": "Two-factor authentication disabled."}
+
+
+@api_router.get("/admin/audit-logs")
+async def admin_audit_logs(limit: int = 50, _: dict = Depends(require_admin)):
+    cursor = db.audit_logs.find({}, {"_id": 0}).sort("timestamp", -1).limit(min(limit, 100))
+    return await cursor.to_list(min(limit, 100))
 
 
 @api_router.get("/admin/overview")
@@ -1336,7 +1934,7 @@ async def admin_list_bookings(_: dict = Depends(require_admin)):
 
 
 @api_router.post("/admin/bookings/{booking_id}/status")
-async def admin_update_booking_status(booking_id: str, payload: AdminStatusUpdate, _: dict = Depends(require_admin)):
+async def admin_update_booking_status(booking_id: str, payload: AdminStatusUpdate, admin: dict = Depends(require_admin), request: Request = None):
     target = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
     if not target:
         raise HTTPException(status_code=404, detail="Booking not found")
@@ -1360,6 +1958,85 @@ async def admin_update_booking_status(booking_id: str, payload: AdminStatusUpdat
     else:
         await db.bookings.update_one({"id": booking_id}, {"$set": {"status": payload.status}})
     logger.info("Admin marked booking %s as %s", booking_id, payload.status)
+    await log_admin_action(admin, "update_booking_status", f"booking:{booking_id}", {"new_status": payload.status}, request=request)
+    return await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+
+
+class AdminRefundIn(BaseModel):
+    reason: Optional[str] = "Admin requested refund"
+    amount: Optional[int] = None
+
+
+@api_router.post("/admin/bookings/{booking_id}/refund")
+async def admin_refund_booking(booking_id: str, payload: AdminRefundIn = AdminRefundIn(), admin: dict = Depends(require_admin), request: Request = None):
+    target = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+    if not target:
+        raise HTTPException(status_code=404, detail="Booking not found.")
+
+    if target.get("payment_status") == "refunded":
+        raise HTTPException(status_code=400, detail="This booking has already been refunded.")
+
+    payment_id = target.get("payment_id")
+    refund_amount = payload.amount if payload.amount is not None else target.get("total", 0)
+    refund_id = None
+    refund_status = "refunded"
+    refund_error = None
+
+    if RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET and payment_id:
+        try:
+            amount_paise = int(refund_amount * 100)
+            async with httpx.AsyncClient(timeout=15) as client:
+                res = await client.post(
+                    f"https://api.razorpay.com/v1/payments/{payment_id}/refund",
+                    auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET),
+                    json={
+                        "amount": amount_paise,
+                        "notes": {"booking_id": booking_id, "reason": payload.reason or "Admin refund"},
+                    },
+                )
+            if res.status_code >= 400:
+                err_detail = res.json().get("error", {}).get("description", res.text)
+                logger.error("Razorpay refund error for %s: %s", booking_id, err_detail)
+                refund_status = "refund_failed"
+                refund_error = err_detail
+                raise HTTPException(status_code=502, detail=f"Razorpay refund failed: {err_detail}")
+            data = res.json()
+            refund_id = data.get("id")
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error("Failed to connect to Razorpay for refund on %s: %s", booking_id, e)
+            raise HTTPException(status_code=502, detail="Failed to connect to payment processor for refund.")
+    else:
+        refund_id = f"manual_{uuid.uuid4().hex[:8]}"
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+    update_fields = {
+        "status": "cancelled",
+        "payment_status": refund_status,
+        "refund_id": refund_id,
+        "refund_amount": refund_amount,
+        "refunded_at": now_iso,
+    }
+    if refund_error:
+        update_fields["refund_error"] = refund_error
+
+    await db.bookings.update_one({"id": booking_id}, {"$set": update_fields})
+    await log_admin_action(admin, "refund_booking", f"booking:{booking_id}", {
+        "amount": refund_amount,
+        "refund_id": refund_id,
+        "payment_id": payment_id,
+        "reason": payload.reason,
+    }, request=request)
+
+    try:
+        if target.get("email"):
+            refund_subj = f"Refund issued for your stay at {target.get('stay', 'BDS Marvel')}"
+            refund_body = f"<p>Hello {target.get('name', 'Guest')},</p><p>A refund of ₹{refund_amount:,} has been initiated for your booking reference <b>{target.get('reference')}</b>.</p><p>Refunds typically reflect in your bank account or payment method within 5–7 working days.</p>"
+            await send_email(to=target["email"], subject=refund_subj, html=refund_body)
+    except Exception as e:
+        logger.error("Failed to send refund email to %s: %s", target.get("email"), e)
+
     return await db.bookings.find_one({"id": booking_id}, {"_id": 0})
 
 
@@ -1375,6 +2052,273 @@ async def admin_list_enquiries(_: dict = Depends(require_admin)):
             items.append(doc)
     items.sort(key=lambda d: d.get("created_at", ""), reverse=True)
     return items[:500]
+
+
+def _slugify(text: str) -> str:
+    cleaned = re.sub(r"[^\w\s-]", "", text.strip().lower())
+    slug = re.sub(r"[\s_-]+", "-", cleaned).strip("-")
+    return slug or f"item-{uuid.uuid4().hex[:6]}"
+
+
+class CatalogueItemIn(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    slug: Optional[str] = Field(default=None, max_length=120)
+    brand: str = Field(default="DrawStones", max_length=100)
+    category: str = Field(default="Marble & Stone", max_length=100)
+    material: Optional[str] = Field(default="Marble", max_length=100)
+    product: Optional[str] = Field(default="Materials", max_length=100)
+    application: Optional[str] = Field(default="Interior", max_length=100)
+    origin: Optional[str] = Field(default="", max_length=200)
+    image: str = Field(min_length=1, max_length=1000)
+    desc: Optional[str] = Field(default="", max_length=8000)
+    specs: Optional[List[List[str]]] = Field(default_factory=list)
+    gallery: Optional[List[str]] = Field(default_factory=list)
+    is_active: bool = True
+
+
+class StayIn(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    slug: Optional[str] = Field(default=None, max_length=120)
+    tier: Literal["Premium", "Mid", "Budget-friendly"] = "Premium"
+    location: str = Field(min_length=1, max_length=200)
+    city: Optional[str] = Field(default="", max_length=100)
+    state: Optional[str] = Field(default="", max_length=100)
+    nightly: int = Field(gt=0, le=1000000)
+    guests: int = Field(gt=0, le=50)
+    bedrooms: int = Field(default=1, gt=0, le=20)
+    beds: int = Field(default=1, gt=0, le=30)
+    baths: int = Field(default=1, gt=0, le=20)
+    type: Optional[str] = Field(default="Villa", max_length=100)
+    lat: Optional[float] = Field(default=20.5937)
+    lng: Optional[float] = Field(default=78.9629)
+    hero: str = Field(min_length=1, max_length=1000)
+    gallery: Optional[List[str]] = Field(default_factory=list)
+    blurb: Optional[str] = Field(default="", max_length=500)
+    description: Optional[str] = Field(default="", max_length=8000)
+    amenities: Optional[List[str]] = Field(default_factory=list)
+    rules: Optional[List[str]] = Field(default_factory=list)
+    booking_mode: Literal["request", "instant"] = "request"
+    min_nights: int = Field(default=1, gt=0, le=90)
+    is_active: bool = True
+
+
+# --- Catalogue inventory endpoints ---
+
+@api_router.get("/catalogue")
+async def list_catalogue(brand: Optional[str] = None, category: Optional[str] = None, q: Optional[str] = None, all: bool = False):
+    query = {}
+    if not all:
+        query["is_active"] = {"$ne": False}
+    if brand and brand != "All":
+        query["brand"] = brand
+    if category and category != "All":
+        query["category"] = category
+    if q and q.strip():
+        rgx = {"$regex": re.escape(q.strip()), "$options": "i"}
+        query["$or"] = [{"name": rgx}, {"slug": rgx}, {"desc": rgx}, {"material": rgx}, {"product": rgx}]
+
+    docs = await db.catalogue.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    if not docs and not query:
+        try:
+            docs = json.loads((ROOT_DIR / "catalogue_seed.json").read_text())
+        except Exception:
+            docs = []
+    return docs
+
+
+@api_router.get("/catalogue/{slug}")
+async def get_catalogue_item(slug: str):
+    doc = await db.catalogue.find_one({"$or": [{"slug": slug}, {"id": slug}]}, {"_id": 0})
+    if not doc:
+        try:
+            seed = json.loads((ROOT_DIR / "catalogue_seed.json").read_text())
+            doc = next((item for item in seed if item.get("slug") == slug), None)
+        except Exception:
+            pass
+    if not doc:
+        raise HTTPException(status_code=404, detail="Catalogue item not found")
+    return doc
+
+
+@api_router.post("/admin/catalogue", status_code=201)
+async def admin_create_catalogue_item(payload: CatalogueItemIn, _: dict = Depends(require_admin), request: Request = None):
+    data = payload.model_dump()
+    slug = (data.get("slug") or "").strip() or _slugify(data["name"])
+    existing = await db.catalogue.find_one({"slug": slug})
+    if existing:
+        slug = f"{slug}-{uuid.uuid4().hex[:4]}"
+    data["slug"] = slug
+    data["id"] = str(uuid.uuid4())
+    now = datetime.now(timezone.utc).isoformat()
+    data["created_at"] = now
+    data["updated_at"] = now
+    await db.catalogue.insert_one(data)
+    created = await db.catalogue.find_one({"id": data["id"]}, {"_id": 0})
+    await log_admin_action(_, "create_catalogue_item", f"catalogue:{slug}", {"name": data["name"]}, request=request)
+    return created
+
+
+@api_router.put("/admin/catalogue/{identifier}")
+async def admin_update_catalogue_item(identifier: str, payload: CatalogueItemIn, _: dict = Depends(require_admin), request: Request = None):
+    target = await db.catalogue.find_one({"$or": [{"id": identifier}, {"slug": identifier}]})
+    if not target:
+        raise HTTPException(status_code=404, detail="Catalogue item not found")
+    data = payload.model_dump()
+    if data.get("slug") and data["slug"] != target.get("slug"):
+        clash = await db.catalogue.find_one({"slug": data["slug"], "id": {"$ne": target["id"]}})
+        if clash:
+            raise HTTPException(status_code=409, detail="A catalogue item with this slug already exists.")
+    else:
+        data["slug"] = target["slug"]
+    data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    await db.catalogue.update_one({"id": target["id"]}, {"$set": data})
+    await log_admin_action(_, "update_catalogue_item", f"catalogue:{target['id']}", {"slug": data["slug"]}, request=request)
+    return await db.catalogue.find_one({"id": target["id"]}, {"_id": 0})
+
+
+@api_router.delete("/admin/catalogue/{identifier}")
+async def admin_delete_catalogue_item(identifier: str, _: dict = Depends(require_admin), request: Request = None):
+    target = await db.catalogue.find_one({"$or": [{"id": identifier}, {"slug": identifier}]})
+    if not target:
+        raise HTTPException(status_code=404, detail="Catalogue item not found")
+    await db.catalogue.delete_one({"id": target["id"]})
+    await log_admin_action(_, "delete_catalogue_item", f"catalogue:{target['id']}", {"slug": target["slug"]}, request=request)
+    return {"status": "ok", "deleted_id": target["id"], "slug": target["slug"]}
+
+
+# --- Airbnb stays endpoints ---
+
+@api_router.get("/stays")
+async def list_stays(tier: Optional[str] = None, q: Optional[str] = None, all: bool = False):
+    query = {}
+    if not all:
+        query["is_active"] = {"$ne": False}
+    if tier and tier != "All":
+        query["tier"] = tier
+    if q and q.strip():
+        rgx = {"$regex": re.escape(q.strip()), "$options": "i"}
+        query["$or"] = [{"name": rgx}, {"slug": rgx}, {"location": rgx}, {"city": rgx}, {"description": rgx}]
+
+    docs = await db.stays.find(query, {"_id": 0}).sort("nightly", -1).to_list(500)
+    if not docs and not query:
+        try:
+            docs = json.loads((ROOT_DIR / "stays_seed.json").read_text())
+        except Exception:
+            docs = []
+    return docs
+
+
+@api_router.get("/stays/{slug}")
+async def get_stay(slug: str):
+    doc = await db.stays.find_one({"$or": [{"slug": slug}, {"id": slug}]}, {"_id": 0})
+    if not doc:
+        try:
+            seed = json.loads((ROOT_DIR / "stays_seed.json").read_text())
+            doc = next((item for item in seed if item.get("slug") == slug), None)
+        except Exception:
+            pass
+    if not doc:
+        raise HTTPException(status_code=404, detail="Stay not found")
+    return doc
+
+
+@api_router.post("/admin/stays", status_code=201)
+async def admin_create_stay(payload: StayIn, _: dict = Depends(require_admin), request: Request = None):
+    data = payload.model_dump()
+    slug = (data.get("slug") or "").strip() or _slugify(data["name"])
+    existing = await db.stays.find_one({"slug": slug})
+    if existing:
+        slug = f"{slug}-{uuid.uuid4().hex[:4]}"
+    data["slug"] = slug
+    data["id"] = str(uuid.uuid4())
+    data["price"] = f"₹{data['nightly']:,}"
+    if not data.get("city") and "," in data.get("location", ""):
+        parts = [p.strip() for p in data["location"].split(",")]
+        data["city"] = parts[0]
+        if len(parts) > 1 and not data.get("state"):
+            data["state"] = parts[1]
+    now = datetime.now(timezone.utc).isoformat()
+    data["created_at"] = now
+    data["updated_at"] = now
+    await db.stays.insert_one(data)
+    created = await db.stays.find_one({"id": data["id"]}, {"_id": 0})
+    await log_admin_action(_, "create_stay", f"stay:{slug}", {"name": data["name"]}, request=request)
+    return created
+
+
+@api_router.put("/admin/stays/{identifier}")
+async def admin_update_stay(identifier: str, payload: StayIn, _: dict = Depends(require_admin), request: Request = None):
+    target = await db.stays.find_one({"$or": [{"id": identifier}, {"slug": identifier}]})
+    if not target:
+        raise HTTPException(status_code=404, detail="Stay not found")
+    data = payload.model_dump()
+    if data.get("slug") and data["slug"] != target.get("slug"):
+        clash = await db.stays.find_one({"slug": data["slug"], "id": {"$ne": target["id"]}})
+        if clash:
+            raise HTTPException(status_code=409, detail="A stay with this slug already exists.")
+    else:
+        data["slug"] = target["slug"]
+    data["price"] = f"₹{data['nightly']:,}"
+    if not data.get("city") and "," in data.get("location", ""):
+        parts = [p.strip() for p in data["location"].split(",")]
+        data["city"] = parts[0]
+        if len(parts) > 1 and not data.get("state"):
+            data["state"] = parts[1]
+    data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    await db.stays.update_one({"id": target["id"]}, {"$set": data})
+    await log_admin_action(_, "update_stay", f"stay:{target['id']}", {"slug": data["slug"]}, request=request)
+    return await db.stays.find_one({"id": target["id"]}, {"_id": 0})
+
+
+@api_router.delete("/admin/stays/{identifier}")
+async def admin_delete_stay(identifier: str, _: dict = Depends(require_admin), request: Request = None):
+    target = await db.stays.find_one({"$or": [{"id": identifier}, {"slug": identifier}]})
+    if not target:
+        raise HTTPException(status_code=404, detail="Stay not found")
+    await db.stays.delete_one({"id": target["id"]})
+    await log_admin_action(_, "delete_stay", f"stay:{target['id']}", {"slug": target["slug"]}, request=request)
+    return {"status": "ok", "deleted_id": target["id"], "slug": target["slug"]}
+
+
+# --- Media upload & serving endpoints ---
+
+@api_router.post("/admin/media/upload")
+async def admin_upload_media(file: UploadFile = File(...), admin: dict = Depends(require_admin), request: Request = None):
+    data = await file.read(15 * 1024 * 1024 + 1)
+    if len(data) > 15 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="File too large (max 15MB)")
+    filename = (file.filename or "upload")[-200:]
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    if ext not in ("jpg", "jpeg", "png", "webp", "gif") or not _magic_ok(ext, data):
+        raise HTTPException(status_code=415, detail="Only JPG, PNG, WEBP, or GIF images are allowed.")
+    media_id = f"img_{uuid.uuid4().hex[:12]}.{ext}"
+    saved_path = f"{APP_NAME}/media/{media_id}"
+    try:
+        put_object(saved_path, data, _MIME_TYPES[ext])
+    except Exception as exc:
+        logger.error("Media upload put_object failed: %s", exc)
+        local_dest = UPLOAD_DIR / media_id
+        local_dest.write_bytes(data)
+
+    url = f"/api/media/{media_id}"
+    await log_admin_action(admin, "upload_media", f"media:{media_id}", {"filename": filename, "size": len(data)}, request=request)
+    return {"url": url, "filename": media_id, "size": len(data), "content_type": _MIME_TYPES[ext]}
+
+
+@api_router.get("/media/{filename}")
+async def get_media_file(filename: str):
+    if ".." in filename or "/" in filename or "\\" in filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    ct = _MIME_TYPES.get(ext, "image/jpeg")
+    local_path = UPLOAD_DIR / filename
+    if local_path.exists() and local_path.is_file():
+        return Response(content=local_path.read_bytes(), media_type=ct, headers={"Cache-Control": "public, max-age=86400, stale-while-revalidate=86400"})
+    try:
+        data, content_type = get_object(f"{APP_NAME}/media/{filename}")
+        return Response(content=data, media_type=content_type, headers={"Cache-Control": "public, max-age=86400, stale-while-revalidate=86400"})
+    except Exception:
+        raise HTTPException(status_code=404, detail="Media file not found")
 
 
 @app.on_event("startup")
@@ -1399,21 +2343,77 @@ async def startup_auth():
     await db.rate_limits.create_index("expires_at", expireAfterSeconds=0)
     await db.bookings.create_index([("stay", 1), ("status", 1), ("check_in", 1), ("check_out", 1)])
     await db.bookings.create_index([("user_id", 1), ("created_at", -1)])
-    admin_email = os.environ["ADMIN_EMAIL"].lower()
-    existing = await db.users.find_one({"email": admin_email}, {"_id": 0})
-    admins = await db.users.count_documents({"role": "admin"})
-    if admins == 0 and not existing:
-        admin_password = os.environ["ADMIN_PASSWORD"]
-        await db.users.insert_one({"user_id": f"user_{uuid.uuid4().hex[:12]}", "email": admin_email, "name": "BDS Marvel Admin",
-                                   "password_hash": hash_password(admin_password), "role": "admin", "created_at": datetime.now(timezone.utc).isoformat()})
-    elif admins == 0:
-        logger.error("No admin account exists; refusing to promote or reset %s automatically. Repair the account role explicitly.", admin_email)
+
+    # Seed catalogue collection if empty
+    try:
+        await db.catalogue.create_index("slug", unique=True)
+        await db.catalogue.create_index([("brand", 1), ("category", 1)])
+        if await db.catalogue.count_documents({}) == 0:
+            seed_path = ROOT_DIR / "catalogue_seed.json"
+            if seed_path.exists():
+                cat_items = json.loads(seed_path.read_text())
+                now = datetime.now(timezone.utc).isoformat()
+                for it in cat_items:
+                    it.setdefault("id", str(uuid.uuid4()))
+                    it.setdefault("created_at", now)
+                    it.setdefault("updated_at", now)
+                if cat_items:
+                    await db.catalogue.insert_many(cat_items)
+                    logger.info("Seeded %d catalogue items into db.catalogue", len(cat_items))
+    except Exception as e:
+        logger.warning("Catalogue seeding notice: %s", e)
+
+    # Seed stays collection if empty
+    try:
+        await db.stays.create_index("slug", unique=True)
+        await db.stays.create_index([("tier", 1), ("is_active", 1)])
+        if await db.stays.count_documents({}) == 0:
+            stays_seed_path = ROOT_DIR / "stays_seed.json"
+            if not stays_seed_path.exists():
+                stays_seed_path = ROOT_DIR / "stays.json"
+            if stays_seed_path.exists():
+                stay_items = json.loads(stays_seed_path.read_text())
+                now = datetime.now(timezone.utc).isoformat()
+                for it in stay_items:
+                    it.setdefault("id", str(uuid.uuid4()))
+                    it.setdefault("created_at", now)
+                    it.setdefault("updated_at", now)
+                if stay_items:
+                    await db.stays.insert_many(stay_items)
+                    logger.info("Seeded %d stays into db.stays", len(stay_items))
+    except Exception as e:
+        logger.warning("Stays seeding notice: %s", e)
+
+    admin_email = os.environ.get("ADMIN_EMAIL", "").lower()
+    if admin_email:
+        existing = await db.users.find_one({"email": admin_email}, {"_id": 0})
+        admins = await db.users.count_documents({"role": "admin"})
+        totp_sec = os.environ.get("ADMIN_TOTP_SECRET", "").strip()
+        if admins == 0 and not existing:
+            admin_password = os.environ.get("ADMIN_PASSWORD", "admin123456")
+            doc = {
+                "user_id": f"user_{uuid.uuid4().hex[:12]}",
+                "email": admin_email,
+                "name": "BDS Marvel Admin",
+                "password_hash": hash_password(admin_password),
+                "role": "admin",
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            if totp_sec:
+                doc["totp_secret"] = totp_sec
+                doc["totp_enabled"] = True
+            await db.users.insert_one(doc)
+        elif existing and totp_sec and not existing.get("totp_enabled"):
+            await db.users.update_one({"email": admin_email}, {"$set": {"totp_secret": totp_sec, "totp_enabled": True}})
+        elif admins == 0:
+            logger.error("No admin account exists; refusing to promote or reset %s automatically. Repair the account role explicitly.", admin_email)
 
 
 # Include the router in the main app
 app.include_router(api_router)
 
-ALLOWED_ORIGINS = [o.strip().rstrip("/") for o in os.environ["CORS_ORIGINS"].split(",") if o.strip() and o.strip() != "*"]
+cors_env = os.environ.get("CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000")
+ALLOWED_ORIGINS = [o.strip().rstrip("/") for o in cors_env.split(",") if o.strip() and o.strip() != "*"]
 
 
 @app.middleware("http")
@@ -1428,8 +2428,8 @@ async def origin_guard_and_headers(request: Request, call_next):
     response.headers.setdefault("X-Frame-Options", "DENY")
     response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
     response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
-    if request.method == "GET" and request.url.path == "/api/stays/availability" and response.status_code < 400:
-        response.headers["Cache-Control"] = "public, max-age=15, stale-while-revalidate=15"
+    if request.method == "GET" and (request.url.path == "/api/stays/availability" or request.url.path.startswith("/api/media/")) and response.status_code < 400:
+        response.headers["Cache-Control"] = "public, max-age=86400, stale-while-revalidate=86400"
     else:
         response.headers["Cache-Control"] = "no-store"
     return response

@@ -3,7 +3,7 @@ import { apiFetch, apiPath, publicAsset } from "./wordpress";
 import { lazy, Suspense, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, createContext } from "react";
 import { ArrowDown, ArrowUp, ArrowUpRight, Check, ChevronDown, ChevronLeft, ChevronRight, Facebook, Instagram, Linkedin, Loader2, Search, Twitter, User, X, Youtube } from "lucide-react";
 import { BrowserRouter, HashRouter, Link, Navigate, Route, Routes, useLocation, useNavigate, useNavigationType, useParams } from "react-router-dom";
-import OwnerDashboard from "./owner/OwnerDashboard";
+import OwnerDashboard, { OwnerLogin } from "./owner/OwnerDashboard";
 import { motion, useScroll, useTransform } from "framer-motion";
 import "@/App.css";
 import { initSmoothScroll, smoothScrollTo, startSmoothScroll, stopSmoothScroll } from "@/lib/smoothScroll";
@@ -23,7 +23,21 @@ const MyTrips = lazy(() => import("./stays/MyTrips"));
 const Account = lazy(() => import("./stays/Account"));
 
 const IMG = "https://images.unsplash.com/";
-const img = (id, w = 1600) => id.startsWith("http") ? id : `${IMG}${id}?auto=format&fit=crop&w=${w}&q=80`;
+const formatDriveImg = (url) => {
+  if (!url || typeof url !== "string") return url;
+  if (url.includes("drive.google.com")) {
+    const m = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (m && m[1]) return `https://lh3.googleusercontent.com/d/${m[1]}`;
+  }
+  return url;
+};
+const img = (id, w = 1600) => {
+  if (!id) return "";
+  const cleaned = formatDriveImg(id);
+  return (cleaned.startsWith("http") || cleaned.startsWith("/") || cleaned.startsWith("data:"))
+    ? cleaned
+    : `${IMG}${cleaned}?auto=format&fit=crop&w=${w}&q=80`;
+};
 const Router = (window.BDS_WORDPRESS?.routerMode || (process.env.REACT_APP_WORDPRESS_MODE === "true" ? "hash" : "browser")) === "hash" ? HashRouter : BrowserRouter;
 
 // Scroll position per history entry (for back/forward scroll restoration)
@@ -453,6 +467,7 @@ function Header() {
         <Link to="/catalogue" onClick={() => setMenuOpen(false)} data-testid="nav-catalogue-link">CATALOGUE</Link>
         <Link to="/stays" onClick={() => setMenuOpen(false)} data-testid="nav-experience-link">AIR BNB</Link>
         <Link to="/contact" onClick={() => setMenuOpen(false)} data-testid="nav-contact-link">CONTACT</Link>
+        {user?.role === "admin" && <Link to="/owner" onClick={() => setMenuOpen(false)} style={{ color: "var(--acid)" }} data-testid="nav-owner-link">OWNER DASHBOARD</Link>}
       </nav>
       {(onStays || user === false) && <div className="drawer-account" data-testid="drawer-account">
         {user === false && <>
@@ -816,6 +831,20 @@ function Clientele() {
 function Footer() {
   const navigate = useNavigate();
   const location = useLocation();
+  const tapCount = useRef(0);
+  const tapTimeout = useRef(null);
+
+  const onSecretTap = () => {
+    tapCount.current += 1;
+    clearTimeout(tapTimeout.current);
+    if (tapCount.current >= 3) {
+      tapCount.current = 0;
+      window.dispatchEvent(new CustomEvent("open-admin-gate"));
+    } else {
+      tapTimeout.current = setTimeout(() => { tapCount.current = 0; }, 600);
+    }
+  };
+
   const jump = (id) => {
     if (id === "top") {
       if (location.pathname === "/") smoothScrollTo(0);
@@ -848,7 +877,7 @@ function Footer() {
         <a href="https://www.instagram.com/bds.marvel" target="_blank" rel="noreferrer" aria-label="Instagram" data-testid="footer-instagram-link"><Instagram size={17} /></a>
       </div>
     </div>
-    <div className="site-footer__bottom"><span data-testid="footer-copyright">© BDSM · BDS Marvel {new Date().getFullYear()}</span><ScrollUpButton /></div>
+    <div className="site-footer__bottom"><span data-testid="footer-copyright" onClick={onSecretTap} style={{ cursor: "default", WebkitTapHighlightColor: "transparent" }}>© BDSM · BDS Marvel {new Date().getFullYear()}</span><ScrollUpButton /></div>
   </footer>;
 }
 
@@ -923,7 +952,7 @@ function PageShell({ children }) {
     smoothScrollTo(0, { immediate: true });
     startSmoothScroll();
   }, [location.pathname, location.hash, location.key, location.state, navType]);
-  return <div className="route-shell" key={location.pathname}><Header />{children}<Footer /><ContactModal /><ConsultationModal /><SampleModal /><InquiryModal /></div>;
+  return <div className="route-shell" key={location.pathname}><Header />{children}<Footer /><ContactModal /><ConsultationModal /><SampleModal /><InquiryModal /><AdminGateModal /></div>;
 }
 
 const ContactCtx = createContext({ open: false, setOpen: () => {} });
@@ -1188,6 +1217,77 @@ function InquiryModal() {
   </div>;
 }
 
+function AdminGateModal() {
+  const [open, setOpen] = useState(false);
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      // 1. Guard: Ignore if user is currently typing in an input, textarea, select, or contenteditable element
+      const target = e.target;
+      if (target && (["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName) || target.isContentEditable)) {
+        return;
+      }
+
+      // 2. Secret Command Combinations:
+      // Primary: (Ctrl OR Cmd) + Shift + A
+      // Alternate: (Ctrl OR Cmd) + Shift + O
+      // Option: (Ctrl OR Cmd) + Alt + A  (or Alt + Shift + A)
+      const hasPrimaryMod = e.ctrlKey || e.metaKey;
+      const isShiftA = hasPrimaryMod && e.shiftKey && (e.key === "a" || e.key === "A" || e.code === "KeyA");
+      const isShiftO = hasPrimaryMod && e.shiftKey && (e.key === "o" || e.key === "O" || e.code === "KeyO");
+      const isAltA = hasPrimaryMod && e.altKey && (e.key === "a" || e.key === "A" || e.code === "KeyA");
+      const isPlainAltShiftA = e.altKey && e.shiftKey && (e.key === "a" || e.key === "A" || e.code === "KeyA");
+
+      if (isShiftA || isShiftO || isAltA || isPlainAltShiftA) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (user && user.role === "admin") {
+          navigate("/owner");
+        } else {
+          setOpen((prev) => !prev);
+        }
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [user, navigate]);
+
+  useEffect(() => {
+    const onOpenGate = () => {
+      if (user && user.role === "admin") navigate("/owner");
+      else setOpen(true);
+    };
+    window.addEventListener("open-admin-gate", onOpenGate);
+    return () => window.removeEventListener("open-admin-gate", onOpenGate);
+  }, [user, navigate]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onEscape = (e) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", onEscape);
+    return () => window.removeEventListener("keydown", onEscape);
+  }, [open]);
+
+  if (!open) return null;
+
+  return (
+    <div className="contact-modal admin-gate-modal" role="dialog" aria-modal="true" aria-label="Admin Security Gate" data-testid="admin-gate-modal">
+      <button className="contact-modal__scrim" onClick={() => setOpen(false)} aria-label="Close" data-testid="admin-gate-scrim" />
+      <div className="contact-modal__panel admin-gate-panel">
+        <button className="contact-modal__close" onClick={() => setOpen(false)} aria-label="Close" data-testid="admin-gate-close">
+          <X size={22} />
+        </button>
+        <OwnerLogin onSuccess={() => { setOpen(false); navigate("/owner"); }} />
+      </div>
+    </div>
+  );
+}
 
 function ContactModal() {
   const { open, setOpen } = useContact();
@@ -1991,6 +2091,18 @@ function AppRoutes() {
 }
 
 function App() {
+  useEffect(() => {
+    const backendUrl = (process.env.REACT_APP_BACKEND_URL || (typeof window !== "undefined" ? window.location.origin : "")).replace(/\/$/, "");
+    fetch(`${backendUrl}/api/stays`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((liveStays) => {
+        if (Array.isArray(liveStays) && liveStays.length > 0) {
+          registerStaysData({ stays: liveStays, stayTiers, img });
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   return <Router basename={window.BDS_WORDPRESS?.routerMode === "browser" ? window.BDS_WORDPRESS.basename : undefined}>
     <AuthProvider>
     <StaysProvider>

@@ -1,6 +1,6 @@
 import { createContext, createElement, useCallback, useContext, useEffect, useState } from "react";
 
-const API = process.env.REACT_APP_BACKEND_URL;
+const API = (process.env.REACT_APP_BACKEND_URL || (typeof window !== "undefined" ? window.location.origin : "")).replace(/\/$/, "");
 
 export function formatApiError(detail) {
   if (detail == null) return "Something went wrong. Please try again.";
@@ -11,7 +11,10 @@ export function formatApiError(detail) {
 }
 
 export async function api(path, { method = "GET", body } = {}) {
-  const res = await fetch(`${API}/api${path}`, { method, credentials: "include", headers: body ? { "Content-Type": "application/json" } : undefined, body: body ? JSON.stringify(body) : undefined });
+  const isForm = typeof FormData !== "undefined" && body instanceof FormData;
+  const headers = isForm ? undefined : (body ? { "Content-Type": "application/json" } : undefined);
+  const payload = isForm ? body : (body ? JSON.stringify(body) : undefined);
+  const res = await fetch(`${API}/api${path}`, { method, credentials: "include", headers, body: payload });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) { const err = new Error(formatApiError(data.detail)); err.status = res.status; throw err; }
   return data;
@@ -37,8 +40,15 @@ const AuthCtx = createContext(null);
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const check = useCallback(async () => {
-    try { const data = await api("/auth/status"); setUser(data.user || false); }
-    catch { setUser(false); }
+    try {
+      const data = await api("/auth/status");
+      setUser(data.user || false);
+      if (typeof data.payments_enabled === "boolean") {
+        window.__BDS_PAYMENTS_ENABLED = data.payments_enabled;
+      }
+    } catch {
+      setUser(false);
+    }
   }, []);
   useEffect(() => {
     // Returning from Google: AuthCallback exchanges the session first

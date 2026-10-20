@@ -13,7 +13,10 @@ export function initSmoothScroll() {
   // the per-frame Lenis work that made mobile scroll feel laggy.
   if (reduced || window.matchMedia("(max-width: 900px)").matches) return { lenis: null, snap: null };
   // Clearly-sideways gestures over [data-hscroll] rows scroll the row natively; everything else scrolls the page.
-  const virtualScroll = ({ deltaX, deltaY, event }) => !(Math.abs(deltaX) > Math.abs(deltaY) * 1.5 && event.target?.closest?.("[data-hscroll]"));
+  const virtualScroll = ({ deltaX, deltaY, event }) => {
+    if (event?.target?.closest?.("[data-lenis-prevent], .cm-modal, .cm-modal-overlay, [role='dialog'], [aria-modal='true']")) return false;
+    return !(Math.abs(deltaX) > Math.abs(deltaY) * 1.5 && event.target?.closest?.("[data-hscroll]"));
+  };
   lenis = new Lenis({ lerp: 0.1, smoothWheel: true, virtualScroll });
   snap = new Snap(lenis, { type: "proximity", duration: 1, debounce: 250 });
   const raf = (time) => { lenis.raf(time); requestAnimationFrame(raf); };

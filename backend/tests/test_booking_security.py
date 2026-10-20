@@ -77,6 +77,7 @@ class BookingTests(unittest.TestCase):
         self.db = SimpleNamespace(
             bookings=SimpleNamespace(insert_one=AsyncMock()),
             booking_locks=SimpleNamespace(delete_one=AsyncMock()),
+            stays=SimpleNamespace(find_one=AsyncMock(return_value=None)),
         )
         self.ns = load_functions(
             {"create_stay_booking"},

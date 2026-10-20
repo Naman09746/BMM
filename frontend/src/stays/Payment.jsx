@@ -25,7 +25,7 @@ export default function Payment() {
   const stay = getStay(slug);
   const navigate = useNavigate();
   const { user } = useAuth();
-  const paymentsEnabled = window.BDS_WORDPRESS?.paymentsEnabled === true;
+  const paymentsEnabled = window.BDS_WORDPRESS?.paymentsEnabled === true || window.__BDS_PAYMENTS_ENABLED === true || process.env.REACT_APP_PAYMENTS_ENABLED === "true";
   const { search } = useStays();
   const [draft] = useState(getDraft);
   const [state, setState] = useState({ busy: false, error: "" });

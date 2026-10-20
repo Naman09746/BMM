@@ -83,6 +83,13 @@ export default function Account() {
             {memberSince && <div className="sx-acct-field"><dt>Member since</dt><dd>{memberSince}</dd></div>}
             <div className="sx-acct-field"><dt>Account type</dt><dd style={{ textTransform: "capitalize" }}>{user.role || "guest"}</dd></div>
           </div>
+          {user.role === "admin" && (
+            <div style={{ marginTop: 20 }}>
+              <Link className="sx-btn sx-btn--primary" to="/owner" data-testid="account-owner-dashboard-link">
+                Go to Owner / Admin Dashboard →
+              </Link>
+            </div>
+          )}
         </section>
 
         <section className="sx-dsec" data-testid="account-saved">

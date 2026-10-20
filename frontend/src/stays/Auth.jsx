@@ -10,6 +10,8 @@ export function AuthPanel({ onDone, returnTo }) {
   const { setUser } = useAuth();
   const [tab, setTab] = useState("login");
   const [form, setForm] = useState({ name: "", email: "", password: "" });
+  const [mfaData, setMfaData] = useState(null);
+  const [totpCode, setTotpCode] = useState("");
   const [status, setStatus] = useState({ busy: false, error: "" });
   const update = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
   const google = () => {
@@ -24,11 +26,76 @@ export function AuthPanel({ onDone, returnTo }) {
     setStatus({ busy: true, error: "" });
     try {
       const body = tab === "login" ? { email: form.email.trim(), password: form.password } : { name: form.name.trim(), email: form.email.trim(), password: form.password };
-      const user = await api(`/auth/${tab}`, { method: "POST", body });
-      setUser(user);
-      onDone?.(user);
+      const res = await api(`/auth/${tab}`, { method: "POST", body });
+      if (res.mfa_required) {
+        setMfaData({ mfa_token: res.mfa_token, email: form.email.trim() });
+        setStatus({ busy: false, error: "" });
+        return;
+      }
+      setUser(res);
+      onDone?.(res);
     } catch (err) { setStatus({ busy: false, error: err.message }); }
   };
+
+  const submitMfa = async (e) => {
+    e.preventDefault();
+    if (!totpCode.trim()) {
+      setStatus({ busy: false, error: "Please enter your 6-digit security code." });
+      return;
+    }
+    setStatus({ busy: true, error: "" });
+    try {
+      const verified = await api("/auth/mfa-verify", {
+        method: "POST",
+        body: { mfa_token: mfaData.mfa_token, totp_code: totpCode.trim() }
+      });
+      setUser(verified);
+      onDone?.(verified);
+    } catch (err) {
+      setStatus({ busy: false, error: err.message });
+    }
+  };
+
+  if (mfaData) {
+    return (
+      <div className="sx-auth" data-testid="auth-mfa-panel">
+        <h3 style={{ margin: "0 0 8px", fontSize: 18 }}>Two-Factor Verification</h3>
+        <p className="sx-note" style={{ margin: "0 0 16px" }}>
+          Enter the 6-digit code from your authenticator app for <b>{mfaData.email}</b>.
+        </p>
+        <form onSubmit={submitMfa} noValidate className="sx-form" data-testid="auth-mfa-form">
+          <label className="sx-field">
+            <span>6-Digit Security Code</span>
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={6}
+              autoFocus
+              value={totpCode}
+              placeholder="123456"
+              onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, ""))}
+              data-testid="auth-mfa-code-input"
+            />
+          </label>
+          {status.error && <p className="sx-error" role="alert" data-testid="auth-mfa-error">{status.error}</p>}
+          <button type="submit" className="sx-btn sx-btn--primary sx-btn--block" disabled={status.busy} data-testid="auth-mfa-submit">
+            {status.busy ? <Loader2 size={16} className="sx-spin" /> : null}Verify & Continue
+          </button>
+          <button
+            type="button"
+            className="sx-btn sx-btn--outline sx-btn--block"
+            style={{ marginTop: 10 }}
+            onClick={() => { setMfaData(null); setTotpCode(""); setStatus({ busy: false, error: "" }); }}
+            data-testid="auth-mfa-back"
+          >
+            Back to sign in
+          </button>
+        </form>
+      </div>
+    );
+  }
+
   return <div className="sx-auth" data-testid="auth-panel">
     <div className="sx-tabs" role="tablist">
       {[["login", "Log in"], ["register", "Sign up"]].map(([k, l]) => <button type="button" role="tab" key={k} aria-selected={tab === k} className={tab === k ? "is-on" : ""} onClick={() => { setTab(k); setStatus({ busy: false, error: "" }); }} data-testid={`auth-tab-${k}`}>{l}</button>)}

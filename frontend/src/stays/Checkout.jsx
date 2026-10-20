@@ -30,7 +30,7 @@ export default function Checkout() {
   const [params] = useSearchParams();
   const stay = getStay(slug);
   const mode = stay?.bookingMode === "instant" ? "instant" : "request";
-  const paymentsEnabled = window.BDS_WORDPRESS?.paymentsEnabled === true;
+  const paymentsEnabled = window.BDS_WORDPRESS?.paymentsEnabled === true || window.__BDS_PAYMENTS_ENABLED === true || process.env.REACT_APP_PAYMENTS_ENABLED === "true";
   const navigate = useNavigate();
   const { user } = useAuth();
   const { search, setSearch } = useStays();
