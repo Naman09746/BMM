@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BDS Marvel App
  * Description: BDS Marvel design, WordPress guest accounts, bookings, private enquiries and owner dashboard. Use [bds_marvel_app] or the companion theme.
- * Version: 3.4.2
+ * Version: 3.4.3
  * Requires at least: 6.5
  * Requires PHP: 7.4
  * Author: BDS Marvel
