@@ -170,6 +170,82 @@ function bds_booking_row($row) {
     $data['status'] = $row['status'];
     return $data;
 }
+function bds_booking_email_date($value) {
+    $date = DateTimeImmutable::createFromFormat('!Y-m-d', (string) $value);
+    return $date ? $date->format('j F Y') : (string) $value;
+}
+function bds_booking_email_row($label, $value) {
+    if ($value === '' || $value === null) { return ''; }
+    return '<tr><td style="padding:11px 0;border-bottom:1px solid #e9e6df;color:#6c756f;font:13px Arial,sans-serif;">' . esc_html($label) .
+        '</td><td align="right" style="padding:11px 0;border-bottom:1px solid #e9e6df;color:#1d3029;font:600 14px Arial,sans-serif;">' . esc_html((string) $value) . '</td></tr>';
+}
+function bds_booking_email_html($data, $audience, $action_url) {
+    $status = sanitize_key($data['status'] ?? '');
+    $titles = array(
+        'requested' => 'Booking request received',
+        'payment_pending' => 'Booking awaiting payment',
+        'confirmed' => 'Booking confirmed',
+        'declined' => 'Booking request declined',
+        'cancelled' => 'Booking cancelled'
+    );
+    $title = $titles[$status] ?? 'Booking update';
+    $is_owner = $audience === 'owner';
+    $intro = $is_owner
+        ? 'A guest booking has been updated. Here is the summary for your records.'
+        : 'Here are the details of your stay request. We’ll keep you updated by email.';
+    if ($status === 'requested') {
+        $intro = $is_owner ? 'A new stay request is waiting for your review.' : 'Your stay request has reached our team. We’ll be in touch soon.';
+    } elseif ($status === 'payment_pending') {
+        $intro = $is_owner ? 'A guest has started a booking and payment is pending.' : 'Your booking is saved. Complete payment to confirm your stay.';
+    } elseif ($status === 'confirmed') {
+        $intro = $is_owner ? 'This booking is confirmed.' : 'Your stay is confirmed. We look forward to welcoming you.';
+    } elseif ($status === 'declined') {
+        $intro = $is_owner ? 'This booking request was declined.' : 'We’re sorry, but this booking request could not be accepted.';
+    } elseif ($status === 'cancelled') {
+        $intro = $is_owner ? 'This booking was cancelled.' : 'Your booking has been cancelled.';
+    }
+    $reference = (string) ($data['reference'] ?? '');
+    $guests = array();
+    $adults = (int) ($data['adults'] ?? 0);
+    $children = (int) ($data['children'] ?? 0);
+    if ($adults > 0) { $guests[] = $adults . ($adults === 1 ? ' adult' : ' adults'); }
+    if ($children > 0) { $guests[] = $children . ($children === 1 ? ' child' : ' children'); }
+    $rows = bds_booking_email_row('Stay', $data['stay'] ?? '');
+    $rows .= bds_booking_email_row('Check-in', bds_booking_email_date($data['check_in'] ?? ''));
+    $rows .= bds_booking_email_row('Check-out', bds_booking_email_date($data['check_out'] ?? ''));
+    $rows .= bds_booking_email_row('Guests', implode(', ', $guests));
+    if (!empty($data['pets'])) { $rows .= bds_booking_email_row('Pets', (string) $data['pets']); }
+    if (isset($data['nights'])) { $rows .= bds_booking_email_row('Nights', (string) $data['nights']); }
+    if (isset($data['nightly'])) { $rows .= bds_booking_email_row('Nightly rate', '₹' . number_format_i18n((float) $data['nightly'], 0)); }
+    if (isset($data['total'])) { $rows .= bds_booking_email_row('Total', '₹' . number_format_i18n((float) $data['total'], 0)); }
+    $payment_status = (string) ($data['payment_status'] ?? '');
+    if ($payment_status !== '') {
+        $payment_labels = array('not_required' => 'Not required', 'payment_pending' => 'Pending', 'pending' => 'Pending', 'paid' => 'Paid', 'refunded' => 'Refunded', 'refund_pending' => 'Refund pending', 'refund_failed' => 'Refund failed');
+        $rows .= bds_booking_email_row('Payment', $payment_labels[$payment_status] ?? ucwords(str_replace('_', ' ', $payment_status)));
+    }
+    $owner_details = '';
+    if ($is_owner) {
+        $owner_details .= bds_booking_email_row('Guest', $data['name'] ?? '');
+        $owner_details .= bds_booking_email_row('Email', $data['email'] ?? '');
+        $owner_details .= bds_booking_email_row('Phone', $data['phone'] ?? '');
+    }
+    $message = $is_owner ? trim((string) ($data['message'] ?? '')) : '';
+    $message_block = $message !== '' ? '<div style="margin-top:20px;padding:16px;background:#f7f5ef;border-radius:8px;"><div style="color:#6c756f;font:12px Arial,sans-serif;text-transform:uppercase;letter-spacing:1px;">Guest note</div><div style="margin-top:8px;color:#263a32;font:14px/1.6 Arial,sans-serif;white-space:pre-line;">' . nl2br(esc_html($message)) . '</div></div>' : '';
+    $button_label = $is_owner ? 'Open owner dashboard' : 'View your booking';
+    $status_label = $titles[$status] ?? 'Booking update';
+    return '<!doctype html><html><body style="margin:0;padding:0;background:#f3f1eb;">' .
+        '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f3f1eb;"><tr><td align="center" style="padding:30px 12px;">' .
+        '<table role="presentation" width="600" cellspacing="0" cellpadding="0" style="width:100%;max-width:600px;background:#ffffff;border-radius:12px;overflow:hidden;">' .
+        '<tr><td style="padding:24px 32px;background:#163d34;color:#ffffff;"><div style="font:700 18px Arial,sans-serif;letter-spacing:2px;">BDS <span style="color:#d7bd87;">MARVEL</span></div><div style="margin-top:7px;color:#d9e4df;font:12px Arial,sans-serif;">ONE DREAM. ONE STUDIO.</div></td></tr>' .
+        '<tr><td style="padding:30px 32px 12px;"><div style="display:inline-block;padding:6px 10px;background:#f3eee2;border-radius:20px;color:#765c2d;font:600 11px Arial,sans-serif;">' . esc_html($status_label) . '</div>' .
+        '<h1 style="margin:16px 0 8px;color:#183b32;font:600 25px/1.25 Arial,sans-serif;">' . esc_html($title) . '</h1>' .
+        '<p style="margin:0;color:#59665f;font:14px/1.6 Arial,sans-serif;">' . esc_html($intro) . '</p>' .
+        '<p style="margin:18px 0 0;color:#59665f;font:13px Arial,sans-serif;">Booking reference <strong style="color:#183b32;">' . esc_html($reference) . '</strong></p></td></tr>' .
+        '<tr><td style="padding:12px 32px 8px;"><table role="presentation" width="100%" cellspacing="0" cellpadding="0">' . $rows . $owner_details . '</table>' . $message_block . '</td></tr>' .
+        '<tr><td align="left" style="padding:24px 32px 30px;"><a href="' . esc_url($action_url) . '" style="display:inline-block;padding:13px 20px;background:#163d34;border-radius:6px;color:#ffffff;text-decoration:none;font:600 14px Arial,sans-serif;">' . esc_html($button_label) . '</a></td></tr>' .
+        '<tr><td style="padding:18px 32px;background:#f8f7f3;color:#7a817b;font:12px/1.6 Arial,sans-serif;">BDS Marvel · <a href="' . esc_url(home_url('/')) . '" style="color:#476c5e;text-decoration:none;">bdsmarvel.com</a><br>Replies to this email reach our team.</td></tr>' .
+        '</table></td></tr></table></body></html>';
+}
 function bds_notify($data, $subject, $guest = false) {
     $lines = array();
     foreach ($data as $key => $value) {
@@ -179,14 +255,20 @@ function bds_notify($data, $subject, $guest = false) {
     }
     $form = !empty($data['form_slug']) ? bds_form_config($data['form_slug']) : null;
     $owner = is_email($form['notification_email'] ?? '') ? $form['notification_email'] : get_option('bds_notification_email', get_option('admin_email'));
-    if (!bds_queue_mail($owner, $subject, implode("\n", $lines), array('Reply-To: ' . sanitize_email($data['email'] ?? $owner)), $data['id'] ?? '')) {
+    $is_booking = !empty($data['stay']) && !empty($data['check_in']) && !empty($data['check_out']);
+    $owner_message = $is_booking ? bds_booking_email_html($data, 'owner', home_url('/owner')) : implode("\n", $lines);
+    $owner_headers = array('Reply-To: ' . sanitize_email($data['email'] ?? $owner));
+    if ($is_booking) { $owner_headers[] = 'Content-Type: text/html; charset=UTF-8'; }
+    if (!bds_queue_mail($owner, $subject, $owner_message, $owner_headers, $data['id'] ?? '')) {
         return false;
     }
     if ($guest && is_email($data['email'] ?? '')) {
         $url = home_url('/#/stays/trips/' . $data['id']);
         // The companion theme uses clean paths; shortcode embeds use hash paths.
         if (get_option('stylesheet') === 'bds-marvel-theme') { $url = home_url('/stays/trips/' . $data['id']); }
-        if (!bds_queue_mail($data['email'], $subject, implode("\n", $lines) . "\n\nView your trip: " . $url, array(), $data['id'] ?? '')) {
+        $guest_message = $is_booking ? bds_booking_email_html($data, 'guest', $url) : implode("\n", $lines) . "\n\nView your trip: " . $url;
+        $guest_headers = $is_booking ? array('Content-Type: text/html; charset=UTF-8') : array();
+        if (!bds_queue_mail($data['email'], $subject, $guest_message, $guest_headers, $data['id'] ?? '')) {
             return false;
         }
     }
