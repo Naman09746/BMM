@@ -43,6 +43,7 @@ class TestDB {
         return preg_replace_callback('/%[sd]/', function ($m) use ($args, &$i) { $v = $args[$i++]; return $m[0] === '%d' ? (string) (int) $v : $this->db->quote((string) $v); }, $sql);
     }
     function query($sql) {
+        $sql = str_replace('START TRANSACTION', 'BEGIN TRANSACTION', $sql);
         if ($this->steal_claim && strpos($sql, "SET status = 'sending'") !== false) { $this->steal_claim = false; return 0; }
         $sql = str_replace("IF(attempts >= 5, 'failed', 'queued')", "CASE WHEN attempts >= 5 THEN 'failed' ELSE 'queued' END", $sql);
         return $this->db->exec($sql);
