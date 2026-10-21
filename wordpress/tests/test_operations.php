@@ -21,6 +21,9 @@ function wp_clear_scheduled_hook($hook) { global $events; unset($events[$hook]);
 function get_option($key, $default = false) { global $options; return $options[$key] ?? $default; }
 function home_url($path = '') { return 'https://example.test' . $path; }
 function sanitize_email($value) { return filter_var($value, FILTER_SANITIZE_EMAIL); }
+function esc_html($value) { return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8'); }
+function esc_url($value) { return filter_var((string) $value, FILTER_SANITIZE_URL); }
+function number_format_i18n($number, $decimals = 0) { return number_format($number, $decimals, '.', ','); }
 function bds_form_config($slug) { return null; }
 function update_option($key, $value, $autoload = null) { global $options; $options[$key] = $value; }
 function sanitize_textarea_field($value) { return strip_tags($value); }
@@ -118,6 +121,21 @@ check('Legacy identity route disabled before external lookup', $response->status
 clear_mail(); $options['bds_notification_email'] = 'owner@example.test';
 check('Booking notifications queue owner and guest independently', bds_notify(array('id' => 'booking-1', 'email' => 'guest@example.test'), 'Booking', true) === true && (int) $wpdb->get_var('SELECT COUNT(*) FROM wp_bds_mail_queue') === 2);
 check('Queue retains related booking ID', (int) $wpdb->get_var("SELECT COUNT(*) FROM wp_bds_mail_queue WHERE record_id = 'booking-1'") === 2);
+clear_mail();
+$formattedBooking = array('id' => 'booking-html', 'reference' => 'BDS-HTML', 'stay' => 'The Living Studio', 'stay_slug' => 'living-studio',
+    'status' => 'declined', 'payment_status' => 'not_required', 'check_in' => '2026-10-29', 'check_out' => '2026-10-31',
+    'nights' => 2, 'adults' => 1, 'children' => 0, 'nightly' => 28000, 'total' => 56000,
+    'name' => 'Guest <script>alert(1)</script>', 'email' => 'guest@example.test', 'phone' => '0000000000', 'message' => 'Please call me.');
+check('Booking notices use branded HTML with readable dates and amounts', bds_notify($formattedBooking, 'Booking declined', true) === true
+    && (int) $wpdb->get_var('SELECT COUNT(*) FROM wp_bds_mail_queue') === 2
+    && strpos(json_decode(mail_row()['payload'], true)['message'], 'BDS <span') !== false);
+$emailRows = $wpdb->get_results("SELECT payload FROM wp_bds_mail_queue ORDER BY rowid");
+$ownerEmail = json_decode($emailRows[0]['payload'], true); $guestEmail = json_decode($emailRows[1]['payload'], true);
+check('Booking email hides internal IDs and escapes guest-provided content', strpos($ownerEmail['message'], 'Stay Slug') === false
+    && strpos($ownerEmail['message'], '&lt;script&gt;') !== false
+    && strpos($ownerEmail['headers'][1], 'text/html') !== false);
+check('Guest email omits owner-only contact details', strpos($guestEmail['message'], '0000000000') === false
+    && strpos($guestEmail['message'], 'guest@example.test') === false);
 $bookingData = array('id' => 'booking-atomic', 'email' => 'guest@example.test', 'reference' => 'BDS-TEST');
 $bookingRow = array('id' => 'booking-atomic', 'user_id' => 7, 'stay_slug' => 'living-studio', 'status' => 'requested',
     'check_in' => '2030-01-01', 'check_out' => '2030-01-02', 'created_at' => '2030-01-01 00:00:00', 'data' => wp_json_encode($bookingData));
