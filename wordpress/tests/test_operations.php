@@ -21,6 +21,10 @@ function wp_clear_scheduled_hook($hook) { global $events; unset($events[$hook]);
 function get_option($key, $default = false) { global $options; return $options[$key] ?? $default; }
 function home_url($path = '') { return 'https://example.test' . $path; }
 function sanitize_email($value) { return filter_var($value, FILTER_SANITIZE_EMAIL); }
+function sanitize_key($value) { return preg_replace('/[^a-z0-9_\\-]/', '', strtolower((string) $value)); }
+function esc_html($value) { return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8'); }
+function esc_url($value) { return filter_var((string) $value, FILTER_SANITIZE_URL); }
+function number_format_i18n($number, $decimals = 0) { return number_format($number, $decimals, '.', ','); }
 function bds_form_config($slug) { return null; }
 function update_option($key, $value, $autoload = null) { global $options; $options[$key] = $value; }
 function sanitize_textarea_field($value) { return strip_tags($value); }
@@ -28,10 +32,11 @@ function wp_mail(...$args) { global $mail_ok, $mail_calls; $mail_calls++; if ($m
 class WP_Error { public $message; function __construct($code, $message) { $this->message = $message; } }
 function is_wp_error($value) { return $value instanceof WP_Error; }
 class TestDB {
-    public $prefix = 'wp_'; public $db; public $steal_claim = false;
+    public $prefix = 'wp_'; public $db; public $steal_claim = false; public $fail_mail_insert_after = 0;
     function __construct() {
         $this->db = new PDO('sqlite::memory:'); $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $this->db->exec("CREATE TABLE wp_bds_mail_queue (id TEXT PRIMARY KEY, record_id TEXT, status TEXT, attempts INTEGER, available_at TEXT, updated_at TEXT, created_at TEXT, payload TEXT);
+          CREATE TABLE wp_bds_bookings (id TEXT PRIMARY KEY, user_id INTEGER, stay_slug TEXT, status TEXT, check_in TEXT, check_out TEXT, created_at TEXT, data TEXT, payment_order_id TEXT);
           CREATE TABLE wp_bds_enquiries (id TEXT PRIMARY KEY, type TEXT, created_at TEXT, data TEXT, status TEXT DEFAULT 'new', notes TEXT, updated_at TEXT, assigned_user_id INTEGER DEFAULT 0, follow_up_date TEXT);
           CREATE TABLE wp_bds_audit (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, record_id TEXT, action TEXT, created_at TEXT);");
     }
@@ -42,11 +47,13 @@ class TestDB {
         return preg_replace_callback('/%[sd]/', function ($m) use ($args, &$i) { $v = $args[$i++]; return $m[0] === '%d' ? (string) (int) $v : $this->db->quote((string) $v); }, $sql);
     }
     function query($sql) {
+        $sql = str_replace('START TRANSACTION', 'BEGIN TRANSACTION', $sql);
         if ($this->steal_claim && strpos($sql, "SET status = 'sending'") !== false) { $this->steal_claim = false; return 0; }
         $sql = str_replace("IF(attempts >= 5, 'failed', 'queued')", "CASE WHEN attempts >= 5 THEN 'failed' ELSE 'queued' END", $sql);
         return $this->db->exec($sql);
     }
     function insert($table, $data) {
+        if ($table === 'wp_bds_mail_queue' && $this->fail_mail_insert_after > 0 && --$this->fail_mail_insert_after === 0) { return false; }
         $q = $this->db->prepare('INSERT INTO ' . $table . ' (' . implode(',', array_keys($data)) . ') VALUES (' . implode(',', array_fill(0, count($data), '?')) . ')');
         return $q->execute(array_values($data)) ? 1 : false;
     }
@@ -113,8 +120,36 @@ function wp_remote_get(...$args) { throw new Exception('Unexpected outbound iden
 $response = bds_api(new SessionRequest());
 check('Legacy identity route disabled before external lookup', $response->status === 410);
 clear_mail(); $options['bds_notification_email'] = 'owner@example.test';
-bds_notify(array('id' => 'booking-1', 'email' => 'guest@example.test'), 'Booking', true);
-check('Booking notifications queue owner and guest independently', (int) $wpdb->get_var('SELECT COUNT(*) FROM wp_bds_mail_queue') === 2);
+check('Booking notifications queue owner and guest independently', bds_notify(array('id' => 'booking-1', 'email' => 'guest@example.test'), 'Booking', true) === true && (int) $wpdb->get_var('SELECT COUNT(*) FROM wp_bds_mail_queue') === 2);
 check('Queue retains related booking ID', (int) $wpdb->get_var("SELECT COUNT(*) FROM wp_bds_mail_queue WHERE record_id = 'booking-1'") === 2);
+clear_mail();
+$formattedBooking = array('id' => 'booking-html', 'reference' => 'BDS-HTML', 'stay' => 'The Living Studio', 'stay_slug' => 'living-studio',
+    'status' => 'declined', 'payment_status' => 'not_required', 'check_in' => '2026-10-29', 'check_out' => '2026-10-31',
+    'nights' => 2, 'adults' => 1, 'children' => 0, 'nightly' => 28000, 'total' => 56000,
+    'name' => 'Guest <script>alert(1)</script>', 'email' => 'guest@example.test', 'phone' => '0000000000', 'message' => 'Please call me.');
+check('Booking notices use branded HTML with readable dates and amounts', bds_notify($formattedBooking, 'Booking declined', true) === true
+    && (int) $wpdb->get_var('SELECT COUNT(*) FROM wp_bds_mail_queue') === 2
+    && strpos(json_decode(mail_row()['payload'], true)['message'], 'BDS <span') !== false);
+$emailRows = $wpdb->get_results("SELECT payload FROM wp_bds_mail_queue ORDER BY rowid");
+$ownerEmail = json_decode($emailRows[0]['payload'], true); $guestEmail = json_decode($emailRows[1]['payload'], true);
+check('Booking email hides internal IDs and escapes guest-provided content', strpos($ownerEmail['message'], 'Stay Slug') === false
+    && strpos($ownerEmail['message'], '&lt;script&gt;') !== false
+    && strpos($ownerEmail['headers'][1], 'text/html') !== false);
+check('Guest email omits owner-only contact details', strpos($guestEmail['message'], '0000000000') === false
+    && strpos($guestEmail['message'], 'guest@example.test') === false);
+$bookingData = array('id' => 'booking-atomic', 'email' => 'guest@example.test', 'reference' => 'BDS-TEST');
+$bookingRow = array('id' => 'booking-atomic', 'user_id' => 7, 'stay_slug' => 'living-studio', 'status' => 'requested',
+    'check_in' => '2030-01-01', 'check_out' => '2030-01-02', 'created_at' => '2030-01-01 00:00:00', 'data' => wp_json_encode($bookingData));
+clear_mail();
+check('Booking and both notifications commit together', bds_save_booking_with_notifications($bookingData, $bookingRow, 'Booking') === true
+    && (int) $wpdb->get_var('SELECT COUNT(*) FROM wp_bds_bookings') === 1
+    && (int) $wpdb->get_var('SELECT COUNT(*) FROM wp_bds_mail_queue') === 2);
+$wpdb->query('DELETE FROM wp_bds_bookings'); clear_mail(); $wpdb->fail_mail_insert_after = 2;
+$notificationFailure = bds_save_booking_with_notifications($bookingData, $bookingRow, 'Booking');
+$wpdb->fail_mail_insert_after = 0;
+check('Booking rolls back if either notification cannot be queued', $notificationFailure instanceof WP_REST_Response
+    && $notificationFailure->status === 503
+    && (int) $wpdb->get_var('SELECT COUNT(*) FROM wp_bds_bookings') === 0
+    && (int) $wpdb->get_var('SELECT COUNT(*) FROM wp_bds_mail_queue') === 0);
 bds_operations_deactivate(); check('Deactivation removes scheduled events', empty($events));
 echo "TOTAL $n\n";
