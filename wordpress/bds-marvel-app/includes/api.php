@@ -176,8 +176,8 @@ function bds_booking_email_date($value) {
 }
 function bds_booking_email_row($label, $value) {
     if ($value === '' || $value === null) { return ''; }
-    return '<tr><td style="padding:11px 0;border-bottom:1px solid #e9e6df;color:#6c756f;font:13px Arial,sans-serif;">' . esc_html($label) .
-        '</td><td align="right" style="padding:11px 0;border-bottom:1px solid #e9e6df;color:#1d3029;font:600 14px Arial,sans-serif;">' . esc_html((string) $value) . '</td></tr>';
+    return '<tr><td style="padding:11px 0;border-bottom:1px solid #e8e3d8;color:#73736d;font:13px Arial,sans-serif;">' . esc_html($label) .
+        '</td><td align="right" style="padding:11px 0;border-bottom:1px solid #e8e3d8;color:#17212a;font:600 14px Arial,sans-serif;">' . esc_html((string) $value) . '</td></tr>';
 }
 function bds_booking_email_html($data, $audience, $action_url) {
     $status = sanitize_key($data['status'] ?? '');
@@ -230,20 +230,20 @@ function bds_booking_email_html($data, $audience, $action_url) {
         $owner_details .= bds_booking_email_row('Phone', $data['phone'] ?? '');
     }
     $message = $is_owner ? trim((string) ($data['message'] ?? '')) : '';
-    $message_block = $message !== '' ? '<div style="margin-top:20px;padding:16px;background:#f7f5ef;border-radius:8px;"><div style="color:#6c756f;font:12px Arial,sans-serif;text-transform:uppercase;letter-spacing:1px;">Guest note</div><div style="margin-top:8px;color:#263a32;font:14px/1.6 Arial,sans-serif;white-space:pre-line;">' . nl2br(esc_html($message)) . '</div></div>' : '';
+    $message_block = $message !== '' ? '<div style="margin-top:20px;padding:16px;background:#f6f2e8;border-radius:8px;"><div style="color:#73736d;font:12px Arial,sans-serif;text-transform:uppercase;letter-spacing:1px;">Guest note</div><div style="margin-top:8px;color:#222b33;font:14px/1.6 Arial,sans-serif;white-space:pre-line;">' . nl2br(esc_html($message)) . '</div></div>' : '';
     $button_label = $is_owner ? 'Open owner dashboard' : 'View your booking';
     $status_label = $titles[$status] ?? 'Booking update';
-    return '<!doctype html><html><body style="margin:0;padding:0;background:#f3f1eb;">' .
-        '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f3f1eb;"><tr><td align="center" style="padding:30px 12px;">' .
+    return '<!doctype html><html><body style="margin:0;padding:0;background:#f2f0eb;">' .
+        '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f2f0eb;"><tr><td align="center" style="padding:30px 12px;">' .
         '<table role="presentation" width="600" cellspacing="0" cellpadding="0" style="width:100%;max-width:600px;background:#ffffff;border-radius:12px;overflow:hidden;">' .
-        '<tr><td style="padding:24px 32px;background:#163d34;color:#ffffff;"><div style="font:700 18px Arial,sans-serif;letter-spacing:2px;">BDS <span style="color:#d7bd87;">MARVEL</span></div><div style="margin-top:7px;color:#d9e4df;font:12px Arial,sans-serif;">ONE DREAM. ONE STUDIO.</div></td></tr>' .
-        '<tr><td style="padding:30px 32px 12px;"><div style="display:inline-block;padding:6px 10px;background:#f3eee2;border-radius:20px;color:#765c2d;font:600 11px Arial,sans-serif;">' . esc_html($status_label) . '</div>' .
-        '<h1 style="margin:16px 0 8px;color:#183b32;font:600 25px/1.25 Arial,sans-serif;">' . esc_html($title) . '</h1>' .
-        '<p style="margin:0;color:#59665f;font:14px/1.6 Arial,sans-serif;">' . esc_html($intro) . '</p>' .
-        '<p style="margin:18px 0 0;color:#59665f;font:13px Arial,sans-serif;">Booking reference <strong style="color:#183b32;">' . esc_html($reference) . '</strong></p></td></tr>' .
+        '<tr><td style="padding:24px 32px;background:#101820;color:#ffffff;"><div style="font:700 18px Arial,sans-serif;letter-spacing:2px;">BDS <span style="color:#c8a96b;">MARVEL</span></div><div style="margin-top:7px;color:#e9e6df;font:12px Arial,sans-serif;">ONE DREAM. ONE STUDIO.</div></td></tr>' .
+        '<tr><td style="padding:30px 32px 12px;"><div style="display:inline-block;padding:6px 10px;background:#f1ead9;border-radius:20px;color:#765d31;font:600 11px Arial,sans-serif;">' . esc_html($status_label) . '</div>' .
+        '<h1 style="margin:16px 0 8px;color:#17212a;font:600 25px/1.25 Arial,sans-serif;">' . esc_html($title) . '</h1>' .
+        '<p style="margin:0;color:#656b70;font:14px/1.6 Arial,sans-serif;">' . esc_html($intro) . '</p>' .
+        '<p style="margin:18px 0 0;color:#656b70;font:13px Arial,sans-serif;">Booking reference <strong style="color:#17212a;">' . esc_html($reference) . '</strong></p></td></tr>' .
         '<tr><td style="padding:12px 32px 8px;"><table role="presentation" width="100%" cellspacing="0" cellpadding="0">' . $rows . $owner_details . '</table>' . $message_block . '</td></tr>' .
-        '<tr><td align="left" style="padding:24px 32px 30px;"><a href="' . esc_url($action_url) . '" style="display:inline-block;padding:13px 20px;background:#163d34;border-radius:6px;color:#ffffff;text-decoration:none;font:600 14px Arial,sans-serif;">' . esc_html($button_label) . '</a></td></tr>' .
-        '<tr><td style="padding:18px 32px;background:#f8f7f3;color:#7a817b;font:12px/1.6 Arial,sans-serif;">BDS Marvel · <a href="' . esc_url(home_url('/')) . '" style="color:#476c5e;text-decoration:none;">bdsmarvel.com</a><br>Replies to this email reach our team.</td></tr>' .
+        '<tr><td align="left" style="padding:24px 32px 30px;"><a href="' . esc_url($action_url) . '" style="display:inline-block;padding:13px 20px;background:#101820;border-radius:6px;color:#ffffff;text-decoration:none;font:600 14px Arial,sans-serif;">' . esc_html($button_label) . '</a></td></tr>' .
+        '<tr><td style="padding:18px 32px;background:#f5f2eb;color:#7a817b;font:12px/1.6 Arial,sans-serif;">BDS Marvel · <a href="' . esc_url(home_url('/')) . '" style="color:#9a7b45;text-decoration:none;">bdsmarvel.com</a><br>Replies to this email reach our team.</td></tr>' .
         '</table></td></tr></table></body></html>';
 }
 function bds_notify($data, $subject, $guest = false) {
