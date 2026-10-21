@@ -28,10 +28,11 @@ function wp_mail(...$args) { global $mail_ok, $mail_calls; $mail_calls++; if ($m
 class WP_Error { public $message; function __construct($code, $message) { $this->message = $message; } }
 function is_wp_error($value) { return $value instanceof WP_Error; }
 class TestDB {
-    public $prefix = 'wp_'; public $db; public $steal_claim = false;
+    public $prefix = 'wp_'; public $db; public $steal_claim = false; public $fail_mail_insert_after = 0;
     function __construct() {
         $this->db = new PDO('sqlite::memory:'); $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $this->db->exec("CREATE TABLE wp_bds_mail_queue (id TEXT PRIMARY KEY, record_id TEXT, status TEXT, attempts INTEGER, available_at TEXT, updated_at TEXT, created_at TEXT, payload TEXT);
+          CREATE TABLE wp_bds_bookings (id TEXT PRIMARY KEY, user_id INTEGER, stay_slug TEXT, status TEXT, check_in TEXT, check_out TEXT, created_at TEXT, data TEXT, payment_order_id TEXT);
           CREATE TABLE wp_bds_enquiries (id TEXT PRIMARY KEY, type TEXT, created_at TEXT, data TEXT, status TEXT DEFAULT 'new', notes TEXT, updated_at TEXT, assigned_user_id INTEGER DEFAULT 0, follow_up_date TEXT);
           CREATE TABLE wp_bds_audit (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, record_id TEXT, action TEXT, created_at TEXT);");
     }
@@ -47,6 +48,7 @@ class TestDB {
         return $this->db->exec($sql);
     }
     function insert($table, $data) {
+        if ($table === 'wp_bds_mail_queue' && $this->fail_mail_insert_after > 0 && --$this->fail_mail_insert_after === 0) { return false; }
         $q = $this->db->prepare('INSERT INTO ' . $table . ' (' . implode(',', array_keys($data)) . ') VALUES (' . implode(',', array_fill(0, count($data), '?')) . ')');
         return $q->execute(array_values($data)) ? 1 : false;
     }
@@ -113,8 +115,21 @@ function wp_remote_get(...$args) { throw new Exception('Unexpected outbound iden
 $response = bds_api(new SessionRequest());
 check('Legacy identity route disabled before external lookup', $response->status === 410);
 clear_mail(); $options['bds_notification_email'] = 'owner@example.test';
-bds_notify(array('id' => 'booking-1', 'email' => 'guest@example.test'), 'Booking', true);
-check('Booking notifications queue owner and guest independently', (int) $wpdb->get_var('SELECT COUNT(*) FROM wp_bds_mail_queue') === 2);
+check('Booking notifications queue owner and guest independently', bds_notify(array('id' => 'booking-1', 'email' => 'guest@example.test'), 'Booking', true) === true && (int) $wpdb->get_var('SELECT COUNT(*) FROM wp_bds_mail_queue') === 2);
 check('Queue retains related booking ID', (int) $wpdb->get_var("SELECT COUNT(*) FROM wp_bds_mail_queue WHERE record_id = 'booking-1'") === 2);
+$bookingData = array('id' => 'booking-atomic', 'email' => 'guest@example.test', 'reference' => 'BDS-TEST');
+$bookingRow = array('id' => 'booking-atomic', 'user_id' => 7, 'stay_slug' => 'living-studio', 'status' => 'requested',
+    'check_in' => '2030-01-01', 'check_out' => '2030-01-02', 'created_at' => '2030-01-01 00:00:00', 'data' => wp_json_encode($bookingData));
+clear_mail();
+check('Booking and both notifications commit together', bds_save_booking_with_notifications($bookingData, $bookingRow, 'Booking') === true
+    && (int) $wpdb->get_var('SELECT COUNT(*) FROM wp_bds_bookings') === 1
+    && (int) $wpdb->get_var('SELECT COUNT(*) FROM wp_bds_mail_queue') === 2);
+$wpdb->query('DELETE FROM wp_bds_bookings'); clear_mail(); $wpdb->fail_mail_insert_after = 2;
+$notificationFailure = bds_save_booking_with_notifications($bookingData, $bookingRow, 'Booking');
+$wpdb->fail_mail_insert_after = 0;
+check('Booking rolls back if either notification cannot be queued', $notificationFailure instanceof WP_REST_Response
+    && $notificationFailure->status === 503
+    && (int) $wpdb->get_var('SELECT COUNT(*) FROM wp_bds_bookings') === 0
+    && (int) $wpdb->get_var('SELECT COUNT(*) FROM wp_bds_mail_queue') === 0);
 bds_operations_deactivate(); check('Deactivation removes scheduled events', empty($events));
 echo "TOTAL $n\n";
