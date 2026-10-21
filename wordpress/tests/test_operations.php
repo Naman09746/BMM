@@ -21,6 +21,7 @@ function wp_clear_scheduled_hook($hook) { global $events; unset($events[$hook]);
 function get_option($key, $default = false) { global $options; return $options[$key] ?? $default; }
 function home_url($path = '') { return 'https://example.test' . $path; }
 function sanitize_email($value) { return filter_var($value, FILTER_SANITIZE_EMAIL); }
+function sanitize_key($value) { return preg_replace('/[^a-z0-9_\\-]/', '', strtolower((string) $value)); }
 function esc_html($value) { return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8'); }
 function esc_url($value) { return filter_var((string) $value, FILTER_SANITIZE_URL); }
 function number_format_i18n($number, $decimals = 0) { return number_format($number, $decimals, '.', ','); }
