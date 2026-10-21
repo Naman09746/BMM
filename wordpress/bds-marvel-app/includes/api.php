@@ -179,13 +179,39 @@ function bds_notify($data, $subject, $guest = false) {
     }
     $form = !empty($data['form_slug']) ? bds_form_config($data['form_slug']) : null;
     $owner = is_email($form['notification_email'] ?? '') ? $form['notification_email'] : get_option('bds_notification_email', get_option('admin_email'));
-    bds_queue_mail($owner, $subject, implode("\n", $lines), array('Reply-To: ' . sanitize_email($data['email'] ?? $owner)), $data['id'] ?? '');
+    if (!bds_queue_mail($owner, $subject, implode("\n", $lines), array('Reply-To: ' . sanitize_email($data['email'] ?? $owner)), $data['id'] ?? '')) {
+        return false;
+    }
     if ($guest && is_email($data['email'] ?? '')) {
         $url = home_url('/#/stays/trips/' . $data['id']);
         // The companion theme uses clean paths; shortcode embeds use hash paths.
         if (get_option('stylesheet') === 'bds-marvel-theme') { $url = home_url('/stays/trips/' . $data['id']); }
-        bds_queue_mail($data['email'], $subject, implode("\n", $lines) . "\n\nView your trip: " . $url, array(), $data['id'] ?? '');
+        if (!bds_queue_mail($data['email'], $subject, implode("\n", $lines) . "\n\nView your trip: " . $url, array(), $data['id'] ?? '')) {
+            return false;
+        }
     }
+    return true;
+}
+function bds_save_booking_with_notifications($data, $booking_row, $subject) {
+    global $wpdb;
+    if ($wpdb->query('START TRANSACTION') === false) {
+        return bds_error('The booking could not be safely saved. Please try again.', 503);
+    }
+    if (!$wpdb->insert($wpdb->prefix . 'bds_bookings', $booking_row)) {
+        $wpdb->query('ROLLBACK');
+        return bds_error('The booking could not be saved. Please try again.', 500);
+    }
+    if (!bds_notify($data, $subject, true)) {
+        $wpdb->query('ROLLBACK');
+        bds_audit($data['id'] ?? '', 'booking_notification_enqueue_failed');
+        return bds_error('Your booking was not submitted because its email notifications could not be queued. Please try again.', 503);
+    }
+    if ($wpdb->query('COMMIT') === false) {
+        $wpdb->query('ROLLBACK');
+        bds_audit($data['id'] ?? '', 'booking_commit_failed');
+        return bds_error('We could not confirm your booking. Please contact us before submitting again.', 503);
+    }
+    return true;
 }
 function bds_create_booking($request) {
     global $wpdb;
@@ -226,12 +252,12 @@ function bds_create_booking($request) {
     if (!$lock) { return bds_error('Another reservation is being processed. Please try again.', 409); }
     try {
         if (bds_overlap($stay['slug'], $data['check_in'], $data['check_out'])) { return bds_error('Those nights are already booked. Please choose different dates.', 409); }
-        $saved = $wpdb->insert($wpdb->prefix . 'bds_bookings', array('id' => $data['id'], 'user_id' => $user ? $user->ID : 0,
+        $saved = bds_save_booking_with_notifications($data, array('id' => $data['id'], 'user_id' => $user ? $user->ID : 0,
             'stay_slug' => $stay['slug'], 'status' => $data['status'], 'check_in' => $data['check_in'], 'check_out' => $data['check_out'],
-            'created_at' => current_time('mysql', true), 'data' => wp_json_encode($data)));
-        if (!$saved) { return bds_error('The booking could not be saved. Please try again.', 500); }
+            'created_at' => current_time('mysql', true), 'data' => wp_json_encode($data)),
+            'BDS Marvel — booking ' . $data['status'] . ' (' . $data['reference'] . ')');
+        if ($saved !== true) { return $saved; }
     } finally { bds_unlock($lock); }
-    bds_notify($data, 'BDS Marvel — booking ' . $data['status'] . ' (' . $data['reference'] . ')', true);
     return new WP_REST_Response($data, 201);
 }
 function bds_create_stay_payment_order($request) {
@@ -277,12 +303,12 @@ function bds_create_stay_payment_order($request) {
         if (!$lock) { return bds_error('Another reservation is being processed. Please try again.', 409); }
         try {
             if (bds_active_overlap($stay['slug'], $input['check_in'], $input['check_out'])) { return bds_error('Those nights are no longer available. Please choose different dates.', 409); }
-            $saved = $wpdb->insert($wpdb->prefix . 'bds_bookings', array('id' => $id, 'user_id' => $user->ID,
+            $saved = bds_save_booking_with_notifications($data, array('id' => $id, 'user_id' => $user->ID,
                 'stay_slug' => $stay['slug'], 'status' => 'requested', 'check_in' => $input['check_in'], 'check_out' => $input['check_out'],
-                'created_at' => current_time('mysql', true), 'data' => wp_json_encode($data)));
-            if (!$saved) { return bds_error('The booking request could not be saved. Please try again.', 500); }
+                'created_at' => current_time('mysql', true), 'data' => wp_json_encode($data)),
+                'BDS Marvel — unpaid booking request (' . $data['reference'] . ')');
+            if ($saved !== true) { return $saved; }
         } finally { bds_unlock($lock); }
-        bds_notify($data, 'BDS Marvel — unpaid booking request (' . $data['reference'] . ')', true);
         return new WP_REST_Response(array('booking' => $data, 'payment_required' => false), 201);
     }
     if ($total > 100000000) { return bds_error('This stay amount cannot be paid online. Please contact us.'); }
@@ -304,10 +330,11 @@ function bds_create_stay_payment_order($request) {
             'nightly' => (int) $stay['nightly'], 'total' => $total, 'name' => sanitize_text_field($input['name']),
             'email' => sanitize_email($input['email']), 'phone' => sanitize_text_field($input['phone']),
             'message' => sanitize_textarea_field($input['message'] ?? ''), 'created_at' => gmdate('c'));
-        $saved = $wpdb->insert($wpdb->prefix . 'bds_bookings', array('id' => $id, 'user_id' => $user->ID,
+        $saved = bds_save_booking_with_notifications($data, array('id' => $id, 'user_id' => $user->ID,
             'stay_slug' => $stay['slug'], 'payment_order_id' => $remote['id'], 'status' => 'payment_pending', 'check_in' => $input['check_in'], 'check_out' => $input['check_out'],
-            'created_at' => current_time('mysql', true), 'data' => wp_json_encode($data)));
-        if (!$saved) { return bds_error('The booking could not be saved. Please try again.', 500); }
+            'created_at' => current_time('mysql', true), 'data' => wp_json_encode($data)),
+            'BDS Marvel — booking payment_pending (' . $data['reference'] . ')');
+        if ($saved !== true) { return $saved; }
     } finally { bds_unlock($lock); }
     return new WP_REST_Response(array('booking' => $data, 'order_id' => $remote['id'], 'amount' => $order['amount'], 'currency' => 'INR', 'key_id' => $credentials[0], 'payment_required' => true), 201);
 }
