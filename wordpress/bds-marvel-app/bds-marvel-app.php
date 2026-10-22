@@ -43,8 +43,13 @@ function bdsm_app_enqueue($mode = 'hash') {
         $url = BDSM_APP_URL . 'build/' . $file;
         if (substr($file, -4) === '.css') { wp_enqueue_style('bdsm-app-css-' . $i, $url, array(), '3.4.2'); }
         if (substr($file, -3) === '.js') {
+            $content = bds_public_content();
+            $deferred_content = is_front_page();
+            if ($deferred_content) {
+                unset($content['catalogueItems'], $content['catalogueDetails'], $content['serviceExtras']);
+            }
             $config = array('apiUrl' => untrailingslashit(rest_url('bds/v1')), 'assetUrl' => BDSM_APP_URL . 'build',
-                'content' => bds_public_content(), 'native' => true, 'routerMode' => $mode, 'basename' => wp_parse_url(home_url('/'), PHP_URL_PATH),
+                'content' => $content, 'deferredContent' => $deferred_content, 'native' => true, 'routerMode' => $mode, 'basename' => wp_parse_url(home_url('/'), PHP_URL_PATH),
                 'passwordResetUrl' => wp_lostpassword_url(),
                 'nonce' => is_user_logged_in() ? wp_create_nonce('wp_rest') : '',
                 'paymentsEnabled' => (bool) bds_razorpay_credentials());
@@ -66,4 +71,5 @@ add_shortcode('bds_marvel_app', function () {
     $rendered = true;
     return '<div id="bdsm-marvel-root"></div><noscript>Please enable JavaScript to browse BDS Marvel and book a stay.</noscript>';
 });
+
 
