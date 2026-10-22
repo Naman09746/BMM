@@ -1345,3 +1345,6 @@ a.svc-cat-card{color:inherit;text-decoration:none}
 .pq-product dt{font:9px var(--mono);letter-spacing:.1em;text-transform:uppercase;opacity:.6;padding-top:2px}.pq-product dd{margin:0;font-size:13px}
 .pq-check{display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer}.pq-check input{width:18px;height:18px;accent-color:var(--acid)}
 @media(max-width:800px){.pq-product{grid-template-columns:72px 1fr;gap:12px}.pq-product img{width:72px;height:72px}.pq-product h3{font-size:16px}}
+
+/* Readable contact accent against the pale contact background. */
+.zoo-site .contact-section .contact-orbit em{color:#665127!important}
