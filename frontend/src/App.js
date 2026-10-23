@@ -5,7 +5,6 @@ import { ArrowDown, ArrowUp, ArrowUpRight, Check, ChevronDown, ChevronLeft, Chev
 import { BrowserRouter, HashRouter, Link, Navigate, Route, Routes, useLocation, useNavigate, useNavigationType, useParams } from "react-router-dom";
 const OwnerDashboard = lazy(() => import("./owner/OwnerDashboard"));
 const OwnerLogin = lazy(() => import("./owner/OwnerDashboard").then(module => ({default:module.OwnerLogin})));
-import { motion, useScroll, useTransform } from "framer-motion";
 import "@/App.css";
 import { initSmoothScroll, smoothScrollTo, startSmoothScroll, stopSmoothScroll } from "@/lib/smoothScroll";
 import { AuthProvider, StaysProvider, useAuth } from "./stays/store";
@@ -286,16 +285,53 @@ function Header() {
   </>;
 }
 
+function DeferredBackground({ style, watchId, ...props }) {
+  const ref = useRef(null);
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const target = (watchId && document.getElementById(watchId)) || ref.current;
+    if (!target) return;
+    if (!('IntersectionObserver' in window)) { setReady(true); return; }
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) { setReady(true); observer.disconnect(); }
+    }, { rootMargin: '2000px 0px' });
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [watchId]);
+  const backgroundImage = ready ? style.backgroundImage : style.backgroundImage.replace(/,\s*url\(.*\)$/, '');
+  return <div {...props} ref={ref} style={{ ...style, backgroundImage }} />;
+}
+
 function Home() {
   usePageMeta("BDSM · BDS Marvel | Marble & Stone, Flooring, Construction & Interiors", "One design and build studio for marble and stone, flooring, turnkey construction and interior design — workshops and studios across India: Kishangarh, Mumbai, Gurugram, Pune, New Delhi and Goa.");
   const [activeApproach, setActiveApproach] = useState(0);
   useOrbitScroll();
   const heroRef = useRef(null);
-  const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
-  const headlineY = useTransform(scrollYProgress, [0, 1], [0, 110]);
-  const ringsY = useTransform(scrollYProgress, [0, 1], [0, -90]);
-  const ringsRotate = useTransform(scrollYProgress, [0, 1], [0, 40]);
-  const ringsScale = useTransform(scrollYProgress, [0, 1], [1, 1.12]);
+  const headlineRef = useRef(null);
+  const ringsRef = useRef(null);
+  useLayoutEffect(() => {
+    const hero = heroRef.current;
+    const headline = headlineRef.current;
+    const rings = ringsRef.current;
+    if (!hero || !headline || !rings) return;
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      const rect = hero.getBoundingClientRect();
+      const progress = Math.max(0, Math.min(1, -rect.top / rect.height));
+      headline.style.transform = progress ? `translateY(${progress * 110}px)` : 'none';
+      rings.style.transform = progress ? `translateY(${progress * -90}px) scale(${1 + progress * 0.12}) rotate(${progress * 40}deg)` : 'none';
+    };
+    const schedule = () => { if (!frame) frame = requestAnimationFrame(update); };
+    update();
+    window.addEventListener('scroll', schedule, { passive: true });
+    window.addEventListener('resize', schedule, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', schedule);
+      window.removeEventListener('resize', schedule);
+      if (frame) cancelAnimationFrame(frame);
+    };
+  }, []);
   const onHeroTilt = (event) => {
     const rect = event.currentTarget.getBoundingClientRect();
     const x = (event.clientX - rect.left) / rect.width - 0.5;
@@ -309,15 +345,15 @@ function Home() {
   };
   const scrollTo = (id) => smoothScrollTo(document.getElementById(id));
   return <main className="zoo-site">
-    <section className="hero" id="top" data-testid="hero-section" ref={heroRef} onMouseMove={onHeroTilt} onMouseLeave={resetHeroTilt}>      <motion.div className="hero-headline-parallax" style={{ y: headlineY }}>
+    <section className="hero" id="top" data-testid="hero-section" ref={heroRef} onMouseMove={onHeroTilt} onMouseLeave={resetHeroTilt}>      <div className="hero-headline-parallax" ref={headlineRef} style={{ transform: "none" }}>
         <div className="hero-heading"><p className="eyebrow">BDSM · BDS MARVEL</p><h1><span className="hero-line"><span className="hero-line__inner">Architecture.</span></span><span className="hero-line"><span className="hero-line__inner"><em>Interiors.</em></span></span><span className="hero-line"><span className="hero-line__inner">Everything In Between<span className="hero-dot">.</span></span></span></h1></div>
-      </motion.div>
+      </div>
       <div className="hero-footer"><button onClick={() => scrollTo("network")} data-testid="hero-explore-button">EXPLORE OUR WORK <ArrowDown size={16} /></button></div>
-      <motion.div className="hero-rings-parallax" style={{ y: ringsY, rotate: ringsRotate, scale: ringsScale }} aria-hidden="true" data-testid="hero-rings-parallax">
+      <div className="hero-rings-parallax" ref={ringsRef} style={{ transform: "none" }} aria-hidden="true" data-testid="hero-rings-parallax">
         <div className="hero-rings-tilt">
           <div className="hero-rings" aria-hidden="true"><span /><span /><span /></div>
         </div>
-      </motion.div>
+      </div>
     </section>
     <NetworkExperience />
     <ExperienceSpotlight />
@@ -328,17 +364,17 @@ function Home() {
           <button className={`purpose-tab purpose-tab--tone-${purposeTones[index % 4]} ${activeApproach === index ? "purpose-tab--active" : ""}`} onClick={() => setActiveApproach(index)} aria-expanded={activeApproach === index} aria-controls={`purpose-mobile-panel-${index + 1}`} data-testid={`purpose-tab-${index + 1}`}><span>{purpose.number}</span><strong>{purpose.title}</strong><ChevronDown size={19} /></button>
           <div className="purpose-accordion-panel" id={`purpose-mobile-panel-${index + 1}`} aria-hidden={activeApproach !== index} data-testid={`purpose-mobile-panel-${index + 1}`}>
             <div className="purpose-accordion-panel__inner">
-              <div className={`purpose-feature purpose-feature--mobile purpose-feature--tone-${purposeTones[index % 4]}`} style={{ backgroundImage: `linear-gradient(90deg, rgba(8,8,8,.82), rgba(8,8,8,.08)), url(${img(purpose.image)})` }}>
+              <DeferredBackground watchId="purpose" className={`purpose-feature purpose-feature--mobile purpose-feature--tone-${purposeTones[index % 4]}`} style={{ backgroundImage: `linear-gradient(90deg, rgba(8,8,8,.82), rgba(8,8,8,.08)), url(${img(purpose.image)})` }}>
                 <div><span>{purpose.number} / 05</span><h3>{purpose.title}</h3><p>{purpose.text}</p></div>
                 <div className="purpose-arrows"><button onClick={() => setActiveApproach((index + approach.length - 1) % approach.length)} aria-label="Previous purpose" data-testid={`purpose-mobile-previous-${index + 1}`}><ArrowUpRight size={20} /></button><button onClick={() => setActiveApproach((index + 1) % approach.length)} aria-label="Next purpose" data-testid={`purpose-mobile-next-${index + 1}`}><ArrowUpRight size={20} /></button></div>
-              </div>
+              </DeferredBackground>
             </div>
           </div>
         </div>)}</div>
-        {approach.length > 0 && <div key={activeApproach} className={`purpose-feature purpose-feature--desktop purpose-feature--tone-${purposeTones[activeApproach % 4]}`} style={{ backgroundImage: `linear-gradient(90deg, rgba(8,8,8,.82), rgba(8,8,8,.08)), url(${img(approach[activeApproach].image)})` }} data-testid="active-purpose-panel">
+        {approach.length > 0 && <DeferredBackground watchId="purpose" key={activeApproach} className={`purpose-feature purpose-feature--desktop purpose-feature--tone-${purposeTones[activeApproach % 4]}`} style={{ backgroundImage: `linear-gradient(90deg, rgba(8,8,8,.82), rgba(8,8,8,.08)), url(${img(approach[activeApproach].image)})` }} data-testid="active-purpose-panel">
           <div><span>{approach[activeApproach].number} / 05</span><h3>{approach[activeApproach].title}</h3><p>{approach[activeApproach].text}</p></div>
           <div className="purpose-arrows"><button onClick={() => setActiveApproach((activeApproach + approach.length - 1) % approach.length)} data-testid="purpose-previous-button"><ArrowUpRight size={20} /></button><button onClick={() => setActiveApproach((activeApproach + 1) % approach.length)} data-testid="purpose-next-button"><ArrowUpRight size={20} /></button></div>
-        </div>}
+        </DeferredBackground>}
       </div>
     </section>
     <ProjectsSlideshow />
@@ -586,10 +622,10 @@ function ExperienceSpotlight() {
       <p data-testid="experience-spotlight-status">A stayable home by BDSM · BDS Marvel</p>
     </div>
     <div className="experience-spotlight__layout">
-      <div className="experience-spotlight__visual" style={{ backgroundImage: `linear-gradient(180deg, rgba(8,8,8,.08), rgba(8,8,8,.68)), url(${img(livingStudio.hero)})` }} data-testid="experience-spotlight-image">
+      <DeferredBackground className="experience-spotlight__visual" style={{ backgroundImage: `linear-gradient(180deg, rgba(8,8,8,.08), rgba(8,8,8,.68)), url(${img(livingStudio.hero)})` }} data-testid="experience-spotlight-image">
         <span data-testid="experience-spotlight-location">{livingStudio.kicker}</span>
         <strong data-testid="experience-spotlight-image-title">STAY INSIDE<br />WHAT WE BUILT.</strong>
-      </div>
+      </DeferredBackground>
       <div className="experience-spotlight__copy" ref={copyRef}>
         <span className="experience-spotlight__badge" data-testid="experience-spotlight-badge">STAY OVER</span>
         <h2 data-testid="experience-spotlight-title">Air BnB<br /><em>Living Studio.</em></h2>

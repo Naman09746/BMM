@@ -3,7 +3,6 @@ import { apiFetch, apiPath, publicAsset } from "./wordpress";
 import { lazy, Suspense, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, createContext } from "react";
 import { ArrowDown, ArrowUp, ArrowUpRight, Check, ChevronDown, ChevronLeft, ChevronRight, Facebook, Instagram, Linkedin, Loader2, Search, Twitter, User, X, Youtube } from "lucide-react";
 import { BrowserRouter, HashRouter, Link, Navigate, Route, Routes, useLocation, useNavigate, useNavigationType, useParams } from "react-router-dom";
-import { motion, useScroll, useTransform } from "framer-motion";
 import "@/App.css";
 import { initSmoothScroll, smoothScrollTo, startSmoothScroll, stopSmoothScroll } from "@/lib/smoothScroll";
 import { AuthProvider, StaysProvider, useAuth } from "./stays/store";

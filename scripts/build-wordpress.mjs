@@ -1,4 +1,5 @@
 import { createRequire } from 'node:module';
+import { createHash } from 'node:crypto';
 import fs from 'node:fs/promises';
 import vm from 'node:vm';
 import path from 'node:path';
@@ -28,13 +29,16 @@ const outputs = Object.keys(result.metafile.outputs).map(p => path.resolve(p));
 const sandbox = { module: { exports: {} }, require };
 vm.runInNewContext(await fs.readFile(path.join(repo, 'frontend/tailwind.config.js'), 'utf8'), sandbox);
 const config = sandbox.module.exports;
-config.content = [path.join(source, '**/*.{js,jsx}')];
+// Scan every bundled route, including lazy chunks, instead of unused UI files.
+config.content = Object.keys(result.metafile.inputs)
+  .map(p => path.resolve(p)).filter(p => p.startsWith(source + path.sep) && /\.[jt]sx?$/.test(p));
 // Tailwind directives live in index.css; transform every CSS output because
 // code splitting can emit additional stylesheets for lazy-loaded modules.
 for (const cssFile of outputs.filter(p => p.endsWith('.css'))) {
   const css = await fs.readFile(cssFile, 'utf8');
   const processed = await postcss([tailwind(config), autoprefixer]).process(css, { from: cssFile, to: cssFile, map: false });
-  await fs.writeFile(cssFile, processed.css);
+  const minified = await esbuild.transform(processed.css, { loader: 'css', minify: true, target: 'es2020', legalComments: 'none' });
+  await fs.writeFile(cssFile, minified.code);
 }
 await fs.cp(path.join(repo, 'frontend/public/clients'), path.join(build, 'clients'), { recursive: true });
 const sourceEntry = path.resolve(source, 'index.js');
@@ -50,6 +54,13 @@ for (const cssFile of outputs.filter(p => p.endsWith('.css') && p !== rootCSS)) 
 }
 const entrypoints = [rootCSS, jsEntrypoint && path.resolve(jsEntrypoint)]
   .filter(Boolean).map(p => path.relative(build, p));
+if (rootCSS) {
+  const cssContent = await fs.readFile(rootCSS);
+  const cssName = `main.${createHash('sha256').update(cssContent).digest('hex').slice(0, 12)}.css`;
+  const finalCSS = path.join(path.dirname(rootCSS), cssName);
+  await fs.rename(rootCSS, finalCSS);
+  entrypoints[entrypoints.findIndex(p => p.endsWith('.css'))] = path.relative(build, finalCSS);
+}
 await fs.writeFile(path.join(build, 'asset-manifest.json'), JSON.stringify({ entrypoints }, null, 2));
 // One authoritative listing catalogue for server-side pricing and guest capacity.
 const app = await fs.readFile(path.join(source, 'App.js'), 'utf8');
