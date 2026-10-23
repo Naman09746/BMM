@@ -592,7 +592,7 @@ function NetworkExperience() {
       {segments.map((segment, index) => <article key={segment.slug} ref={(node) => (panelRefs.current[index] = node)} data-index={index} className={`network-panel network-panel--${segment.tone} ${index === active ? "network-panel--active" : ""} ${revealed[index] ? "network-panel--revealed" : ""}`} data-testid={`network-panel-${index + 1}`}>
         <div className="network-panel__meta"><span>0{index + 1} / {String(total).padStart(2, "0")}</span><span>{segment.parent.toUpperCase()} · {segment.kicker.toUpperCase()}</span></div>
         <div className="network-panel__stage">
-          <span className="network-panel__mascot-wrap"><img {...bdsmResponsiveImage(img(segment.hero), "(max-width: 700px) 90vw, 640px", 1000, 60)} alt={`${segment.name} sample`} className="network-panel__mascot" /></span>
+          <span className="network-panel__mascot-wrap"><img {...bdsmResponsiveImage(img(segment.hero), "(max-width: 700px) 90vw, 640px", 1000, segment.slug === "marble-and-stone" ? 55 : 60)} alt={`${segment.name} sample`} className="network-panel__mascot" /></span>
         </div>
         <div className="network-panel__copy" ref={(node) => (copyRefs.current[index] = node)} data-copy-index={index}>
           <div className="network-panel__brand"><span className="np-brand-parent">{segment.parent}</span><span className="np-brand-name">{segment.name}</span></div>
