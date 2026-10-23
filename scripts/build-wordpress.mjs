@@ -15,6 +15,20 @@ const source = path.join(repo, 'frontend/src');
 const build = path.join(repo, 'wordpress/bds-marvel-app/build');
 await fs.rm(build, { recursive: true, force: true });
 await fs.mkdir(path.join(build, 'static'), { recursive: true });
+const routeCSSBuild = await esbuild.build({
+  entryPoints: { stays: path.join(source, 'stays/route.css'), owner: path.join(source, 'owner/owner.css') },
+  bundle: true, minify: true, outdir: path.join(build, 'static/css'),
+  entryNames: '[name].[hash]', assetNames: '../media/[name].[hash]',
+  loader: { '.png': 'file', '.svg': 'file' }, nodePaths: [modules], metafile: true,
+  target: 'es2020', legalComments: 'none',
+});
+const routeCSS = {};
+for (const [file, meta] of Object.entries(routeCSSBuild.metafile.outputs)) {
+  if (file.endsWith('.css') && meta.entryPoint) {
+    const group = meta.entryPoint.endsWith('route.css') ? 'stays' : 'owner';
+    routeCSS[group] = '../css/' + path.basename(file);
+  }
+}
 const result = await esbuild.build({
   entryPoints: [path.join(source, 'index.js')], bundle: true, minify: true, jsx: 'automatic', jsxImportSource: 'bds-editable',
   outdir: path.join(build, 'static'), entryNames: '[ext]/main.[hash]', chunkNames: 'chunks/[name]-[hash]', assetNames: 'media/[name].[hash]',
@@ -22,7 +36,12 @@ const result = await esbuild.build({
   loader: { '.js': 'jsx', '.png': 'file', '.svg': 'file', '.gif': 'file' },
   alias: { '@': source, 'bds-editable/jsx-runtime': path.join(source, 'wordpress-jsx-runtime.js') }, nodePaths: [modules], metafile: true,
   define: { 'process.env.NODE_ENV': '"production"', 'process.env.PUBLIC_URL': '""',
-    'process.env.REACT_APP_WORDPRESS_MODE': '"true"', 'process.env.REACT_APP_BACKEND_URL': '""' },
+    'process.env.REACT_APP_WORDPRESS_MODE': '"true"', 'process.env.REACT_APP_BACKEND_URL': '""',
+    'process.env.REACT_APP_BDS_STAYS_CSS': JSON.stringify(routeCSS.stays),
+    'process.env.REACT_APP_BDS_OWNER_CSS': JSON.stringify(routeCSS.owner) },
+  plugins: [{ name: 'route-css', setup(build) {
+    build.onLoad({ filter: /(?:stays\/stays|owner\/owner|leaflet)\.css$/ }, () => ({ contents: '', loader: 'empty' }));
+  } }],
   legalComments: 'linked'
 });
 const outputs = Object.keys(result.metafile.outputs).map(p => path.resolve(p));

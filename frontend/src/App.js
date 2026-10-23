@@ -3,7 +3,14 @@ import { apiFetch, apiPath, publicAsset } from "./wordpress";
 import { Component, lazy, Suspense, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, createContext } from "react";
 import { ArrowDown, ArrowUp, ArrowUpRight, Check, ChevronDown, ChevronLeft, ChevronRight, Facebook, Instagram, Linkedin, Loader2, Search, Twitter, User, X, Youtube } from "lucide-react";
 import { BrowserRouter, HashRouter, Link, Navigate, Route, Routes, useLocation, useNavigate, useNavigationType, useParams } from "react-router-dom";
-const OwnerDashboard = lazy(() => import("./owner/OwnerDashboard"));
+import { loadRouteStyles } from "./lib/routeStyles";
+function lazyStyled(importer, group) {
+  return lazy(async () => {
+    const [module] = await Promise.all([importer(), loadRouteStyles(group)]);
+    return module;
+  });
+}
+const OwnerDashboard = lazyStyled(() => import("./owner/OwnerDashboard"), "owner");
 const OwnerLogin = lazy(() => import("./owner/OwnerDashboard").then(module => ({default:module.OwnerLogin})));
 import "@/App.css";
 import { initSmoothScroll, smoothScrollTo, startSmoothScroll, stopSmoothScroll } from "@/lib/smoothScroll";
@@ -12,15 +19,15 @@ import { registerStaysData } from "./stays/data";
 import "@/stays/stays.css";
 import { buildMaterialGallery } from "@/catalogueGallery";
 
-const AuthCallback = lazy(() => import("./stays/Auth").then((module) => ({ default: module.AuthCallback })));
-const StaysHome = lazy(() => import("./stays/StaysHome"));
-const StaysSearch = lazy(() => import("./stays/StaysSearch"));
-const StayDetail = lazy(() => import("./stays/StayDetail"));
-const Checkout = lazy(() => import("./stays/Checkout"));
-const StayPayment = lazy(() => import("./stays/Payment"));
-const TripStatus = lazy(() => import("./stays/TripStatus"));
-const MyTrips = lazy(() => import("./stays/MyTrips"));
-const Account = lazy(() => import("./stays/Account"));
+const AuthCallback = lazyStyled(() => import("./stays/Auth").then((module) => ({ default: module.AuthCallback })), "stays");
+const StaysHome = lazyStyled(() => import("./stays/StaysHome"), "stays");
+const StaysSearch = lazyStyled(() => import("./stays/StaysSearch"), "stays");
+const StayDetail = lazyStyled(() => import("./stays/StayDetail"), "stays");
+const Checkout = lazyStyled(() => import("./stays/Checkout"), "stays");
+const StayPayment = lazyStyled(() => import("./stays/Payment"), "stays");
+const TripStatus = lazyStyled(() => import("./stays/TripStatus"), "stays");
+const MyTrips = lazyStyled(() => import("./stays/MyTrips"), "stays");
+const Account = lazyStyled(() => import("./stays/Account"), "stays");
 
 const IMG = "https://images.unsplash.com/";
 const formatDriveImg = (url) => {
