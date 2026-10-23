@@ -592,7 +592,7 @@ function NetworkExperience() {
       {segments.map((segment, index) => <article key={segment.slug} ref={(node) => (panelRefs.current[index] = node)} data-index={index} className={`network-panel network-panel--${segment.tone} ${index === active ? "network-panel--active" : ""} ${revealed[index] ? "network-panel--revealed" : ""}`} data-testid={`network-panel-${index + 1}`}>
         <div className="network-panel__meta"><span>0{index + 1} / {String(total).padStart(2, "0")}</span><span>{segment.parent.toUpperCase()} · {segment.kicker.toUpperCase()}</span></div>
         <div className="network-panel__stage">
-          <span className="network-panel__mascot-wrap"><img src={img(segment.hero)} alt={`${segment.name} sample`} className="network-panel__mascot" /></span>
+          <span className="network-panel__mascot-wrap"><img {...bdsmResponsiveImage(img(segment.hero), "(max-width: 700px) 90vw, 640px", 1000, 60)} alt={`${segment.name} sample`} className="network-panel__mascot" /></span>
         </div>
         <div className="network-panel__copy" ref={(node) => (copyRefs.current[index] = node)} data-copy-index={index}>
           <div className="network-panel__brand"><span className="np-brand-parent">{segment.parent}</span><span className="np-brand-name">{segment.name}</span></div>
@@ -1137,5 +1137,24 @@ class SecondaryLoadBoundary extends Component {
   render() {
     if (this.state.failed) return <main className="sx-page sx-center" role="alert"><div><p>This page could not be loaded. Please try again.</p><button type="button" onClick={() => window.location.reload()}>Reload page</button></div></main>;
     return this.props.children;
+  }
+}
+
+function bdsmResponsiveImage(src, sizes, maxWidth, quality = 70) {
+  if (!src) return { src, loading: "lazy", decoding: "async" };
+  try {
+    const u = new URL(src, location.href);
+    if (u.hostname !== "images.unsplash.com") return { src, loading: "lazy", decoding: "async" };
+    u.searchParams.set("auto", "format");
+    u.searchParams.set("q", String(quality));
+    const widths = [400, 640, 700, 720, 760, 800, 1e3, 1200, 1440].filter((w2) => w2 <= maxWidth);
+    const srcSet = widths.map((w2) => {
+      u.searchParams.set("w", w2);
+      return u.href + " " + w2 + "w";
+    }).join(", ");
+    u.searchParams.set("w", maxWidth);
+    return { src: u.href, srcSet, sizes, loading: "lazy", decoding: "async" };
+  } catch {
+    return { src, loading: "lazy", decoding: "async" };
   }
 }
