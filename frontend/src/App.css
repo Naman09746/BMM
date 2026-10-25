@@ -852,10 +852,11 @@ html.lenis,html.lenis body{height:auto}
 .work-slideshow__meta{position:absolute;left:26px;bottom:24px;z-index:1;font:10px var(--mono);letter-spacing:.18em;text-transform:uppercase;color:#ffffffd9;animation:work-fade .6s ease .25s both}
 @keyframes work-slide-in{from{transform:scale(1.06);opacity:.4}to{transform:scale(1);opacity:1}}
 @keyframes work-fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes work-title-in{from{transform:translateY(8px)}to{transform:none}}
 .work-slideshow__bar{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-top:22px;flex-wrap:wrap}
 .work-slideshow__info{display:flex;align-items:baseline;gap:18px;flex-wrap:wrap}
 .work-slideshow__count{font:11px var(--mono);letter-spacing:.14em;color:var(--acid)}
-.work-slideshow__info h3{font-size:clamp(24px,3vw,38px);font-weight:800;letter-spacing:-.02em;margin:0;animation:work-fade .5s ease both}
+.work-slideshow__info h3{font-size:clamp(24px,3vw,38px);font-weight:800;letter-spacing:-.02em;margin:0;animation:work-title-in .5s ease both}
 .work-slideshow__segment{font:10px var(--mono);letter-spacing:.16em;color:#ffffff80;text-transform:uppercase}
 .work-slideshow__arrows{display:flex;gap:10px}
 .work-slideshow__arrows button{width:46px;height:46px;border:1px solid #ffffff2e;border-radius:999px;background:transparent;color:var(--paper);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background-color .25s ease,color .25s ease,border-color .25s ease,transform .25s ease}
@@ -1345,3 +1346,9 @@ a.svc-cat-card{color:inherit;text-decoration:none}
 .pq-product dt{font:9px var(--mono);letter-spacing:.1em;text-transform:uppercase;opacity:.6;padding-top:2px}.pq-product dd{margin:0;font-size:13px}
 .pq-check{display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer}.pq-check input{width:18px;height:18px;accent-color:var(--acid)}
 @media(max-width:800px){.pq-product{grid-template-columns:72px 1fr;gap:12px}.pq-product img{width:72px;height:72px}.pq-product h3{font-size:16px}}
+
+
+.zoo-site .contact-section .contact-orbit em{color:#665127!important}
+
+/* Keep the loading fallback styled before route CSS arrives. */
+.sx-page.sx-center[role="status"]{background:#f4efe6;color:#0d0b09;font-family:'Outfit',sans-serif;min-height:100vh;padding-bottom:80px;display:grid;place-items:center;padding-top:140px}
