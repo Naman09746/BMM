@@ -1,0 +1,133 @@
+{
+  "id": "global_site_content",
+  "approach": [
+    {
+      "number": "01",
+      "title": "MATERIAL FIRST",
+      "image": "photo-1618221195710-dd6b41faaea6",
+      "text": "Every project begins with the stone or the surface. Specification precedes drawings so the material never has to bend to fit the design."
+    },
+    {
+      "number": "02",
+      "title": "ONE TEAM",
+      "image": "photo-1600585154340-be6161a56a0c",
+      "text": "Materials, flooring, construction and interiors under one roof. One accountable team from the spec sheet to the snag list."
+    },
+    {
+      "number": "03",
+      "title": "EDITORIAL DETAIL",
+      "image": "photo-1616486338812-3dadae4b4ace",
+      "text": "Architectural minimalism, hospitality warmth. Joints, thresholds and reveals resolved with the same care as the elevation."
+    },
+    {
+      "number": "04",
+      "title": "HERITAGE + CRAFT",
+      "image": "photo-1503387762-592deb58ef4e",
+      "text": "Traditional cutting and finishing techniques paired with modern engineering. Craftspeople we have worked with for two decades."
+    },
+    {
+      "number": "05",
+      "title": "EXPERIENCE-LED",
+      "image": "photo-1600607687939-ce8a6c25118c",
+      "text": "Don't just see the materials — live in them. The BDSM Living Studio is our showroom you can actually stay in."
+    }
+  ],
+  "clients": [
+    {
+      "name": "L&T — LNT Pvt Ltd",
+      "logo": "/clients/lnt.webp"
+    },
+    {
+      "name": "Mangalam Organics",
+      "logo": "/clients/mangalam.webp"
+    },
+    {
+      "name": "The Lalit",
+      "logo": "/clients/lalit.webp"
+    },
+    {
+      "name": "ITC Hotels",
+      "logo": "/clients/itc.webp"
+    },
+    {
+      "name": "Boutique Hotels",
+      "logo": "/clients/boutique.webp"
+    },
+    {
+      "name": "Clarks Amer",
+      "logo": "/clients/clarks-amer.webp"
+    },
+    {
+      "name": "NHAI",
+      "logo": "/clients/nhai.webp"
+    },
+    {
+      "name": "Kshetrapal Hospital Ajmer",
+      "logo": "/clients/kshetrapal.webp"
+    },
+    {
+      "name": "Mewar Estate Ajmer",
+      "logo": "/clients/mewar-estate.webp"
+    },
+    {
+      "name": "JLN Hospital Ajmer",
+      "logo": "/clients/jln.webp"
+    },
+    {
+      "name": "MPS School Ajmer",
+      "logo": "/clients/mps.webp"
+    },
+    {
+      "name": "DWPS Ajmer",
+      "logo": "/clients/dwps.webp"
+    },
+    {
+      "name": "Mayo College Ajmer",
+      "logo": "/clients/mayo.webp"
+    },
+    {
+      "name": "Taj Pratap Mahal Ajmer",
+      "logo": "/clients/taj.webp"
+    },
+    {
+      "name": "JSB Kishangarh",
+      "logo": "/clients/jsb.webp"
+    },
+    {
+      "name": "AKV Kishangarh",
+      "logo": "/clients/akv.webp"
+    },
+    {
+      "name": "Bhutra Marble Kishangarh",
+      "logo": "/clients/bhutra.webp"
+    },
+    {
+      "name": "CBSE Ajmer",
+      "logo": "/clients/cbse.webp"
+    },
+    {
+      "name": "RBSE Ajmer",
+      "logo": "/clients/rbse.webp"
+    },
+    {
+      "name": "Income Tax Department Ajmer",
+      "logo": "/clients/income-tax.webp"
+    },
+    {
+      "name": "Army Cantt",
+      "logo": "/clients/army-cantt.webp"
+    },
+    {
+      "name": "Ramada Ajmer",
+      "logo": "/clients/ramada.webp"
+    },
+    {
+      "name": "Satguru Group Ajmer",
+      "logo": "/clients/satguru.webp"
+    },
+    {
+      "name": "Marriott",
+      "logo": "/clients/marriott.webp"
+    }
+  ]
+}

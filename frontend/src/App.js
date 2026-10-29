@@ -16,6 +16,7 @@ import "@/App.css";
 import { initSmoothScroll, smoothScrollTo, startSmoothScroll, stopSmoothScroll } from "@/lib/smoothScroll";
 import { AuthProvider, StaysProvider, useAuth } from "./stays/store";
 import { registerStaysData } from "./stays/data";
+import { ContentProvider, useProjects, useSiteContent, DEFAULT_PROJECTS, DEFAULT_APPROACH, DEFAULT_CLIENTS } from "./contentStore";
 import "@/stays/stays.css";
 import { buildMaterialGallery } from "@/catalogueGallery";
 
@@ -101,56 +102,14 @@ registerStaysData({ stays, stayTiers, img });
 
 const tierSlugOf = (tierName) => stayTiers.find((tier) => tier.name === tierName)?.slug || "premium";
 
-const approach = wordpressContent("approach", [
-  { number: "01", title: "MATERIAL FIRST", image: "photo-1618221195710-dd6b41faaea6", text: "Every project begins with the stone or the surface. Specification precedes drawings so the material never has to bend to fit the design." },
-  { number: "02", title: "ONE TEAM", image: "photo-1600585154340-be6161a56a0c", text: "Materials, flooring, construction and interiors under one roof. One accountable team from the spec sheet to the snag list." },
-  { number: "03", title: "EDITORIAL DETAIL", image: "photo-1616486338812-3dadae4b4ace", text: "Architectural minimalism, hospitality warmth. Joints, thresholds and reveals resolved with the same care as the elevation." },
-  { number: "04", title: "HERITAGE + CRAFT", image: "photo-1503387762-592deb58ef4e", text: "Traditional cutting and finishing techniques paired with modern engineering. Craftspeople we have worked with for two decades." },
-  { number: "05", title: "EXPERIENCE-LED", image: "photo-1600607687939-ce8a6c25118c", text: "Don't just see the materials — live in them. The BDSM Living Studio is our showroom you can actually stay in." },
-]);
+const approach = wordpressContent("approach", DEFAULT_APPROACH);
 
 // Four stone tones shared with the network segments — purposes rotate through them
 const purposeTones = ["sand", "bronze", "charcoal", "terracotta"];
 
-const clients = wordpressContent("clients", [
-  { name: "L&T — LNT Pvt Ltd", logo: publicAsset("/clients/lnt.webp") },
-  { name: "Mangalam Organics", logo: publicAsset("/clients/mangalam.webp") },
-  { name: "The Lalit", logo: publicAsset("/clients/lalit.webp") },
-  { name: "ITC Hotels", logo: publicAsset("/clients/itc.webp") },
-  { name: "Boutique Hotels", logo: publicAsset("/clients/boutique.webp") },
-  { name: "Clarks Amer", logo: publicAsset("/clients/clarks-amer.webp") },
-  { name: "NHAI", logo: publicAsset("/clients/nhai.webp") },
-  { name: "Kshetrapal Hospital Ajmer", logo: publicAsset("/clients/kshetrapal.webp") },
-  { name: "Mewar Estate Ajmer", logo: publicAsset("/clients/mewar-estate.webp") },
-  { name: "JLN Hospital Ajmer", logo: publicAsset("/clients/jln.webp") },
-  { name: "MPS School Ajmer", logo: publicAsset("/clients/mps.webp") },
-  { name: "DWPS Ajmer", logo: publicAsset("/clients/dwps.webp") },
-  { name: "Mayo College Ajmer", logo: publicAsset("/clients/mayo.webp") },
-  { name: "Taj Pratap Mahal Ajmer", logo: publicAsset("/clients/taj.webp") },
-  { name: "JSB Kishangarh", logo: publicAsset("/clients/jsb.webp") },
-  { name: "AKV Kishangarh", logo: publicAsset("/clients/akv.webp") },
-  { name: "Bhutra Marble Kishangarh", logo: publicAsset("/clients/bhutra.webp") },
-  { name: "CBSE Ajmer", logo: publicAsset("/clients/cbse.webp") },
-  { name: "RBSE Ajmer", logo: publicAsset("/clients/rbse.webp") },
-  { name: "Income Tax Department Ajmer", logo: publicAsset("/clients/income-tax.webp") },
-  { name: "Army Cantt", logo: publicAsset("/clients/army-cantt.webp") },
-  { name: "Ramada Ajmer", logo: publicAsset("/clients/ramada.webp") },
-  { name: "Satguru Group Ajmer", logo: publicAsset("/clients/satguru.webp") },
-  { name: "Marriott", logo: publicAsset("/clients/marriott.webp") },
-]);
+const clients = wordpressContent("clients", DEFAULT_CLIENTS);
 
-const projects = wordpressContent("projects", [
-  { slug: "meridian-residences", title: "Meridian Residences", segment: "MARBLE & STONE", category: "Residential", image: "photo-1600585154340-be6161a56a0c", gallery: ["photo-1600585154340-be6161a56a0c", "photo-1618221195710-dd6b41faaea6", "photo-1616486338812-3dadae4b4ace"], year: "2024", location: "Alibaug, Maharashtra", description: "Twelve seafront villas clad in a custom facade stone quarried, cut and installed end-to-end.", challenge: "The facade needed to weather the salt air without turning grey.", approach: "We specified a dense sandstone with a low porosity and honed it to bring the warm undertones forward.", outcomes: [["12", "villas delivered"], ["18 mo", "site to handover"], ["100%", "material in-house"]], credits: ["Drawstones — Facade & Interior Stone", "Formwork — Civil & Finishing", "Architect — External partner"] },
-  { slug: "kabbon-lounge", title: "Kabbon Lounge", segment: "INTERIOR DECOR", category: "Hospitality", image: "photo-1600607687939-ce8a6c25118c", gallery: ["photo-1600607687939-ce8a6c25118c", "photo-1600566753190-17f0baa2a6c3", "photo-1616486338812-3dadae4b4ace"], year: "2024", location: "Bengaluru, Karnataka", description: "A 90-cover restaurant designed around a single travertine bar block.", challenge: "The client wanted the room to feel monolithic without becoming cold.", approach: "One stone, three finishes — a polished bar top, honed cladding, split-face walls. Warm oak floors soften everything else.", outcomes: [["1", "material palette"], ["4 mo", "design to open"], ["120 sqm", "of stone specified"]], credits: ["Vignette — Concept & Execution", "Drawstones — Travertine sourcing", "Formwork — Fit-out"] },
-  { slug: "veda-clubhouse", title: "Veda Clubhouse", segment: "CONSTRUCTION", category: "Amenity", image: "photo-1600566753190-17f0baa2a6c3", gallery: ["photo-1600566753190-17f0baa2a6c3", "photo-1618221195710-dd6b41faaea6", "photo-1600585154340-be6161a56a0c"], year: "2023", location: "Pune, Maharashtra", description: "A residential clubhouse — pool, gym, event spaces — built as one continuous stone ribbon.", challenge: "Every wall inside and out had to read as the same material.", approach: "We wrapped the volume in a Kota-limestone rain screen and continued the same stone through the pool coping and lobby floor.", outcomes: [["2,400 sqm", "built-up"], ["3", "levels"], ["14 mo", "structure to soft launch"]], credits: ["Formwork — Structure & Finishing", "Drawstones — Kota supply", "Renest — Pool decking"] },
-  { slug: "annex-workspace", title: "Annex Workspace", segment: "FLOORING", category: "Commercial", image: "photo-1616486338812-3dadae4b4ace", gallery: ["photo-1616486338812-3dadae4b4ace", "photo-1600607687939-ce8a6c25118c", "photo-1503387762-592deb58ef4e"], year: "2023", location: "Gurugram, Haryana", description: "40,000 sqft of workspace flooring across three floors, delivered in a six-week window.", challenge: "A hospitality-grade floor that could take a corporate footfall.", approach: "Contract-grade SPC in two warm tones, pre-cut off-site so installation ran cleanly.", outcomes: [["40,000 sqft", "installed"], ["6 wk", "on site"], ["0", "post-handover claims"]], credits: ["Renest — Specification & Installation", "Formwork — Sub-structure"] },
-  { slug: "atrium-mall", title: "Atrium Mall", segment: "MARBLE & STONE", category: "Commercial", image: "photo-1503387762-592deb58ef4e", gallery: ["photo-1503387762-592deb58ef4e", "photo-1600585154340-be6161a56a0c", "photo-1618221195710-dd6b41faaea6"], year: "2022", location: "Jaipur, Rajasthan", description: "Retail atrium with a book-matched onyx feature wall and a full-marble concourse.", challenge: "Matching stone across 45 running metres of feature wall.", approach: "We sourced two adjacent onyx blocks, cut them ourselves, and book-matched every panel before shipping.", outcomes: [["45 m", "book-matched wall"], ["3,600 sqm", "concourse marble"], ["1", "onyx block, split"]], credits: ["Drawstones — Sourcing, cutting, installation", "Formwork — Substrate & wall build"] },
-  { slug: "shore-villa", title: "Shore Villa", segment: "INTERIOR DECOR", category: "Residential", image: "photo-1618221195710-dd6b41faaea6", gallery: ["photo-1618221195710-dd6b41faaea6", "photo-1600585154340-be6161a56a0c", "photo-1616486338812-3dadae4b4ace"], year: "2024", location: "Goa", description: "A four-bedroom villa where every fixed surface is stone.", challenge: "Keep a heavy-material palette from feeling like a museum.", approach: "Three warm marbles, natural lime plaster, oak floors and light linen textiles. Nothing else.", outcomes: [["4", "bedrooms"], ["3", "stones"], ["9 mo", "design to move-in"]], credits: ["Vignette — Full scope", "Drawstones — Kitchen, bath, feature wall", "Renest — Oak plank"] },
-  { slug: "civic-facade", title: "Civic Facade", segment: "MARBLE & STONE", category: "Institutional", image: "photo-1580587771525-78b9dba3b914", gallery: ["photo-1580587771525-78b9dba3b914", "photo-1600585154340-be6161a56a0c", "photo-1618221195710-dd6b41faaea6"], year: "2022", location: "Ahmedabad, Gujarat", description: "A civic building facade in flame-finished granite installed as a dry-cladding system.", challenge: "A facade that would read cleanly at scale and stay clean over the years.", approach: "Self-cleaning flame finish, a 4mm shadow gap and a sub-frame built to hold thermal movement.", outcomes: [["1,850 sqm", "facade"], ["4mm", "reveal, everywhere"], ["7", "elevations resolved"]], credits: ["Drawstones — Supply & installation", "Formwork — Sub-frame & envelope"] },
-  { slug: "kiln-restaurant", title: "Kiln Restaurant", segment: "CONSTRUCTION", category: "Hospitality", image: "photo-1600566753190-17f0baa2a6c3", gallery: ["photo-1600566753190-17f0baa2a6c3", "photo-1600607687939-ce8a6c25118c", "photo-1503387762-592deb58ef4e"], year: "2023", location: "Mumbai, Maharashtra", description: "A 3,200 sqft restaurant built around an exposed brick and stone kiln.", challenge: "Structural rework to expose the kiln without losing the load path.", approach: "We ran a new steel transfer above the kiln and let the original masonry become the room.", outcomes: [["1", "kiln, exposed"], ["3,200 sqft", "fit-out"], ["5 mo", "shell to open"]], credits: ["Formwork — Structural, shell & core", "Vignette — Design & Fit-out", "Drawstones — Bar & floor stone"] },
-  { slug: "lumen-apartment", title: "Lumen Apartment", segment: "INTERIOR DESIGNING", category: "Residential", image: "photo-1631679706909-1844bbd07221", gallery: ["photo-1631679706909-1844bbd07221", "photo-1618220179428-22790b461013", "photo-1600585154340-be6161a56a0c"], year: "2024", location: "Bengaluru, Karnataka", description: "A full interior-designing brief for a light-first city apartment, resolved end-to-end before a single wall moved.", challenge: "A dark, compartmentalised flat that needed to feel open without losing storage.", approach: "We redrew the plan around a single daylight axis, set a warm neutral palette and detailed every joinery run in 3D before build.", outcomes: [["1,650 sqft", "reimagined"], ["3D", "sign-off before build"], ["6 wk", "concept to drawings"]], credits: ["BDS Marvel — Concept, planning & detailing", "Renest — Oak flooring", "Formwork — Fit-out"] },
-  { slug: "sable-studio-office", title: "Sable Studio Office", segment: "INTERIOR DESIGNING", category: "Commercial", image: "photo-1618220179428-22790b461013", gallery: ["photo-1618220179428-22790b461013", "photo-1631679706909-1844bbd07221", "photo-1616486338812-3dadae4b4ace"], year: "2023", location: "Jaipur, Rajasthan", description: "Interior designing for a creative studio — spatial planning, material palette and lighting concept delivered as one scheme.", challenge: "Give a 20-person studio focus zones and social zones inside one open floor.", approach: "Zoning by material and light: honed stone at the core, warm oak at the edges, layered task and ambient lighting throughout.", outcomes: [["20", "person studio"], ["4", "material palette"], ["5 mo", "design to move-in"]], credits: ["BDS Marvel — Full interior-design scope", "Drawstones — Core stone", "Renest — Oak & contract flooring"] },
-]);
+const projects = wordpressContent("projects", DEFAULT_PROJECTS);
 
 
 // WordPress records can be created or edited with optional catalogue fields left
@@ -311,6 +270,7 @@ function DeferredBackground({ style, watchId, ...props }) {
 
 function Home() {
   usePageMeta("BDSM · BDS Marvel | Marble & Stone, Flooring, Construction & Interiors", "One design and build studio for marble and stone, flooring, turnkey construction and interior design — workshops and studios across India: Kishangarh, Mumbai, Gurugram, Pune, New Delhi and Goa.");
+  const { approach } = useSiteContent();
   const [activeApproach, setActiveApproach] = useState(0);
   useOrbitScroll();
   const heroRef = useRef(null);
@@ -394,6 +354,7 @@ function Home() {
 }
 
 function ProjectsSlideshow() {
+  const projects = useProjects();
   const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
   const touchStartX = useRef(null);
@@ -401,7 +362,7 @@ function ProjectsSlideshow() {
     if (paused || !projects.length) return undefined;
     const id = setInterval(() => setActive((index) => (index + 1) % projects.length), 5000);
     return () => clearInterval(id);
-  }, [paused]);
+  }, [paused, projects.length]);
   const project = projects[active % projects.length];
   const showNext = () => setActive((index) => (index + 1) % projects.length);
   const showPrev = () => setActive((index) => (index + projects.length - 1) % projects.length);
@@ -649,6 +610,7 @@ function ExperienceSpotlight() {
 }
 
 function Clientele() {
+  const { clients } = useSiteContent();
   const rows = [clients.slice(0, 12), clients.slice(12)];
   const tile = (client, testId) => <div className="client-logo" role="img" aria-label={`${client.name} logo`} key={client.name} data-testid={testId}>
     {client.logo ? <img src={client.logo} alt={client.name} loading="lazy" /> : <span className="client-logo__word">{client.name}</span>}
@@ -1071,6 +1033,7 @@ function App() {
 
   return <Router basename={window.BDS_WORDPRESS?.routerMode === "browser" ? window.BDS_WORDPRESS.basename : undefined}>
     <AuthProvider>
+    <ContentProvider>
     <StaysProvider>
     <ContactProvider>
       <ConsultationProvider>
@@ -1082,6 +1045,7 @@ function App() {
       </ConsultationProvider>
     </ContactProvider>
     </StaysProvider>
+    </ContentProvider>
     </AuthProvider>
   </Router>;
 }

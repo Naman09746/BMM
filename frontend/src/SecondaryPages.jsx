@@ -9,7 +9,8 @@ import { AuthProvider, StaysProvider, useAuth } from "./stays/store";
 import { registerStaysData } from "./stays/data";
 import "@/stays/stays.css";
 import { buildMaterialGallery } from "@/catalogueGallery";
-import { ContactTrigger, CountUp, SampleTrigger, approach, img, projects, segments, stayTiers, stays, tierSlugOf, useConsultation, useContact, useInquiry, usePageMeta, useSample } from "./App";
+import { ContactTrigger, CountUp, SampleTrigger, approach, img, projects as staticProjects, segments, stayTiers, stays, tierSlugOf, useConsultation, useContact, useInquiry, usePageMeta, useSample } from "./App";
+import { useProjects } from "./contentStore";
 
 const catalogueContent = wordpressContent("catalogueItems", [
   // DrawStones — the signature product range
@@ -152,6 +153,7 @@ const SEGMENT_SEO = wordpressContent("SEGMENT_SEO", {
 
 function SegmentPage() {
   const { slug } = useParams();
+  const projects = useProjects();
   const segment = segments.find((item) => item.slug === slug) || segments[0];
   const related = projects.filter((item) => item.segment === segment.name);
   const extra = serviceExtras[segment.slug];
@@ -202,9 +204,10 @@ function SegmentPage() {
 
 function ProjectPage() {
   const { slug } = useParams();
+  const projects = useProjects();
   const project = projects.find((item) => item.slug === slug);
   const segment = segments.find((item) => item.name === project?.segment);
-  const nextProject = projects[(projects.indexOf(project) + 1) % projects.length];
+  const nextProject = projects.length > 0 ? projects[(projects.indexOf(project) + 1) % projects.length] : null;
   usePageMeta(project ? `${project.title} | BDSM · BDS Marvel Projects` : "Projects", project?.description || "Projects");
   if (!project) return <Navigate to="/projects" replace />;
   return <main className={`case-study-page case-study-page--${segment?.tone || "sand"}`} data-testid="case-study-page">
@@ -219,10 +222,11 @@ function ProjectPage() {
 
 function ProjectsArchive() {
   usePageMeta("Projects | BDSM · BDS Marvel", "Residential, hospitality, commercial and civic projects in stone, flooring, construction and interiors — delivered across India by one in-house team.");
+  const projects = useProjects();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("All work");
   const filterOptions = ["All work", ...segments.map((s) => s.name)];
-  const filtered = useMemo(() => projects.filter((item) => (filter === "All work" || item.segment === filter) && `${item.title} ${item.category} ${item.segment} ${item.location}`.toLowerCase().includes(query.toLowerCase())), [filter, query]);
+  const filtered = useMemo(() => projects.filter((item) => (filter === "All work" || item.segment === filter) && `${item.title} ${item.category} ${item.segment} ${item.location}`.toLowerCase().includes(query.toLowerCase())), [projects, filter, query]);
   return <main className="work-page" data-testid="work-archive-page">
     <section className="work-hero"><div className="detail-kicker"><span>BDSM · PROJECTS {new Date().getFullYear()}</span><Link to="/" state={{ restore: true }} data-testid="work-back-home-link">BACK HOME</Link></div><p className="eyebrow">THE WORK</p><h1>Projects across<br /><em>materials & scale.</em></h1></section>
     <section className="work-library">

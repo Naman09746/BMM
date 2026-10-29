@@ -2117,6 +2117,29 @@ class StayIn(BaseModel):
     is_active: bool = True
 
 
+class ProjectIn(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+    slug: Optional[str] = Field(default=None, max_length=120)
+    segment: str = Field(default="MARBLE & STONE", max_length=100)
+    category: str = Field(default="Residential", max_length=100)
+    image: str = Field(min_length=1, max_length=1000)
+    gallery: Optional[List[str]] = Field(default_factory=list)
+    year: Optional[str] = Field(default="2024", max_length=20)
+    location: Optional[str] = Field(default="", max_length=200)
+    description: Optional[str] = Field(default="", max_length=8000)
+    challenge: Optional[str] = Field(default="", max_length=4000)
+    approach: Optional[str] = Field(default="", max_length=4000)
+    outcomes: Optional[List[List[str]]] = Field(default_factory=list)
+    credits: Optional[List[str]] = Field(default_factory=list)
+    is_active: bool = True
+
+
+class SiteContentIn(BaseModel):
+    approach: Optional[List[dict]] = Field(default_factory=list)
+    clients: Optional[List[dict]] = Field(default_factory=list)
+
+
+
 # --- Catalogue inventory endpoints ---
 
 @api_router.get("/catalogue")
@@ -2295,6 +2318,113 @@ async def admin_delete_stay(identifier: str, _: dict = Depends(require_admin), r
     return {"status": "ok", "deleted_id": target["id"], "slug": target["slug"]}
 
 
+# --- Projects endpoints ---
+
+@api_router.get("/projects")
+async def list_projects(segment: Optional[str] = None, q: Optional[str] = None, all: bool = False):
+    query = {}
+    if not all:
+        query["is_active"] = {"$ne": False}
+    if segment and segment != "All" and segment != "All work":
+        query["segment"] = segment
+    if q and q.strip():
+        rgx = {"$regex": re.escape(q.strip()), "$options": "i"}
+        query["$or"] = [{"title": rgx}, {"slug": rgx}, {"category": rgx}, {"location": rgx}, {"description": rgx}]
+
+    docs = await db.projects.find(query, {"_id": 0}).sort("year", -1).to_list(500)
+    if not docs and not query:
+        try:
+            docs = json.loads((ROOT_DIR / "projects_seed.json").read_text())
+        except Exception:
+            docs = []
+    return docs
+
+
+@api_router.get("/projects/{identifier}")
+async def get_project(identifier: str):
+    doc = await db.projects.find_one({"$or": [{"slug": identifier}, {"id": identifier}]}, {"_id": 0})
+    if not doc:
+        try:
+            items = json.loads((ROOT_DIR / "projects_seed.json").read_text())
+            for it in items:
+                if it.get("slug") == identifier or it.get("id") == identifier:
+                    return it
+        except Exception:
+            pass
+        raise HTTPException(status_code=404, detail="Project not found")
+    return doc
+
+
+@api_router.post("/admin/projects", status_code=201)
+async def admin_create_project(payload: ProjectIn, _: dict = Depends(require_admin), request: Request = None):
+    data = payload.model_dump()
+    slug = (data.get("slug") or "").strip() or _slugify(data["title"])
+    existing = await db.projects.find_one({"slug": slug})
+    if existing:
+        slug = f"{slug}-{uuid.uuid4().hex[:4]}"
+    data["slug"] = slug
+    data["id"] = str(uuid.uuid4())
+    now = datetime.now(timezone.utc).isoformat()
+    data["created_at"] = now
+    data["updated_at"] = now
+    await db.projects.insert_one(data)
+    created = await db.projects.find_one({"id": data["id"]}, {"_id": 0})
+    await log_admin_action(_, "create_project", f"project:{slug}", {"title": data["title"]}, request=request)
+    return created
+
+
+@api_router.put("/admin/projects/{identifier}")
+async def admin_update_project(identifier: str, payload: ProjectIn, _: dict = Depends(require_admin), request: Request = None):
+    target = await db.projects.find_one({"$or": [{"id": identifier}, {"slug": identifier}]})
+    if not target:
+        raise HTTPException(status_code=404, detail="Project not found")
+    data = payload.model_dump()
+    if data.get("slug") and data["slug"] != target.get("slug"):
+        clash = await db.projects.find_one({"slug": data["slug"], "id": {"$ne": target["id"]}})
+        if clash:
+            raise HTTPException(status_code=409, detail="A project with this slug already exists.")
+    else:
+        data["slug"] = target["slug"]
+    data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    await db.projects.update_one({"id": target["id"]}, {"$set": data})
+    await log_admin_action(_, "update_project", f"project:{target['id']}", {"slug": data["slug"]}, request=request)
+    return await db.projects.find_one({"id": target["id"]}, {"_id": 0})
+
+
+@api_router.delete("/admin/projects/{identifier}")
+async def admin_delete_project(identifier: str, _: dict = Depends(require_admin), request: Request = None):
+    target = await db.projects.find_one({"$or": [{"id": identifier}, {"slug": identifier}]})
+    if not target:
+        raise HTTPException(status_code=404, detail="Project not found")
+    await db.projects.delete_one({"id": target["id"]})
+    await log_admin_action(_, "delete_project", f"project:{target['id']}", {"slug": target["slug"]}, request=request)
+    return {"status": "ok", "deleted_id": target["id"], "slug": target["slug"]}
+
+
+# --- Site content endpoints ---
+
+@api_router.get("/site-content")
+async def get_site_content():
+    doc = await db.site_content.find_one({"id": "global_site_content"}, {"_id": 0})
+    if not doc:
+        try:
+            doc = json.loads((ROOT_DIR / "site_content_seed.json").read_text())
+        except Exception:
+            doc = {"approach": [], "clients": []}
+    return doc
+
+
+@api_router.put("/admin/site-content")
+async def update_site_content(payload: SiteContentIn, _: dict = Depends(require_admin), request: Request = None):
+    data = payload.model_dump()
+    data["id"] = "global_site_content"
+    data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    await db.site_content.update_one({"id": "global_site_content"}, {"$set": data}, upsert=True)
+    await log_admin_action(_, "update_site_content", "site_content:global", request=request)
+    return await db.site_content.find_one({"id": "global_site_content"}, {"_id": 0})
+
+
+
 # --- Media upload & serving endpoints ---
 
 @api_router.post("/admin/media/upload")
@@ -2398,6 +2528,36 @@ async def startup_auth():
                     logger.info("Seeded %d stays into db.stays", len(stay_items))
     except Exception as e:
         logger.warning("Stays seeding notice: %s", e)
+
+    # Seed projects collection if empty
+    try:
+        await db.projects.create_index("slug", unique=True)
+        await db.projects.create_index([("segment", 1), ("is_active", 1)])
+        if await db.projects.count_documents({}) == 0:
+            proj_seed_path = ROOT_DIR / "projects_seed.json"
+            if proj_seed_path.exists():
+                proj_items = json.loads(proj_seed_path.read_text())
+                now = datetime.now(timezone.utc).isoformat()
+                for it in proj_items:
+                    it.setdefault("id", str(uuid.uuid4()))
+                    it.setdefault("created_at", now)
+                    it.setdefault("updated_at", now)
+                if proj_items:
+                    await db.projects.insert_many(proj_items)
+                    logger.info("Seeded %d projects into db.projects", len(proj_items))
+    except Exception as e:
+        logger.warning("Projects seeding notice: %s", e)
+
+    # Seed site_content collection if empty
+    try:
+        if await db.site_content.count_documents({}) == 0:
+            content_seed_path = ROOT_DIR / "site_content_seed.json"
+            if content_seed_path.exists():
+                content_doc = json.loads(content_seed_path.read_text())
+                await db.site_content.insert_one(content_doc)
+                logger.info("Seeded site_content into db.site_content")
+    except Exception as e:
+        logger.warning("Site content seeding notice: %s", e)
 
     admin_email = os.environ.get("ADMIN_EMAIL", "").lower()
     if admin_email:
