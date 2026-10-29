@@ -992,8 +992,10 @@ def _set_cookie(response: Response, key: str, value: str, max_age: int):
 
 
 def _issue_jwt(response: Response, user_id: str):
-    _set_cookie(response, "access_token", _jwt(user_id, "access", timedelta(minutes=15)), 900)
+    access = _jwt(user_id, "access", timedelta(minutes=15))
+    _set_cookie(response, "access_token", access, 900)
     _set_cookie(response, "refresh_token", _jwt(user_id, "refresh", timedelta(days=7)), 604800)
+    return access
 
 
 def generate_totp(secret: str, time_step: int = 30, digits: int = 6, for_time: float = None) -> str:
@@ -1056,6 +1058,7 @@ class UserOut(BaseModel):
     mfa_required: Optional[bool] = None
     mfa_token: Optional[str] = None
     totp_enabled: Optional[bool] = None
+    access_token: Optional[str] = None
 
 
 class RegisterIn(BaseModel):
@@ -1187,11 +1190,11 @@ async def login(payload: LoginIn, request: Request, response: Response, _rl=Depe
                 raise HTTPException(status_code=401, detail="Invalid two-factor authentication code.")
 
     await db.login_attempts.delete_many({"identifier": {"$in": [identifier, f"acct:{email}"]}})
-    _issue_jwt(response, user["user_id"])
+    access_token = _issue_jwt(response, user["user_id"])
     if user.get("role") == "admin":
         await log_admin_action(user, "admin_login", f"user:{user['user_id']}", request=request)
         await _alert_new_admin_device(request)
-    return UserOut(**user)
+    return UserOut(**user, access_token=access_token)
 
 
 @api_router.post("/auth/mfa-verify", response_model=UserOut)
@@ -1235,11 +1238,11 @@ async def verify_mfa(payload: MfaVerifyIn, request: Request, response: Response)
         raise HTTPException(status_code=401, detail="Invalid two-factor authentication code.")
 
     await db.login_attempts.delete_many({"identifier": {"$in": [identifier, f"acct:{email}"]}})
-    _issue_jwt(response, user["user_id"])
+    access_token = _issue_jwt(response, user["user_id"])
     await log_admin_action(user, "admin_login_mfa_success", f"user:{user['user_id']}", request=request)
     if user.get("role") == "admin":
         await _alert_new_admin_device(request)
-    return UserOut(**user)
+    return UserOut(**user, access_token=access_token)
 
 
 _UA_LABELS = [("Edg", "Edge"), ("OPR", "Opera"), ("Chrome", "Chrome"), ("Firefox", "Firefox"), ("Safari", "Safari")]

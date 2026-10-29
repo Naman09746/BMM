@@ -12,7 +12,12 @@ export function formatApiError(detail) {
 
 export async function api(path, { method = "GET", body } = {}) {
   const isForm = typeof FormData !== "undefined" && body instanceof FormData;
-  const headers = isForm ? undefined : (body ? { "Content-Type": "application/json" } : undefined);
+  const token = typeof sessionStorage !== "undefined" ? (sessionStorage.getItem("bds_token") || localStorage.getItem("bds_token")) : null;
+  const authHeader = token ? { Authorization: `Bearer ${token}` } : {};
+  const headers = isForm ? (token ? authHeader : undefined) : {
+    ...(body ? { "Content-Type": "application/json" } : {}),
+    ...authHeader
+  };
   const payload = isForm ? body : (body ? JSON.stringify(body) : undefined);
   const res = await fetch(`${API}/api${path}`, { method, credentials: "include", headers, body: payload });
   const data = await res.json().catch(() => ({}));
@@ -55,7 +60,11 @@ export function AuthProvider({ children }) {
     if (window.location.hash?.includes("session_id=")) { setUser(false); return; }
     check();
   }, [check]);
-  const logout = useCallback(async () => { await api("/auth/logout", { method: "POST" }).catch(() => {}); setUser(false); }, []);
+  const logout = useCallback(async () => {
+    try { sessionStorage.removeItem("bds_token"); localStorage.removeItem("bds_token"); } catch {}
+    await api("/auth/logout", { method: "POST" }).catch(() => {});
+    setUser(false);
+  }, []);
   return createElement(AuthCtx.Provider, { value: { user, setUser, logout, check } }, children);
 }
 export const useAuth = () => useContext(AuthCtx);

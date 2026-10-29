@@ -38,6 +38,9 @@ export function OwnerLogin({ onSuccess }) {
         setMfaData({ mfa_token: res.mfa_token, email: form.email.trim() });
         setStatus({ busy: false, error: "" });
       } else {
+        if (res.access_token) {
+          try { sessionStorage.setItem("bds_token", res.access_token); localStorage.setItem("bds_token", res.access_token); } catch {}
+        }
         setUser(res);
         onSuccess?.(res);
       }
@@ -58,6 +61,9 @@ export function OwnerLogin({ onSuccess }) {
         method: "POST",
         body: { mfa_token: mfaData.mfa_token, totp_code: form.totp_code.trim() }
       });
+      if (res.access_token) {
+        try { sessionStorage.setItem("bds_token", res.access_token); localStorage.setItem("bds_token", res.access_token); } catch {}
+      }
       setUser(res);
       onSuccess?.(res);
     } catch (err) {

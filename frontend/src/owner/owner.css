@@ -254,4 +254,79 @@
 .admin-gate-modal .admin-gate-panel{position:relative;width:min(460px,100%);max-height:calc(100vh - 80px);overflow-y:auto;background:var(--od-paper,#f4efe6);color:var(--od-ink,#0d0b09);border:1px solid var(--od-line,#e3dbcc);border-radius:24px;padding:36px 32px;display:block;box-shadow:0 30px 70px rgba(0,0,0,.35)}
 .admin-gate-modal .od-auth{max-width:100%;margin:0;background:transparent;border:0;box-shadow:none;padding:0}
 
+/* Mobile & Smartphone Optimizations (<768px) */
+@media(max-width:768px){
+  .od-page{padding:84px 14px 60px}
+  .od-wrap{width:100%}
+
+  /* Header & Action buttons */
+  .od-head{flex-direction:column;align-items:stretch;gap:14px;margin-bottom:16px}
+  .od-title{font-size:28px;line-height:1.15;margin-bottom:4px}
+  .od-sub{font-size:12.5px;margin:0 0 10px;word-break:break-word}
+  .od-head__actions{display:flex;width:100%;gap:8px}
+  .od-head__actions .od-btn{flex:1;justify-content:center;padding:9px 12px;font-size:12.5px}
+
+  /* Compact 2x2 Stats Grid */
+  .od-stats{grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:18px}
+  .od-stat{padding:12px 14px;border-radius:14px}
+  .od-stat b{font-size:22px;margin-bottom:2px}
+  .od-stat span{font-size:10px;letter-spacing:1px;line-height:1.2}
+
+  /* Horizontal Swipeable Segmented Tab Bar */
+  .od-tabs{display:flex;gap:6px;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;border-bottom:1px solid var(--od-line);padding:2px 2px 12px;margin-bottom:16px}
+  .od-tabs::-webkit-scrollbar{display:none}
+  .od-tab{padding:8px 14px;font-size:12.5px;border-radius:999px;background:var(--od-surface);border:1px solid var(--od-line);color:var(--od-muted);flex-shrink:0;transition:all .2s ease}
+  .od-tab.is-on{background:var(--od-ink);color:var(--od-paper);border-color:var(--od-ink);box-shadow:0 2px 8px rgba(13,11,9,.15)}
+  .od-tab.is-on::after{display:none}
+  .od-tab__count{margin-left:5px;font-size:10px;padding:1px 5px}
+
+  /* Toolbar: Search, Filters & Add Buttons */
+  .cm-toolbar{flex-direction:column;align-items:stretch;gap:10px;margin-bottom:16px}
+  .cm-search-wrap{min-width:100%;width:100%}
+  .cm-search-input{font-size:13px;padding:10px 36px 10px 38px;min-height:42px}
+  .cm-filters{display:flex;flex-wrap:wrap;width:100%;gap:8px}
+  .cm-select-wrap{flex:1 1 calc(50% - 4px);min-width:0;justify-content:space-between;padding:6px 10px}
+  .cm-select-wrap select{max-width:65%;font-size:12px}
+  .cm-toolbar .od-btn{padding:8px 14px;font-size:12.5px}
+  .cm-add-btn{width:100%;justify-content:center;padding:11px 16px;font-size:13.5px;order:3}
+
+  /* Single Column Card Grids */
+  .cm-grid{grid-template-columns:1fr;gap:14px;margin-bottom:24px}
+  .cm-card{border-radius:16px}
+  .cm-card__media{height:180px}
+  .cm-card__body{padding:14px 16px}
+  .cm-card__title{font-size:20px}
+  .cm-card__footer{flex-direction:column;align-items:stretch;gap:12px}
+  .cm-card__links{justify-content:space-between;width:100%}
+  .cm-card__actions{display:flex;width:100%;gap:8px}
+  .cm-card__actions .od-btn{flex:1;justify-content:center;padding:9px;font-size:12.5px}
+
+  /* Booking & Enquiry Cards */
+  .od-card{padding:15px;border-radius:16px;margin-bottom:12px}
+  .od-card__top{flex-direction:column;align-items:flex-start;gap:6px}
+  .od-card__stay{font-size:20px}
+  .od-card__actions{width:100%;display:flex;gap:8px}
+  .od-card__actions .od-btn{flex:1;justify-content:center;padding:10px;font-size:12.5px}
+  .od-quote{grid-template-columns:1fr;gap:12px}
+  .od-quote__img{width:100%;height:180px;border-radius:12px}
+
+  /* Slide-Up Bottom Sheet Modals */
+  .cm-modal-overlay{padding:0;align-items:flex-end}
+  .cm-modal{width:100%;max-width:100%;max-height:90vh;border-bottom-left-radius:0;border-bottom-right-radius:0;border-radius:20px 20px 0 0;margin:0}
+  .cm-modal__head{padding:18px 20px 14px}
+  .cm-modal__title{font-family:'Cormorant Garamond',serif;font-size:22px}
+  .cm-form{padding:18px 20px}
+  .cm-form-grid{grid-template-columns:1fr;gap:12px}
+  .cm-col-2{grid-column:span 1}
+  .cm-upload-grid{grid-template-columns:1fr}
+  .cm-image-preview-wrap{width:100%;height:180px}
+  .cm-modal__footer{padding:14px 20px;gap:8px}
+  .cm-modal__footer .od-btn{flex:1;justify-content:center}
+
+  /* Admin Gate Login Modal on Mobile */
+  .admin-gate-modal{padding:0;align-items:flex-end}
+  .admin-gate-modal .admin-gate-panel{width:100%;max-width:100%;max-height:88vh;border-radius:22px 22px 0 0;padding:28px 20px 36px;margin:0}
+}
+
+
 
