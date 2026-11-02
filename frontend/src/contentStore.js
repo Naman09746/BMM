@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
+import { publicAsset } from "./wordpress";
 
 const BACKEND_URL = (process.env.REACT_APP_BACKEND_URL || (typeof window !== "undefined" ? window.location.origin : "")).replace(/\/$/, "");
 
@@ -24,30 +25,30 @@ export const DEFAULT_APPROACH = [
 ];
 
 export const DEFAULT_CLIENTS = [
-  { name: "L&T — LNT Pvt Ltd", logo: "/clients/lnt.webp" },
-  { name: "Mangalam Organics", logo: "/clients/mangalam.webp" },
-  { name: "The Lalit", logo: "/clients/lalit.webp" },
-  { name: "ITC Hotels", logo: "/clients/itc.webp" },
-  { name: "Boutique Hotels", logo: "/clients/boutique.webp" },
-  { name: "Clarks Amer", logo: "/clients/clarks-amer.webp" },
-  { name: "NHAI", logo: "/clients/nhai.webp" },
-  { name: "Kshetrapal Hospital Ajmer", logo: "/clients/kshetrapal.webp" },
-  { name: "Mewar Estate Ajmer", logo: "/clients/mewar-estate.webp" },
-  { name: "JLN Hospital Ajmer", logo: "/clients/jln.webp" },
-  { name: "MPS School Ajmer", logo: "/clients/mps.webp" },
-  { name: "DWPS Ajmer", logo: "/clients/dwps.webp" },
-  { name: "Mayo College Ajmer", logo: "/clients/mayo.webp" },
-  { name: "Taj Pratap Mahal Ajmer", logo: "/clients/taj.webp" },
-  { name: "JSB Kishangarh", logo: "/clients/jsb.webp" },
-  { name: "AKV Kishangarh", logo: "/clients/akv.webp" },
-  { name: "Bhutra Marble Kishangarh", logo: "/clients/bhutra.webp" },
-  { name: "CBSE Ajmer", logo: "/clients/cbse.webp" },
-  { name: "RBSE Ajmer", logo: "/clients/rbse.webp" },
-  { name: "Income Tax Department Ajmer", logo: "/clients/income-tax.webp" },
-  { name: "Army Cantt", logo: "/clients/army-cantt.webp" },
-  { name: "Ramada Ajmer", logo: "/clients/ramada.webp" },
-  { name: "Satguru Group Ajmer", logo: "/clients/satguru.webp" },
-  { name: "Marriott", logo: "/clients/marriott.webp" }
+  { name: "L&T — LNT Pvt Ltd", logo: publicAsset("/clients/lnt.webp") },
+  { name: "Mangalam Organics", logo: publicAsset("/clients/mangalam.webp") },
+  { name: "The Lalit", logo: publicAsset("/clients/lalit.webp") },
+  { name: "ITC Hotels", logo: publicAsset("/clients/itc.webp") },
+  { name: "Boutique Hotels", logo: publicAsset("/clients/boutique.webp") },
+  { name: "Clarks Amer", logo: publicAsset("/clients/clarks-amer.webp") },
+  { name: "NHAI", logo: publicAsset("/clients/nhai.webp") },
+  { name: "Kshetrapal Hospital Ajmer", logo: publicAsset("/clients/kshetrapal.webp") },
+  { name: "Mewar Estate Ajmer", logo: publicAsset("/clients/mewar-estate.webp") },
+  { name: "JLN Hospital Ajmer", logo: publicAsset("/clients/jln.webp") },
+  { name: "MPS School Ajmer", logo: publicAsset("/clients/mps.webp") },
+  { name: "DWPS Ajmer", logo: publicAsset("/clients/dwps.webp") },
+  { name: "Mayo College Ajmer", logo: publicAsset("/clients/mayo.webp") },
+  { name: "Taj Pratap Mahal Ajmer", logo: publicAsset("/clients/taj.webp") },
+  { name: "JSB Kishangarh", logo: publicAsset("/clients/jsb.webp") },
+  { name: "AKV Kishangarh", logo: publicAsset("/clients/akv.webp") },
+  { name: "Bhutra Marble Kishangarh", logo: publicAsset("/clients/bhutra.webp") },
+  { name: "CBSE Ajmer", logo: publicAsset("/clients/cbse.webp") },
+  { name: "RBSE Ajmer", logo: publicAsset("/clients/rbse.webp") },
+  { name: "Income Tax Department Ajmer", logo: publicAsset("/clients/income-tax.webp") },
+  { name: "Army Cantt", logo: publicAsset("/clients/army-cantt.webp") },
+  { name: "Ramada Ajmer", logo: publicAsset("/clients/ramada.webp") },
+  { name: "Satguru Group Ajmer", logo: publicAsset("/clients/satguru.webp") },
+  { name: "Marriott", logo: publicAsset("/clients/marriott.webp") }
 ];
 
 export const liveContentState = {

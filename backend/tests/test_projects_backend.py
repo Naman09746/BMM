@@ -1,5 +1,8 @@
 import unittest
-from backend.server import ProjectIn, SiteContentIn
+try:
+    from backend.server import ProjectIn, SiteContentIn
+except ImportError:
+    from server import ProjectIn, SiteContentIn
 
 class ProjectValidationTests(unittest.TestCase):
     def test_project_in_valid(self):

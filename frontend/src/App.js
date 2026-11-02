@@ -612,9 +612,17 @@ function ExperienceSpotlight() {
 function Clientele() {
   const { clients } = useSiteContent();
   const rows = [clients.slice(0, 12), clients.slice(12)];
-  const tile = (client, testId) => <div className="client-logo" role="img" aria-label={`${client.name} logo`} key={client.name} data-testid={testId}>
-    {client.logo ? <img src={client.logo} alt={client.name} loading="lazy" /> : <span className="client-logo__word">{client.name}</span>}
-  </div>;
+  const resolveLogo = (logo) => {
+    if (!logo) return null;
+    if (logo.startsWith("http://") || logo.startsWith("https://") || logo.startsWith("data:")) return logo;
+    return publicAsset(logo);
+  };
+  const tile = (client, testId) => {
+    const src = resolveLogo(client.logo);
+    return <div className="client-logo" role="img" aria-label={`${client.name} logo`} key={client.name} data-testid={testId}>
+      {src ? <img src={src} alt={client.name} loading="lazy" /> : <span className="client-logo__word">{client.name}</span>}
+    </div>;
+  };
   return <section className="clients-section" id="clients" data-testid="clients-section">
     <Reveal className="clients-title">
       <div><span className="section-index" data-testid="clientele-label">Clientele</span><h2 data-testid="clientele-title">Trusted by leaders in hospitality, infrastructure, education and public institutions.</h2></div>
