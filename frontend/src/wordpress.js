@@ -37,8 +37,13 @@ export async function apiFetch(endpoint, options = {}) {
 }
 
 export function publicAsset(path) {
-  if (typeof window !== "undefined" && window.BDS_WORDPRESS?.themeUrl) {
-    return `${window.BDS_WORDPRESS.themeUrl}${path.startsWith("/") ? path : `/${path}`}`;
+  if (typeof window !== "undefined") {
+    if (window.BDS_WORDPRESS?.themeUrl) {
+      return `${window.BDS_WORDPRESS.themeUrl}${path.startsWith("/") ? path : `/${path}`}`;
+    }
+    if (window.BDS_WORDPRESS?.assetUrl) {
+      return `${window.BDS_WORDPRESS.assetUrl}${path.startsWith("/") ? path : `/${path}`}`;
+    }
   }
   const publicUrl = process.env.PUBLIC_URL || "";
   return `${publicUrl}${path.startsWith("/") ? path : `/${path}`}`;

@@ -276,6 +276,26 @@ function Home() {
   const heroRef = useRef(null);
   const headlineRef = useRef(null);
   const ringsRef = useRef(null);
+  const videoRef = useRef(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
+    const syncMotion = () => {
+      if (reduced?.matches) {
+        video.pause();
+      } else {
+        video.play().catch(() => {});
+      }
+    };
+    syncMotion();
+    if (reduced?.addEventListener) {
+      reduced.addEventListener('change', syncMotion);
+      return () => reduced.removeEventListener('change', syncMotion);
+    }
+  }, []);
+
   useLayoutEffect(() => {
     const hero = heroRef.current;
     const headline = headlineRef.current;
@@ -312,7 +332,21 @@ function Home() {
   };
   const scrollTo = (id) => smoothScrollTo(document.getElementById(id));
   return <main className="zoo-site">
-    <section className="hero" id="top" data-testid="hero-section" ref={heroRef} onMouseMove={onHeroTilt} onMouseLeave={resetHeroTilt}>      <div className="hero-headline-parallax" ref={headlineRef} style={{ transform: "none" }}>
+    <section className="hero bds-craftsmanship-hero" id="top" data-testid="hero-section" ref={heroRef} onMouseMove={onHeroTilt} onMouseLeave={resetHeroTilt}>
+      <div className="bds-craftsmanship-media" aria-hidden="true">
+        <video
+          ref={videoRef}
+          muted
+          defaultMuted
+          autoPlay
+          loop
+          playsInline
+          poster={publicAsset("/hero/craftsmanship-poster.webp")}
+          src={publicAsset("/hero/craftsmanship.mp4")}
+          tabIndex={-1}
+        />
+      </div>
+      <div className="hero-headline-parallax" ref={headlineRef} style={{ transform: "none" }}>
         <div className="hero-heading"><p className="eyebrow">BDSM · BDS MARVEL</p><h1><span className="hero-line"><span className="hero-line__inner">Architecture.</span></span><span className="hero-line"><span className="hero-line__inner"><em>Interiors.</em></span></span><span className="hero-line"><span className="hero-line__inner">Everything In Between<span className="hero-dot">.</span></span></span></h1></div>
       </div>
       <div className="hero-footer"><button onClick={() => scrollTo("network")} data-testid="hero-explore-button">EXPLORE OUR WORK <ArrowDown size={16} /></button></div>

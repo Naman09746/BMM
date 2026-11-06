@@ -1350,5 +1350,75 @@ a.svc-cat-card{color:inherit;text-decoration:none}
 
 .zoo-site .contact-section .contact-orbit em{color:#665127!important}
 
+/* Craftsmanship video hero matching live landing page */
+#bdsm-marvel-root .hero.bds-craftsmanship-hero,
+.hero.bds-craftsmanship-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background: #080c0c;
+}
+.hero.bds-craftsmanship-hero:before {
+  display: none !important;
+}
+#bdsm-marvel-root .bds-craftsmanship-hero .bds-craftsmanship-media,
+.bds-craftsmanship-hero .bds-craftsmanship-media {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+#bdsm-marvel-root .bds-craftsmanship-media video,
+.bds-craftsmanship-media video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 50%;
+}
+#bdsm-marvel-root .bds-craftsmanship-media:after,
+.bds-craftsmanship-media:after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(4,8,9,.76), rgba(4,8,9,.43) 42%, rgba(4,8,9,.08) 75%), linear-gradient(180deg, rgba(4,8,9,.35), transparent 30%, rgba(4,8,9,.3));
+}
+#bdsm-marvel-root .bds-craftsmanship-hero .hero-rings-parallax,
+.bds-craftsmanship-hero .hero-rings-parallax {
+  display: none !important;
+}
+#bdsm-marvel-root .bds-craftsmanship-hero .hero-headline-parallax,
+.bds-craftsmanship-hero .hero-headline-parallax,
+#bdsm-marvel-root .bds-craftsmanship-hero .hero-footer,
+.bds-craftsmanship-hero .hero-footer {
+  position: relative;
+  z-index: 1;
+}
+#bdsm-marvel-root .bds-craftsmanship-hero h1,
+.bds-craftsmanship-hero h1 {
+  line-height: .98 !important;
+  color: #f3efe6;
+}
+#bdsm-marvel-root .bds-craftsmanship-hero h1 em,
+.bds-craftsmanship-hero h1 em,
+#bdsm-marvel-root .bds-craftsmanship-hero .hero-dot,
+.bds-craftsmanship-hero .hero-dot {
+  color: #c8a25d !important;
+}
+@media (max-width: 700px) {
+  #bdsm-marvel-root .bds-craftsmanship-media video,
+  .bds-craftsmanship-media video {
+    object-position: 56% 50%;
+  }
+  #bdsm-marvel-root .bds-craftsmanship-media:after,
+  .bds-craftsmanship-media:after {
+    background: linear-gradient(180deg, rgba(4,8,9,.25), rgba(4,8,9,.02) 30%, rgba(4,8,9,.65) 67%, rgba(4,8,9,.88));
+  }
+  #bdsm-marvel-root .bds-craftsmanship-hero + #network > .network-rail,
+  .bds-craftsmanship-hero + #network > .network-rail {
+    display: none;
+  }
+}
+
 /* Keep the loading fallback styled before route CSS arrives. */
 .sx-page.sx-center[role="status"]{background:#f4efe6;color:#0d0b09;font-family:'Outfit',sans-serif;min-height:100vh;padding-bottom:80px;display:grid;place-items:center;padding-top:140px}

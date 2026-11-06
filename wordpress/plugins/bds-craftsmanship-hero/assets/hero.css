@@ -1,0 +1,12 @@
+#bdsm-marvel-root .hero.bds-craftsmanship-hero{position:relative;isolation:isolate;overflow:hidden;background:#080c0c}
+#bdsm-marvel-root .bds-craftsmanship-hero .bds-craftsmanship-media{position:absolute;inset:0;z-index:0;pointer-events:none}
+#bdsm-marvel-root .bds-craftsmanship-media video{display:block;width:100%;height:100%;object-fit:cover;object-position:50% 50%}
+#bdsm-marvel-root .bds-craftsmanship-media:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(4,8,9,.76),rgba(4,8,9,.43) 42%,rgba(4,8,9,.08) 75%),linear-gradient(180deg,rgba(4,8,9,.35),transparent 30%,rgba(4,8,9,.3))}
+#bdsm-marvel-root .bds-craftsmanship-hero .hero-rings-parallax{display:none!important}
+#bdsm-marvel-root .bds-craftsmanship-hero .hero-headline-parallax,#bdsm-marvel-root .bds-craftsmanship-hero .hero-footer{position:relative;z-index:1}
+#bdsm-marvel-root .bds-craftsmanship-hero h1{line-height:.98!important;color:#f3efe6}
+#bdsm-marvel-root .bds-craftsmanship-hero h1 em,#bdsm-marvel-root .bds-craftsmanship-hero .hero-dot{color:#c8a25d}
+@media(max-width:700px){#bdsm-marvel-root .bds-craftsmanship-media video{object-position:56% 50%}#bdsm-marvel-root .bds-craftsmanship-media:after{background:linear-gradient(180deg,rgba(4,8,9,.25),rgba(4,8,9,.02) 30%,rgba(4,8,9,.65) 67%,rgba(4,8,9,.88))}}
+
+/* Remove the empty navigation spacer between the hero and first panel on phones. */
+@media(max-width:700px){#bdsm-marvel-root .bds-craftsmanship-hero + #network > .network-rail{display:none}}
