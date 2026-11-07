@@ -1357,6 +1357,7 @@ a.svc-cat-card{color:inherit;text-decoration:none}
   isolation: isolate;
   overflow: hidden;
   background: #080c0c;
+  contain: layout paint;
 }
 .hero.bds-craftsmanship-hero:before {
   display: none !important;
@@ -1367,6 +1368,10 @@ a.svc-cat-card{color:inherit;text-decoration:none}
   inset: 0;
   z-index: 0;
   pointer-events: none;
+  overflow: hidden;
+  transform: translate3d(0, 0, 0);
+  -webkit-transform: translate3d(0, 0, 0);
+  contain: strict;
 }
 #bdsm-marvel-root .bds-craftsmanship-media video,
 .bds-craftsmanship-media video {
@@ -1375,6 +1380,11 @@ a.svc-cat-card{color:inherit;text-decoration:none}
   height: 100%;
   object-fit: cover;
   object-position: 50% 50%;
+  transform: translate3d(0, 0, 0);
+  -webkit-transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  will-change: transform;
 }
 #bdsm-marvel-root .bds-craftsmanship-media:after,
 .bds-craftsmanship-media:after {
@@ -1382,6 +1392,8 @@ a.svc-cat-card{color:inherit;text-decoration:none}
   position: absolute;
   inset: 0;
   background: linear-gradient(90deg, rgba(4,8,9,.76), rgba(4,8,9,.43) 42%, rgba(4,8,9,.08) 75%), linear-gradient(180deg, rgba(4,8,9,.35), transparent 30%, rgba(4,8,9,.3));
+  pointer-events: none;
+  transform: translate3d(0, 0, 0);
 }
 #bdsm-marvel-root .bds-craftsmanship-hero .hero-rings-parallax,
 .bds-craftsmanship-hero .hero-rings-parallax {

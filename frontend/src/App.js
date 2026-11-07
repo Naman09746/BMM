@@ -281,33 +281,64 @@ function Home() {
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
+
     const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
-    const syncMotion = () => {
-      if (reduced?.matches) {
-        video.pause();
+    let inView = true;
+
+    const syncPlayback = () => {
+      if (!video) return;
+      if (reduced?.matches || !inView) {
+        if (!video.paused) video.pause();
       } else {
-        video.play().catch(() => {});
+        const playPromise = video.play();
+        if (playPromise !== undefined) {
+          playPromise.catch(() => {});
+        }
       }
     };
-    syncMotion();
-    if (reduced?.addEventListener) {
-      reduced.addEventListener('change', syncMotion);
-      return () => reduced.removeEventListener('change', syncMotion);
+
+    let observer;
+    if (typeof IntersectionObserver !== 'undefined' && heroRef.current) {
+      observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            inView = entry.isIntersecting;
+            syncPlayback();
+          });
+        },
+        { threshold: 0.05 }
+      );
+      observer.observe(heroRef.current);
     }
+
+    if (reduced?.addEventListener) {
+      reduced.addEventListener('change', syncPlayback);
+    }
+
+    if ('requestIdleCallback' in window) {
+      window.requestIdleCallback(syncPlayback, { timeout: 1200 });
+    } else {
+      setTimeout(syncPlayback, 50);
+    }
+
+    return () => {
+      if (observer) observer.disconnect();
+      if (reduced?.removeEventListener) {
+        reduced.removeEventListener('change', syncPlayback);
+      }
+    };
   }, []);
 
   useLayoutEffect(() => {
     const hero = heroRef.current;
     const headline = headlineRef.current;
-    const rings = ringsRef.current;
-    if (!hero || !headline || !rings) return;
+    if (!hero || !headline) return;
     let frame = 0;
     const update = () => {
       frame = 0;
       const rect = hero.getBoundingClientRect();
       const progress = Math.max(0, Math.min(1, -rect.top / rect.height));
       headline.style.transform = progress ? `translateY(${progress * 110}px)` : 'none';
-      rings.style.transform = progress ? `translateY(${progress * -90}px) scale(${1 + progress * 0.12}) rotate(${progress * 40}deg)` : 'none';
     };
     const schedule = () => { if (!frame) frame = requestAnimationFrame(update); };
     update();
@@ -319,20 +350,10 @@ function Home() {
       if (frame) cancelAnimationFrame(frame);
     };
   }, []);
-  const onHeroTilt = (event) => {
-    const rect = event.currentTarget.getBoundingClientRect();
-    const x = (event.clientX - rect.left) / rect.width - 0.5;
-    const y = (event.clientY - rect.top) / rect.height - 0.5;
-    event.currentTarget.style.setProperty("--tilt-x", `${(-y * 6).toFixed(2)}deg`);
-    event.currentTarget.style.setProperty("--tilt-y", `${(x * 8).toFixed(2)}deg`);
-  };
-  const resetHeroTilt = (event) => {
-    event.currentTarget.style.setProperty("--tilt-x", "0deg");
-    event.currentTarget.style.setProperty("--tilt-y", "0deg");
-  };
+
   const scrollTo = (id) => smoothScrollTo(document.getElementById(id));
   return <main className="zoo-site">
-    <section className="hero bds-craftsmanship-hero" id="top" data-testid="hero-section" ref={heroRef} onMouseMove={onHeroTilt} onMouseLeave={resetHeroTilt}>
+    <section className="hero bds-craftsmanship-hero" id="top" data-testid="hero-section" ref={heroRef}>
       <div className="bds-craftsmanship-media" aria-hidden="true">
         <video
           ref={videoRef}
@@ -341,10 +362,13 @@ function Home() {
           autoPlay
           loop
           playsInline
+          preload="metadata"
           poster={publicAsset("/hero/craftsmanship-poster.webp")}
-          src={publicAsset("/hero/craftsmanship.mp4")}
           tabIndex={-1}
-        />
+        >
+          <source src={publicAsset("/hero/craftsmanship.webm")} type="video/webm" />
+          <source src={publicAsset("/hero/craftsmanship.mp4")} type="video/mp4" />
+        </video>
       </div>
       <div className="hero-headline-parallax" ref={headlineRef} style={{ transform: "none" }}>
         <div className="hero-heading"><p className="eyebrow">BDSM · BDS MARVEL</p><h1><span className="hero-line"><span className="hero-line__inner">Architecture.</span></span><span className="hero-line"><span className="hero-line__inner"><em>Interiors.</em></span></span><span className="hero-line"><span className="hero-line__inner">Everything In Between<span className="hero-dot">.</span></span></span></h1></div>
