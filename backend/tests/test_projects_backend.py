@@ -28,10 +28,12 @@ class ProjectValidationTests(unittest.TestCase):
 
     def test_site_content_in_valid(self):
         data = {
+            "hero": {"eyebrow": "CUSTOM EYEBROW", "title_1": "Test Line 1"},
             "approach": [{"number": "01", "title": "TEST", "image": "photo-1", "text": "desc"}],
             "clients": [{"name": "Client A", "logo": "/logo.webp"}]
         }
         obj = SiteContentIn(**data)
+        self.assertEqual(obj.hero.get("eyebrow"), "CUSTOM EYEBROW")
         self.assertEqual(len(obj.approach), 1)
         self.assertEqual(len(obj.clients), 1)
 

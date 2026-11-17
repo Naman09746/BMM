@@ -2135,6 +2135,7 @@ class ProjectIn(BaseModel):
 
 
 class SiteContentIn(BaseModel):
+    hero: Optional[dict] = Field(default_factory=dict)
     approach: Optional[List[dict]] = Field(default_factory=list)
     clients: Optional[List[dict]] = Field(default_factory=list)
 
@@ -2410,7 +2411,7 @@ async def get_site_content():
         try:
             doc = json.loads((ROOT_DIR / "site_content_seed.json").read_text())
         except Exception:
-            doc = {"approach": [], "clients": []}
+            doc = {"hero": {}, "approach": [], "clients": []}
     return doc
 
 

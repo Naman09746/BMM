@@ -1,5 +1,12 @@
 {
   "id": "global_site_content",
+  "hero": {
+    "eyebrow": "BDSM · BDS MARVEL",
+    "title_1": "Architecture.",
+    "title_2": "Interiors.",
+    "title_3": "Everything In Between.",
+    "subtitle": "One design and build studio for marble and stone, flooring, turnkey construction and interior design."
+  },
   "approach": [
     {
       "number": "01",

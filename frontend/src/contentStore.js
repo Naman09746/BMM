@@ -51,13 +51,23 @@ export const DEFAULT_CLIENTS = [
   { name: "Marriott", logo: publicAsset("/clients/marriott.webp") }
 ];
 
+export const DEFAULT_HERO = {
+  eyebrow: "BDSM · BDS MARVEL",
+  title_1: "Architecture.",
+  title_2: "Interiors.",
+  title_3: "Everything In Between.",
+  subtitle: "One design and build studio for marble and stone, flooring, turnkey construction and interior design."
+};
+
 export const liveContentState = {
+  hero: DEFAULT_HERO,
   projects: DEFAULT_PROJECTS,
   approach: DEFAULT_APPROACH,
   clients: DEFAULT_CLIENTS
 };
 
 const ContentContext = createContext({
+  hero: DEFAULT_HERO,
   projects: DEFAULT_PROJECTS,
   approach: DEFAULT_APPROACH,
   clients: DEFAULT_CLIENTS,
@@ -67,6 +77,7 @@ const ContentContext = createContext({
 export function ContentProvider({ children }) {
   const [projects, setProjects] = useState(DEFAULT_PROJECTS);
   const [siteContent, setSiteContent] = useState({
+    hero: DEFAULT_HERO,
     approach: DEFAULT_APPROACH,
     clients: DEFAULT_CLIENTS
   });
@@ -90,9 +101,11 @@ export function ContentProvider({ children }) {
         }
 
         if (contentRes && typeof contentRes === "object") {
+          const nextHero = contentRes.hero && typeof contentRes.hero === "object" && Object.keys(contentRes.hero).length > 0 ? { ...DEFAULT_HERO, ...contentRes.hero } : DEFAULT_HERO;
           const nextApproach = Array.isArray(contentRes.approach) && contentRes.approach.length > 0 ? contentRes.approach : DEFAULT_APPROACH;
           const nextClients = Array.isArray(contentRes.clients) && contentRes.clients.length > 0 ? contentRes.clients : DEFAULT_CLIENTS;
-          setSiteContent({ approach: nextApproach, clients: nextClients });
+          setSiteContent({ hero: nextHero, approach: nextApproach, clients: nextClients });
+          liveContentState.hero = nextHero;
           liveContentState.approach = nextApproach;
           liveContentState.clients = nextClients;
         }
@@ -110,6 +123,7 @@ export function ContentProvider({ children }) {
   return (
     <ContentContext.Provider
       value={{
+        hero: siteContent.hero,
         projects,
         approach: siteContent.approach,
         clients: siteContent.clients,
@@ -129,6 +143,7 @@ export function useProjects() {
 export function useSiteContent() {
   const ctx = useContext(ContentContext);
   return {
+    hero: ctx?.hero || DEFAULT_HERO,
     approach: ctx?.approach || DEFAULT_APPROACH,
     clients: ctx?.clients || DEFAULT_CLIENTS,
     loading: ctx?.loading ?? false

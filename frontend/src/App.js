@@ -262,7 +262,7 @@ function DeferredBackground({ style, watchId, ...props }) {
 
 function Home() {
   usePageMeta("BDSM · BDS Marvel | Marble & Stone, Flooring, Construction & Interiors", "One design and build studio for marble and stone, flooring, turnkey construction and interior design — workshops and studios across India: Kishangarh, Mumbai, Gurugram, Pune, New Delhi and Goa.");
-  const { approach } = useSiteContent();
+  const { hero, approach } = useSiteContent();
   const [activeApproach, setActiveApproach] = useState(0);
   useOrbitScroll();
   const heroRef = useRef(null);
@@ -363,7 +363,7 @@ function Home() {
         </video>
       </div>
       <div className="hero-headline-parallax" ref={headlineRef} style={{ transform: "none" }}>
-        <div className="hero-heading"><p className="eyebrow">BDSM · BDS MARVEL</p><h1><span className="hero-line"><span className="hero-line__inner">Architecture.</span></span><span className="hero-line"><span className="hero-line__inner"><em>Interiors.</em></span></span><span className="hero-line"><span className="hero-line__inner">Everything In Between<span className="hero-dot">.</span></span></span></h1></div>
+        <div className="hero-heading"><p className="eyebrow">{hero?.eyebrow || "BDSM · BDS MARVEL"}</p><h1><span className="hero-line"><span className="hero-line__inner">{hero?.title_1 || "Architecture."}</span></span><span className="hero-line"><span className="hero-line__inner"><em>{hero?.title_2 || "Interiors."}</em></span></span><span className="hero-line"><span className="hero-line__inner">{(hero?.title_3 || "Everything In Between").replace(/\.$/, "")}<span className="hero-dot">.</span></span></span></h1></div>
       </div>
       <div className="hero-footer"><button onClick={() => scrollTo("network")} data-testid="hero-explore-button">EXPLORE OUR WORK <ArrowDown size={16} /></button></div>
       <div className="hero-rings-parallax" ref={ringsRef} style={{ transform: "none" }} aria-hidden="true" data-testid="hero-rings-parallax">
@@ -665,6 +665,7 @@ function Clientele() {
   const resolveLogo = (logo) => {
     if (!logo) return null;
     if (logo.startsWith("http://") || logo.startsWith("https://") || logo.startsWith("data:")) return logo;
+    if (logo.startsWith("/api/media") || logo.startsWith("/uploads/") || logo.startsWith("api/media") || logo.startsWith("uploads/")) return resolveBackendMedia(logo);
     return publicAsset(logo);
   };
   const tile = (client, testId) => {
