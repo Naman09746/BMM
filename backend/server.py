@@ -2138,6 +2138,9 @@ class SiteContentIn(BaseModel):
     hero: Optional[dict] = Field(default_factory=dict)
     approach: Optional[List[dict]] = Field(default_factory=list)
     clients: Optional[List[dict]] = Field(default_factory=list)
+    divisions: Optional[List[dict]] = Field(default_factory=list)
+    about: Optional[dict] = Field(default_factory=dict)
+    living_studio: Optional[dict] = Field(default_factory=dict)
 
 
 
@@ -2406,12 +2409,17 @@ async def admin_delete_project(identifier: str, _: dict = Depends(require_admin)
 
 @api_router.get("/site-content")
 async def get_site_content():
+    seed = {}
+    try:
+        seed = json.loads((ROOT_DIR / "site_content_seed.json").read_text())
+    except Exception:
+        pass
     doc = await db.site_content.find_one({"id": "global_site_content"}, {"_id": 0})
     if not doc:
-        try:
-            doc = json.loads((ROOT_DIR / "site_content_seed.json").read_text())
-        except Exception:
-            doc = {"hero": {}, "approach": [], "clients": []}
+        return seed or {"hero": {}, "approach": [], "clients": [], "divisions": [], "about": {}, "living_studio": {}}
+    for k, v in seed.items():
+        if k not in doc or doc[k] is None:
+            doc[k] = v
     return doc
 
 

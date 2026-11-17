@@ -17,27 +17,42 @@ import {
   Layers,
   Boxes,
   FileText,
-  Sparkles,
   Award,
-  SlidersHorizontal,
-  X,
-  Phone,
+  Sparkles,
+  Info,
+  CheckCircle2,
 } from "lucide-react";
 import { api, resolveBackendMedia } from "../stays/store";
 import { publicAsset } from "../wordpress";
 import { img } from "../App";
-import SiteContentManager from "./SiteContentManager";
+import {
+  DEFAULT_HERO,
+  DEFAULT_APPROACH,
+  DEFAULT_CLIENTS,
+  DEFAULT_DIVISIONS,
+  DEFAULT_ABOUT,
+  DEFAULT_LIVING_STUDIO,
+} from "../contentStore";
 
-export function VisualScreenDirectory({ initialScreen = "stays" }) {
-  // The 7 Core Website Screens
-  const [activeScreen, setActiveScreen] = useState(initialScreen); // "home" | "stays" | "projects" | "catalogue" | "businesses" | "about" | "clients"
+export function VisualScreenDirectory({ initialScreen = "home" }) {
+  // Master sequence of all 7 core website screens
+  const [activeScreen, setActiveScreen] = useState(initialScreen);
 
-  // Data collections
+  // Collections state
   const [stays, setStays] = useState([]);
   const [projects, setProjects] = useState([]);
   const [catalogue, setCatalogue] = useState([]);
+  const [siteContent, setSiteContent] = useState({
+    hero: DEFAULT_HERO,
+    approach: DEFAULT_APPROACH,
+    clients: DEFAULT_CLIENTS,
+    divisions: DEFAULT_DIVISIONS,
+    about: DEFAULT_ABOUT,
+    living_studio: DEFAULT_LIVING_STUDIO,
+  });
+
   const [loading, setLoading] = useState(true);
-  const [savingId, setSavingId] = useState(null);
+  const [savingSection, setSavingSection] = useState(null);
   const [uploadingTarget, setUploadingTarget] = useState(null); // { id, field, index }
   const [toast, setToast] = useState("");
   const [searchFilter, setSearchFilter] = useState("");
@@ -47,17 +62,35 @@ export function VisualScreenDirectory({ initialScreen = "stays" }) {
     setTimeout(() => setToast(""), 3500);
   };
 
+  // Helper to open live website pages in a new tab
+  const openLivePage = (path) => {
+    window.open(path, "_blank");
+  };
+
+  // Load all website data across all 7 screens
   const loadAllData = useCallback(async () => {
     setLoading(true);
     try {
-      const [staysData, projData, catData] = await Promise.all([
+      const [staysData, projData, catData, contentData] = await Promise.all([
         api("/stays?all=true").catch(() => []),
         api("/projects?all=true").catch(() => []),
         api("/catalogue?all=true").catch(() => []),
+        api("/site-content").catch(() => null),
       ]);
       setStays(Array.isArray(staysData) ? staysData : []);
       setProjects(Array.isArray(projData) ? projData : []);
       setCatalogue(Array.isArray(catData) ? catData : []);
+
+      if (contentData && typeof contentData === "object") {
+        setSiteContent({
+          hero: { ...DEFAULT_HERO, ...(contentData.hero || {}) },
+          approach: Array.isArray(contentData.approach) && contentData.approach.length > 0 ? contentData.approach : DEFAULT_APPROACH,
+          clients: Array.isArray(contentData.clients) && contentData.clients.length > 0 ? contentData.clients : DEFAULT_CLIENTS,
+          divisions: Array.isArray(contentData.divisions) && contentData.divisions.length > 0 ? contentData.divisions : DEFAULT_DIVISIONS,
+          about: { ...DEFAULT_ABOUT, ...(contentData.about || {}) },
+          living_studio: { ...DEFAULT_LIVING_STUDIO, ...(contentData.living_studio || {}) },
+        });
+      }
     } catch (err) {
       console.error("Failed to load screens data", err);
     } finally {
@@ -69,7 +102,7 @@ export function VisualScreenDirectory({ initialScreen = "stays" }) {
     loadAllData();
   }, [loadAllData]);
 
-  // Image upload helper
+  // Universal Media Upload Helper
   const handleFileUpload = async (file) => {
     if (!file) return null;
     const formData = new FormData();
@@ -78,10 +111,32 @@ export function VisualScreenDirectory({ initialScreen = "stays" }) {
     return res.url;
   };
 
-  // --- STAYS IMAGE HANDLERS ---
+  // Save Site Content to backend
+  const persistSiteContent = async (updatedContent, sectionName) => {
+    setSavingSection(sectionName);
+    try {
+      const res = await api("/admin/site-content", {
+        method: "PUT",
+        body: updatedContent,
+      });
+      setSiteContent((prev) => ({
+        ...prev,
+        ...res,
+      }));
+      showToast(`Saved changes for ${sectionName}`);
+    } catch (err) {
+      alert(`Failed to save ${sectionName}: ${err.message}`);
+    } finally {
+      setSavingSection(null);
+    }
+  };
+
+  // =========================================================================
+  // SCREEN 2: STAYS IMAGE HANDLERS
+  // =========================================================================
   const handleStayHeroUpload = async (stay, file) => {
     if (!file) return;
-    setUploadingTarget({ id: stay.id, field: "hero" });
+    setUploadingTarget({ id: stay.id || stay.slug, field: "hero" });
     try {
       const url = await handleFileUpload(file);
       if (!url) return;
@@ -90,7 +145,7 @@ export function VisualScreenDirectory({ initialScreen = "stays" }) {
         method: "PUT",
         body: updated,
       });
-      setStays((prev) => prev.map((s) => (s.id === stay.id ? res : s)));
+      setStays((prev) => prev.map((s) => ((s.id === stay.id || s.slug === stay.slug) ? res : s)));
       showToast(`Updated card photo for "${stay.name}"`);
     } catch (err) {
       alert("Failed to upload photo: " + err.message);
@@ -101,7 +156,7 @@ export function VisualScreenDirectory({ initialScreen = "stays" }) {
 
   const handleStayGalleryAdd = async (stay, file) => {
     if (!file) return;
-    setUploadingTarget({ id: stay.id, field: "gallery_add" });
+    setUploadingTarget({ id: stay.id || stay.slug, field: "gallery_add" });
     try {
       const url = await handleFileUpload(file);
       if (!url) return;
@@ -110,7 +165,7 @@ export function VisualScreenDirectory({ initialScreen = "stays" }) {
         method: "PUT",
         body: updated,
       });
-      setStays((prev) => prev.map((s) => (s.id === stay.id ? res : s)));
+      setStays((prev) => prev.map((s) => ((s.id === stay.id || s.slug === stay.slug) ? res : s)));
       showToast(`Added new photo to "${stay.name}" detail gallery`);
     } catch (err) {
       alert("Failed to add gallery photo: " + err.message);
@@ -128,7 +183,7 @@ export function VisualScreenDirectory({ initialScreen = "stays" }) {
         method: "PUT",
         body: updated,
       });
-      setStays((prev) => prev.map((s) => (s.id === stay.id ? res : s)));
+      setStays((prev) => prev.map((s) => ((s.id === stay.id || s.slug === stay.slug) ? res : s)));
       showToast(`Removed photo from "${stay.name}" detail gallery`);
     } catch (err) {
       alert("Failed to remove photo: " + err.message);
@@ -137,7 +192,7 @@ export function VisualScreenDirectory({ initialScreen = "stays" }) {
 
   const handleStayGalleryReplace = async (stay, photoIdx, file) => {
     if (!file) return;
-    setUploadingTarget({ id: stay.id, field: `gallery_${photoIdx}` });
+    setUploadingTarget({ id: stay.id || stay.slug, field: `gallery_${photoIdx}` });
     try {
       const url = await handleFileUpload(file);
       if (!url) return;
@@ -148,7 +203,7 @@ export function VisualScreenDirectory({ initialScreen = "stays" }) {
         method: "PUT",
         body: updated,
       });
-      setStays((prev) => prev.map((s) => (s.id === stay.id ? res : s)));
+      setStays((prev) => prev.map((s) => ((s.id === stay.id || s.slug === stay.slug) ? res : s)));
       showToast(`Replaced photo in "${stay.name}" detail gallery`);
     } catch (err) {
       alert("Failed to replace photo: " + err.message);
@@ -157,10 +212,12 @@ export function VisualScreenDirectory({ initialScreen = "stays" }) {
     }
   };
 
-  // --- PROJECTS IMAGE HANDLERS ---
+  // =========================================================================
+  // SCREEN 3: PROJECTS IMAGE HANDLERS
+  // =========================================================================
   const handleProjectHeroUpload = async (project, file) => {
     if (!file) return;
-    setUploadingTarget({ id: project.id, field: "hero" });
+    setUploadingTarget({ id: project.id || project.slug, field: "hero" });
     try {
       const url = await handleFileUpload(file);
       if (!url) return;
@@ -169,7 +226,7 @@ export function VisualScreenDirectory({ initialScreen = "stays" }) {
         method: "PUT",
         body: updated,
       });
-      setProjects((prev) => prev.map((p) => (p.id === project.id ? res : p)));
+      setProjects((prev) => prev.map((p) => ((p.id === project.id || p.slug === project.slug) ? res : p)));
       showToast(`Updated card photo for "${project.title}"`);
     } catch (err) {
       alert("Failed to upload photo: " + err.message);
@@ -180,7 +237,7 @@ export function VisualScreenDirectory({ initialScreen = "stays" }) {
 
   const handleProjectGalleryAdd = async (project, file) => {
     if (!file) return;
-    setUploadingTarget({ id: project.id, field: "gallery_add" });
+    setUploadingTarget({ id: project.id || project.slug, field: "gallery_add" });
     try {
       const url = await handleFileUpload(file);
       if (!url) return;
@@ -189,7 +246,7 @@ export function VisualScreenDirectory({ initialScreen = "stays" }) {
         method: "PUT",
         body: updated,
       });
-      setProjects((prev) => prev.map((p) => (p.id === project.id ? res : p)));
+      setProjects((prev) => prev.map((p) => ((p.id === project.id || p.slug === project.slug) ? res : p)));
       showToast(`Added new photo to "${project.title}" detail gallery`);
     } catch (err) {
       alert("Failed to add gallery photo: " + err.message);
@@ -207,7 +264,7 @@ export function VisualScreenDirectory({ initialScreen = "stays" }) {
         method: "PUT",
         body: updated,
       });
-      setProjects((prev) => prev.map((p) => (p.id === project.id ? res : p)));
+      setProjects((prev) => prev.map((p) => ((p.id === project.id || p.slug === project.slug) ? res : p)));
       showToast(`Removed photo from "${project.title}" detail gallery`);
     } catch (err) {
       alert("Failed to remove photo: " + err.message);
@@ -216,7 +273,7 @@ export function VisualScreenDirectory({ initialScreen = "stays" }) {
 
   const handleProjectGalleryReplace = async (project, photoIdx, file) => {
     if (!file) return;
-    setUploadingTarget({ id: project.id, field: `gallery_${photoIdx}` });
+    setUploadingTarget({ id: project.id || project.slug, field: `gallery_${photoIdx}` });
     try {
       const url = await handleFileUpload(file);
       if (!url) return;
@@ -227,7 +284,7 @@ export function VisualScreenDirectory({ initialScreen = "stays" }) {
         method: "PUT",
         body: updated,
       });
-      setProjects((prev) => prev.map((p) => (p.id === project.id ? res : p)));
+      setProjects((prev) => prev.map((p) => ((p.id === project.id || p.slug === project.slug) ? res : p)));
       showToast(`Replaced photo in "${project.title}" detail gallery`);
     } catch (err) {
       alert("Failed to replace photo: " + err.message);
@@ -236,7 +293,9 @@ export function VisualScreenDirectory({ initialScreen = "stays" }) {
     }
   };
 
-  // --- CATALOGUE IMAGE HANDLERS ---
+  // =========================================================================
+  // SCREEN 4: CATALOGUE IMAGE HANDLERS
+  // =========================================================================
   const handleCatalogueHeroUpload = async (item, file) => {
     if (!file) return;
     setUploadingTarget({ id: item.id || item.slug, field: "hero" });
@@ -315,12 +374,145 @@ export function VisualScreenDirectory({ initialScreen = "stays" }) {
     }
   };
 
-  // Helper to open live website page
-  const openLivePage = (path) => {
-    window.open(path, "_blank");
+  // =========================================================================
+  // SCREEN 1: HOMEPAGE IMAGE & COPY HANDLERS
+  // =========================================================================
+  const handleHeroPosterUpload = async (file) => {
+    if (!file) return;
+    setUploadingTarget({ id: "hero", field: "poster" });
+    try {
+      const url = await handleFileUpload(file);
+      if (!url) return;
+      const nextHero = { ...siteContent.hero, poster: url };
+      const updated = { ...siteContent, hero: nextHero };
+      await persistSiteContent(updated, "Homepage Hero Media");
+    } catch (err) {
+      alert("Failed to upload hero media: " + err.message);
+    } finally {
+      setUploadingTarget(null);
+    }
   };
 
-  // Screen Definitions (All 7 Screens)
+  const handlePillarImageUpload = async (index, file) => {
+    if (!file) return;
+    setUploadingTarget({ id: "approach", field: `pillar_${index}` });
+    try {
+      const url = await handleFileUpload(file);
+      if (!url) return;
+      const nextApproach = [...siteContent.approach];
+      nextApproach[index] = { ...nextApproach[index], image: url };
+      const updated = { ...siteContent, approach: nextApproach };
+      await persistSiteContent(updated, `Pillar ${index + 1} Image`);
+    } catch (err) {
+      alert("Failed to upload pillar image: " + err.message);
+    } finally {
+      setUploadingTarget(null);
+    }
+  };
+
+  const handleLivingStudioHeroUpload = async (file) => {
+    if (!file) return;
+    setUploadingTarget({ id: "living_studio", field: "hero" });
+    try {
+      const url = await handleFileUpload(file);
+      if (!url) return;
+      const nextLS = { ...siteContent.living_studio, hero: url };
+      const updated = { ...siteContent, living_studio: nextLS };
+      await persistSiteContent(updated, "Living Studio Spotlight Hero");
+    } catch (err) {
+      alert("Failed to upload living studio image: " + err.message);
+    } finally {
+      setUploadingTarget(null);
+    }
+  };
+
+  // =========================================================================
+  // SCREEN 5: BUSINESS DIVISIONS HANDLERS
+  // =========================================================================
+  const handleDivisionHeroUpload = async (divIndex, file) => {
+    if (!file) return;
+    setUploadingTarget({ id: "division", field: `hero_${divIndex}` });
+    try {
+      const url = await handleFileUpload(file);
+      if (!url) return;
+      const nextDivs = [...siteContent.divisions];
+      nextDivs[divIndex] = { ...nextDivs[divIndex], hero: url };
+      const updated = { ...siteContent, divisions: nextDivs };
+      await persistSiteContent(updated, `Division "${nextDivs[divIndex].name}" Hero Banner`);
+    } catch (err) {
+      alert("Failed to upload division banner: " + err.message);
+    } finally {
+      setUploadingTarget(null);
+    }
+  };
+
+  // =========================================================================
+  // SCREEN 6: ABOUT STUDIO & TEAM PORTRAITS HANDLERS
+  // =========================================================================
+  const handleTeamPortraitUpload = async (memberIndex, file) => {
+    if (!file) return;
+    setUploadingTarget({ id: "about_team", field: `portrait_${memberIndex}` });
+    try {
+      const url = await handleFileUpload(file);
+      if (!url) return;
+      const nextTeam = [...(siteContent.about?.team || DEFAULT_ABOUT.team)];
+      nextTeam[memberIndex] = { ...nextTeam[memberIndex], image: url };
+      const nextAbout = { ...siteContent.about, team: nextTeam };
+      const updated = { ...siteContent, about: nextAbout };
+      await persistSiteContent(updated, `Team Portrait for "${nextTeam[memberIndex].name}"`);
+    } catch (err) {
+      alert("Failed to upload team portrait: " + err.message);
+    } finally {
+      setUploadingTarget(null);
+    }
+  };
+
+  // =========================================================================
+  // SCREEN 7: CLIENTELE & BRAND LOGOS HANDLERS
+  // =========================================================================
+  const handleClientLogoUpload = async (clientIndex, file) => {
+    if (!file) return;
+    setUploadingTarget({ id: "client_logo", field: `logo_${clientIndex}` });
+    try {
+      const url = await handleFileUpload(file);
+      if (!url) return;
+      const nextClients = [...siteContent.clients];
+      nextClients[clientIndex] = { ...nextClients[clientIndex], logo: url };
+      const updated = { ...siteContent, clients: nextClients };
+      await persistSiteContent(updated, `Brand Logo for "${nextClients[clientIndex].name}"`);
+    } catch (err) {
+      alert("Failed to upload brand logo: " + err.message);
+    } finally {
+      setUploadingTarget(null);
+    }
+  };
+
+  const handleAddClientLogo = async (file, name) => {
+    if (!file || !name.trim()) return;
+    try {
+      const url = await handleFileUpload(file);
+      if (!url) return;
+      const nextClients = [{ name: name.trim(), logo: url }, ...siteContent.clients];
+      const updated = { ...siteContent, clients: nextClients };
+      await persistSiteContent(updated, `New Brand Logo: "${name.trim()}"`);
+    } catch (err) {
+      alert("Failed to add brand logo: " + err.message);
+    }
+  };
+
+  const handleDeleteClientLogo = async (clientIndex) => {
+    const client = siteContent.clients[clientIndex];
+    if (!window.confirm(`Delete client brand logo "${client?.name}"?`)) return;
+    try {
+      const nextClients = siteContent.clients.filter((_, i) => i !== clientIndex);
+      const updated = { ...siteContent, clients: nextClients };
+      await persistSiteContent(updated, `Removed "${client?.name}"`);
+    } catch (err) {
+      alert("Failed to delete client logo: " + err.message);
+    }
+  };
+
+  // The 7 Master Website Screens
   const screens = [
     {
       id: "home",
@@ -329,7 +521,10 @@ export function VisualScreenDirectory({ initialScreen = "stays" }) {
       path: "/",
       icon: Home,
       tag: "Hero & Opening",
-      desc: "Hero craftsmanship video, 5 craft philosophy pillars, and client brand reel.",
+      desc: "Hero craftsmanship video/poster, 5 craft philosophy pillars, living studio banner, and client brand reel.",
+      whereIsIt: "Primary landing screen at https://bdsmarvel.com/ (top hero, craft story, and featured showcases)",
+      level1Name: "Homepage Hero & Banners",
+      level2Name: "Sections & Downstream Click Destinations",
     },
     {
       id: "stays",
@@ -339,6 +534,9 @@ export function VisualScreenDirectory({ initialScreen = "stays" }) {
       icon: BedDouble,
       tag: "6 Listings + Detail Galleries",
       desc: "Listing browse cards & full interior photo galleries seen after clicking a stay.",
+      whereIsIt: "Screen at /stays (the collection grid) ➔ Click any stay ➔ opens /stays/home/:slug (detail screen)",
+      level1Name: "Browse Listing Card Photo",
+      level2Name: "Photos After Clicking (Detail Gallery Modal)",
     },
     {
       id: "projects",
@@ -348,6 +546,9 @@ export function VisualScreenDirectory({ initialScreen = "stays" }) {
       icon: Building,
       tag: "Selected Works + Detail Galleries",
       desc: "Project cards shown on /projects & inner detail photo galleries for each build.",
+      whereIsIt: "Screen at /projects (portfolio grid & homepage slideshow) ➔ Click any build ➔ opens /projects/:slug",
+      level1Name: "Portfolio Card Photo",
+      level2Name: "Photos After Clicking (In-Place Case Study Gallery)",
     },
     {
       id: "catalogue",
@@ -357,6 +558,9 @@ export function VisualScreenDirectory({ initialScreen = "stays" }) {
       icon: Boxes,
       tag: "Products + Detail Galleries",
       desc: "Materials & furniture browse cards & finish/spec galleries after clicking an item.",
+      whereIsIt: "Screen at /catalogue (materials library) ➔ Click any material ➔ opens /catalogue/:slug (specifications)",
+      level1Name: "Material Card Photo",
+      level2Name: "Photos After Clicking (Finish & Texture Gallery)",
     },
     {
       id: "businesses",
@@ -366,6 +570,9 @@ export function VisualScreenDirectory({ initialScreen = "stays" }) {
       icon: Layers,
       tag: "4 Divisions & Hero Banners",
       desc: "Marble & Stone, Flooring, Turnkey Construction, and Interior Decor division pages.",
+      whereIsIt: "Screen at /businesses/:slug (Drawstones, Renest, Formwork, Vignette) & homepage interactive rail",
+      level1Name: "Division Hero Banner Image",
+      level2Name: "Showcase & Content Seen After Clicking",
     },
     {
       id: "about",
@@ -375,6 +582,9 @@ export function VisualScreenDirectory({ initialScreen = "stays" }) {
       icon: FileText,
       tag: "Workshop & Heritage Story",
       desc: "Kishangarh stone workshops, master craftsmen, and studio heritage photos.",
+      whereIsIt: "Screen at /about (story, milestone statistics, and team/workshop portraits)",
+      level1Name: "Studio Story & Heritage Stats",
+      level2Name: "The 6 Workshop & Leadership Portraits",
     },
     {
       id: "clients",
@@ -384,46 +594,58 @@ export function VisualScreenDirectory({ initialScreen = "stays" }) {
       icon: Award,
       tag: "24+ Partner Logos Reel",
       desc: "Searchable directory of institutional clients & hospitality partner brand logos.",
+      whereIsIt: "Screen at bottom of homepage (/#contact) and global footer in continuous motion",
+      level1Name: "Live Marquee Reel Preview",
+      level2Name: "All 24+ Brand Logos Directory",
     },
   ];
 
+  const currentScreenMeta = screens.find((s) => s.id === activeScreen) || screens[0];
+
   return (
     <div className="cm-container" data-testid="visual-screen-directory">
-      {/* Top Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, flexWrap: "wrap", gap: 14 }}>
+      {/* =========================================================================
+          TOP BANNER: Master Title & Screen Sequence
+         ========================================================================= */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, flexWrap: "wrap", gap: 14 }}>
         <div>
-          <div style={{ fontSize: 11, letterSpacing: 2, textTransform: "uppercase", color: "var(--od-gold-d)", fontWeight: 700, marginBottom: 4 }}>
-            Visual Website Directory · All 7 Screens
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+            <span style={{ background: "var(--od-gold-d)", color: "#fff", fontSize: 10.5, fontWeight: 700, padding: "2px 8px", borderRadius: 6, letterSpacing: 1.5, textTransform: "uppercase" }}>
+              Visual Website Hierarchy
+            </span>
+            <span style={{ color: "var(--od-muted)", fontSize: 12 }}>
+              · 7 Complete Screens · Card View & After-Click View
+            </span>
           </div>
           <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 32, margin: 0 }}>
-            Website Screens & Media Manager
+            Website Screens & Media Hierarchy
           </h2>
           <p style={{ color: "var(--od-muted)", fontSize: 13, margin: "4px 0 0" }}>
-            Select any of the 7 screens below to change its main listing photos, or the full photo galleries that appear after clicking.
+            Every screen on the public website is ordered below exactly as visitors see it. Select any screen to change its browse card photos, or the full photo galleries that appear <strong>after clicking it</strong>.
           </p>
         </div>
         <div style={{ display: "flex", gap: 10 }}>
-          <button type="button" className="od-btn" onClick={loadAllData}>
-            <RefreshCw size={14} /> Refresh Media
+          <button type="button" className="od-btn" onClick={loadAllData} disabled={loading}>
+            <RefreshCw size={14} className={loading ? "od-spin" : ""} /> Refresh Media
           </button>
         </div>
       </div>
 
       {toast && (
-        <div style={{ background: "#e0efe2", color: "var(--od-green)", border: "1px solid #c2e2c6", borderRadius: 12, padding: "12px 18px", marginBottom: 18, fontSize: 13.5 }}>
-          {toast}
+        <div style={{ background: "#e0efe2", color: "var(--od-green)", border: "1px solid #c2e2c6", borderRadius: 12, padding: "12px 18px", marginBottom: 18, fontSize: 13.5, display: "flex", alignItems: "center", gap: 8 }}>
+          <CheckCircle2 size={16} /> {toast}
         </div>
       )}
 
       {/* =========================================================================
-          MASTER VISUAL SCREEN SELECTOR (All 7 Screens)
+          MASTER VISUAL SCREEN SELECTOR (All 7 Screens in Sequence)
          ========================================================================= */}
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(145px, 1fr))",
+          gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
           gap: 10,
-          marginBottom: 26,
+          marginBottom: 24,
         }}
         role="tablist"
       >
@@ -442,18 +664,25 @@ export function VisualScreenDirectory({ initialScreen = "stays" }) {
               style={{
                 padding: "12px 14px",
                 borderWidth: isActive ? 2 : 1,
+                textAlign: "left",
+                cursor: "pointer",
+                background: isActive ? "var(--od-surface)" : "var(--od-paper)",
+                borderColor: isActive ? "var(--od-gold-d)" : "var(--od-line)",
+                borderRadius: 14,
+                boxShadow: isActive ? "0 4px 16px rgba(184, 151, 107, 0.15)" : "none",
+                transition: "all 0.15s ease",
               }}
             >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
-                <span className="site-flow-step__badge" style={{ fontSize: 10 }}>
-                  <IconComp size={12} /> {s.number}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", marginBottom: 6 }}>
+                <span className="site-flow-step__badge" style={{ fontSize: 11, fontWeight: 700 }}>
+                  <IconComp size={12} style={{ display: "inline-block", marginRight: 3, verticalAlign: "middle" }} /> {s.number}
                 </span>
                 <span style={{ fontSize: 10, opacity: 0.6, fontFamily: "monospace" }}>{s.path}</span>
               </div>
-              <h4 className="site-flow-step__title" style={{ fontSize: 13, marginTop: 4 }}>
+              <h4 className="site-flow-step__title" style={{ fontSize: 13.5, margin: "0 0 2px", fontWeight: 700 }}>
                 {s.name}
               </h4>
-              <span className="site-flow-step__meta" style={{ fontSize: 10.5, lineHeight: 1.2 }}>
+              <span className="site-flow-step__meta" style={{ fontSize: 10.5, lineHeight: 1.2, color: "var(--od-muted)", display: "block" }}>
                 {s.tag}
               </span>
             </button>
@@ -461,67 +690,351 @@ export function VisualScreenDirectory({ initialScreen = "stays" }) {
         })}
       </div>
 
-      {/* Screen Overview Banner */}
-      {(() => {
-        const currentScreenMeta = screens.find((s) => s.id === activeScreen) || screens[0];
-        return (
-          <div
-            style={{
-              background: "var(--od-surface)",
-              border: "1px solid var(--od-line)",
-              borderRadius: 16,
-              padding: "16px 20px",
-              marginBottom: 24,
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              flexWrap: "wrap",
-              gap: 12,
-            }}
-          >
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ background: "var(--od-gold-d)", color: "#fff", fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 6 }}>
-                  SCREEN {currentScreenMeta.number}
-                </span>
-                <h3 style={{ margin: 0, fontSize: 18 }}>{currentScreenMeta.name}</h3>
-                <span style={{ color: "var(--od-muted)", fontSize: 13, fontFamily: "monospace" }}>({currentScreenMeta.path})</span>
-              </div>
-              <p style={{ margin: "4px 0 0", color: "var(--od-muted)", fontSize: 13 }}>
-                {currentScreenMeta.desc}
-              </p>
-            </div>
-
-            <button
-              type="button"
-              className="od-btn"
-              onClick={() => openLivePage(currentScreenMeta.path)}
-              style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12 }}
-            >
-              <Eye size={13} /> Open Live Page <ExternalLink size={12} />
-            </button>
+      {/* =========================================================================
+          LOCATION & LEVEL GUIDE: Explicitly Shows Where This Screen Is on the Website
+         ========================================================================= */}
+      <div
+        style={{
+          background: "var(--od-surface)",
+          border: "1px solid var(--od-line)",
+          borderRadius: 16,
+          padding: "16px 20px",
+          marginBottom: 24,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: 14,
+        }}
+      >
+        <div style={{ maxWidth: 750 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+            <span style={{ background: "var(--od-gold-d)", color: "#fff", fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 6 }}>
+              SCREEN {currentScreenMeta.number}
+            </span>
+            <h3 style={{ margin: 0, fontSize: 18 }}>{currentScreenMeta.name}</h3>
+            <span style={{ color: "var(--od-muted)", fontSize: 13, fontFamily: "monospace" }}>({currentScreenMeta.path})</span>
           </div>
-        );
-      })()}
+          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, color: "var(--od-gold-d)", fontWeight: 600, marginTop: 4 }}>
+            <Info size={13} />
+            <span>WHERE IS THIS ON WEBSITE: {currentScreenMeta.whereIsIt}</span>
+          </div>
+          <div style={{ display: "flex", gap: 14, marginTop: 8, fontSize: 12, color: "var(--od-muted)" }}>
+            <div>
+              <strong style={{ color: "var(--od-ink)" }}>1. {currentScreenMeta.level1Name}</strong> = What visitors see browsing this screen
+            </div>
+            <div>·</div>
+            <div>
+              <strong style={{ color: "var(--od-gold-d)" }}>2. {currentScreenMeta.level2Name}</strong> = What opens when visitors click an item
+            </div>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          className="od-btn od-btn--primary"
+          onClick={() => openLivePage(currentScreenMeta.path)}
+          style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, padding: "8px 14px" }}
+        >
+          <Eye size={13} /> Open Live Screen <ExternalLink size={12} />
+        </button>
+      </div>
 
       {/* =========================================================================
-          SCREEN 2: LUXURY STAYS (Listing Card Photo + Photo Gallery After Clicking)
+          SCREEN 01: HOMEPAGE (Hero Video/Poster, 5 Craft Pillars, Living Studio)
+         ========================================================================= */}
+      {activeScreen === "home" && (
+        <div style={{ display: "grid", gap: 24 }}>
+          {/* Section 1: Hero Video / Poster Image & Headline */}
+          <div className="od-card" style={{ padding: 24, borderRadius: 18 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, borderBottom: "1px solid var(--od-line)", paddingBottom: 10, flexWrap: "wrap", gap: 10 }}>
+              <div>
+                <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: "var(--od-gold-d)" }}>
+                  01.1 Top Screen Banner
+                </span>
+                <h3 style={{ margin: "2px 0 0", fontSize: 20 }}>Hero Video Poster & Headline</h3>
+              </div>
+              <button
+                type="button"
+                className="od-btn"
+                onClick={() => openLivePage("/")}
+                style={{ padding: "5px 12px", fontSize: 11.5 }}
+              >
+                View Live Hero <ExternalLink size={11} />
+              </button>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "280px 1fr", gap: 24 }} className="cm-form-grid">
+              {/* Hero Media Box */}
+              <div>
+                <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: "var(--od-gold-d)", marginBottom: 6 }}>
+                  1. Hero Poster / Background Image
+                </div>
+                <div style={{ width: "100%", height: 180, borderRadius: 14, overflow: "hidden", background: "#111", marginBottom: 10, position: "relative" }}>
+                  <img
+                    src={siteContent.hero?.poster ? resolveBackendMedia(siteContent.hero.poster) : publicAsset("/hero/craftsmanship-poster.webp")}
+                    alt="Homepage Hero"
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  />
+                  {uploadingTarget?.id === "hero" && (
+                    <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.6)", display: "grid", placeItems: "center", color: "#fff" }}>
+                      <Loader2 size={24} className="od-spin" />
+                    </div>
+                  )}
+                </div>
+                <label className="od-btn" style={{ width: "100%", justifyContent: "center", padding: "8px 12px", fontSize: 12, cursor: "pointer" }}>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleHeroPosterUpload(e.target.files?.[0])}
+                    style={{ display: "none" }}
+                    disabled={uploadingTarget?.id === "hero"}
+                  />
+                  <UploadCloud size={13} /> {uploadingTarget?.id === "hero" ? "Uploading..." : "Replace Hero Poster Image"}
+                </label>
+                <p style={{ margin: "6px 0 0", color: "var(--od-muted)", fontSize: 11, textAlign: "center" }}>
+                  Seen at the very top of BDS Marvel homepage
+                </p>
+              </div>
+
+              {/* Hero Headline Copy Editor */}
+              <div>
+                <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: "var(--od-gold-d)", marginBottom: 10 }}>
+                  2. Hero Text Lines & Eyebrow
+                </div>
+                <div style={{ display: "grid", gap: 12 }}>
+                  <label className="od-field">
+                    <span>Eyebrow Tagline</span>
+                    <input
+                      type="text"
+                      value={siteContent.hero?.eyebrow || ""}
+                      onChange={(e) => setSiteContent((prev) => ({ ...prev, hero: { ...prev.hero, eyebrow: e.target.value } }))}
+                      placeholder="BDSM · BDS MARVEL"
+                    />
+                  </label>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+                    <label className="od-field">
+                      <span>Title Line 1</span>
+                      <input
+                        type="text"
+                        value={siteContent.hero?.title_1 || ""}
+                        onChange={(e) => setSiteContent((prev) => ({ ...prev, hero: { ...prev.hero, title_1: e.target.value } }))}
+                        placeholder="Architecture."
+                      />
+                    </label>
+                    <label className="od-field">
+                      <span>Title Line 2 (Italicized)</span>
+                      <input
+                        type="text"
+                        value={siteContent.hero?.title_2 || ""}
+                        onChange={(e) => setSiteContent((prev) => ({ ...prev, hero: { ...prev.hero, title_2: e.target.value } }))}
+                        placeholder="Interiors."
+                      />
+                    </label>
+                    <label className="od-field">
+                      <span>Title Line 3</span>
+                      <input
+                        type="text"
+                        value={siteContent.hero?.title_3 || ""}
+                        onChange={(e) => setSiteContent((prev) => ({ ...prev, hero: { ...prev.hero, title_3: e.target.value } }))}
+                        placeholder="Everything In Between."
+                      />
+                    </label>
+                  </div>
+                  <label className="od-field">
+                    <span>Subtitle / Supporting Lede</span>
+                    <textarea
+                      rows={2}
+                      value={siteContent.hero?.subtitle || ""}
+                      onChange={(e) => setSiteContent((prev) => ({ ...prev, hero: { ...prev.hero, subtitle: e.target.value } }))}
+                      placeholder="One design and build studio for marble and stone, flooring, turnkey construction and interior design."
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    className="od-btn od-btn--primary"
+                    onClick={() => persistSiteContent(siteContent, "Homepage Hero Headline")}
+                    disabled={savingSection === "Homepage Hero Headline"}
+                    style={{ width: "fit-content", padding: "8px 18px", fontSize: 12 }}
+                  >
+                    {savingSection === "Homepage Hero Headline" && <Loader2 size={13} className="od-spin" />} Save Hero Content
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 2: "How We Build" Craft Philosophy (All 5 Pillars) */}
+          <div className="od-card" style={{ padding: 24, borderRadius: 18 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, borderBottom: "1px solid var(--od-line)", paddingBottom: 10, flexWrap: "wrap", gap: 10 }}>
+              <div>
+                <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: "var(--od-gold-d)" }}>
+                  01.2 How BDS Marvel Builds Section
+                </span>
+                <h3 style={{ margin: "2px 0 0", fontSize: 20 }}>The 5 Craft Philosophy Pillars (Images & Philosophy)</h3>
+                <p style={{ margin: "2px 0 0", color: "var(--od-muted)", fontSize: 12.5 }}>
+                  Section 02 on the homepage: features the stonecraft artisan workshop photos and design approach.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="od-btn od-btn--primary"
+                onClick={() => persistSiteContent(siteContent, "Craft Philosophy Pillars")}
+                disabled={savingSection === "Craft Philosophy Pillars"}
+                style={{ padding: "6px 14px", fontSize: 12 }}
+              >
+                {savingSection === "Craft Philosophy Pillars" && <Loader2 size={13} className="od-spin" />} Save All 5 Pillars
+              </button>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 18 }}>
+              {siteContent.approach.map((pillar, idx) => {
+                const isUploading = uploadingTarget?.id === "approach" && uploadingTarget?.field === `pillar_${idx}`;
+                return (
+                  <div key={pillar.number || idx} style={{ background: "var(--od-paper)", border: "1px solid var(--od-line)", borderRadius: 14, padding: 14 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: "var(--od-gold-d)" }}>PILLAR {pillar.number || `0${idx + 1}`}</span>
+                      <span style={{ fontSize: 11, color: "var(--od-muted)" }}>Homepage Section 02</span>
+                    </div>
+
+                    <div style={{ width: "100%", height: 130, borderRadius: 10, overflow: "hidden", background: "#111", position: "relative", marginBottom: 10 }}>
+                      <img src={img(pillar.image, 500)} alt={pillar.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      {isUploading && (
+                        <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.6)", display: "grid", placeItems: "center", color: "#fff" }}>
+                          <Loader2 size={20} className="od-spin" />
+                        </div>
+                      )}
+                    </div>
+
+                    <label className="od-btn" style={{ width: "100%", justifyContent: "center", padding: "6px 10px", fontSize: 11.5, cursor: "pointer", marginBottom: 10 }}>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handlePillarImageUpload(idx, e.target.files?.[0])}
+                        style={{ display: "none" }}
+                        disabled={isUploading}
+                      />
+                      <UploadCloud size={12} /> {isUploading ? "Uploading..." : "Replace Pillar Photo"}
+                    </label>
+
+                    <input
+                      type="text"
+                      value={pillar.title || ""}
+                      onChange={(e) => {
+                        const next = [...siteContent.approach];
+                        next[idx] = { ...next[idx], title: e.target.value };
+                        setSiteContent((prev) => ({ ...prev, approach: next }));
+                      }}
+                      style={{ width: "100%", padding: "6px 8px", borderRadius: 6, border: "1px solid var(--od-line)", fontSize: 12, fontWeight: 700, marginBottom: 6 }}
+                    />
+                    <textarea
+                      rows={2}
+                      value={pillar.text || ""}
+                      onChange={(e) => {
+                        const next = [...siteContent.approach];
+                        next[idx] = { ...next[idx], text: e.target.value };
+                        setSiteContent((prev) => ({ ...prev, approach: next }));
+                      }}
+                      style={{ width: "100%", padding: "6px 8px", borderRadius: 6, border: "1px solid var(--od-line)", fontSize: 11.5 }}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Section 3: Living Studio Spotlight Banner */}
+          <div className="od-card" style={{ padding: 24, borderRadius: 18 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, borderBottom: "1px solid var(--od-line)", paddingBottom: 10, flexWrap: "wrap", gap: 10 }}>
+              <div>
+                <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: "var(--od-gold-d)" }}>
+                  01.3 Experience Our Craft Section
+                </span>
+                <h3 style={{ margin: "2px 0 0", fontSize: 20 }}>Living Studio Spotlight ("Stay Inside What We Built")</h3>
+                <p style={{ margin: "2px 0 0", color: "var(--od-muted)", fontSize: 12.5 }}>
+                  Featured banner on the homepage inviting visitors to book and experience the stays collection.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="od-btn od-btn--primary"
+                onClick={() => persistSiteContent(siteContent, "Living Studio Spotlight")}
+                disabled={savingSection === "Living Studio Spotlight"}
+                style={{ padding: "6px 14px", fontSize: 12 }}
+              >
+                {savingSection === "Living Studio Spotlight" && <Loader2 size={13} className="od-spin" />} Save Living Studio
+              </button>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "280px 1fr", gap: 24 }} className="cm-form-grid">
+              <div>
+                <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: "var(--od-gold-d)", marginBottom: 6 }}>
+                  Spotlight Hero Banner
+                </div>
+                <div style={{ width: "100%", height: 160, borderRadius: 14, overflow: "hidden", background: "#111", marginBottom: 10, position: "relative" }}>
+                  <img src={img(siteContent.living_studio?.hero, 500)} alt="Living Studio" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  {uploadingTarget?.id === "living_studio" && (
+                    <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.6)", display: "grid", placeItems: "center", color: "#fff" }}>
+                      <Loader2 size={24} className="od-spin" />
+                    </div>
+                  )}
+                </div>
+                <label className="od-btn" style={{ width: "100%", justifyContent: "center", padding: "8px 12px", fontSize: 12, cursor: "pointer" }}>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleLivingStudioHeroUpload(e.target.files?.[0])}
+                    style={{ display: "none" }}
+                    disabled={uploadingTarget?.id === "living_studio"}
+                  />
+                  <UploadCloud size={13} /> Replace Spotlight Photo
+                </label>
+              </div>
+
+              <div style={{ display: "grid", gap: 10 }}>
+                <label className="od-field">
+                  <span>Headline Tagline</span>
+                  <input
+                    type="text"
+                    value={siteContent.living_studio?.tagline || ""}
+                    onChange={(e) => setSiteContent((prev) => ({ ...prev, living_studio: { ...prev.living_studio, tagline: e.target.value } }))}
+                  />
+                </label>
+                <label className="od-field">
+                  <span>Description</span>
+                  <textarea
+                    rows={3}
+                    value={siteContent.living_studio?.body || ""}
+                    onChange={(e) => setSiteContent((prev) => ({ ...prev, living_studio: { ...prev.living_studio, body: e.target.value } }))}
+                  />
+                </label>
+                <div style={{ background: "var(--od-paper)", border: "1px solid var(--od-line)", borderRadius: 10, padding: 12, fontSize: 12, color: "var(--od-muted)" }}>
+                  📍 <strong>Where this links on the website:</strong> When visitors click "Explore the Stay" on this banner, they navigate to <strong>Screen 02 (Luxury Stays)</strong>.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          SCREEN 02: LUXURY STAYS (Listing Cards + Detail Galleries Seen After Clicking)
          ========================================================================= */}
       {activeScreen === "stays" && (
         <div>
           <div style={{ marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
             <div>
               <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>
-                All 6 Stays: Card Photos & Inner Detail Galleries
+                All 6 Stays: Browse Cards & Inner Detail Galleries
               </h4>
               <p style={{ margin: "2px 0 0", color: "var(--od-muted)", fontSize: 12.5 }}>
-                For each stay, the left box is the card photo shown on <code>/stays</code>. The right gallery contains the photos visitors see <strong>after clicking into the stay</strong>.
+                For each stay: the left box is the card photo on <code>/stays</code>. The right gallery contains the high-res photos visitors see <strong>after clicking into the stay</strong>.
               </p>
             </div>
             <div style={{ width: 240, position: "relative" }}>
               <input
                 type="text"
-                placeholder="Filter stays (e.g. Penthouse)..."
+                placeholder="Filter stays (e.g. Living Studio)..."
                 value={searchFilter}
                 onChange={(e) => setSearchFilter(e.target.value)}
                 style={{ width: "100%", padding: "8px 10px 8px 30px", borderRadius: 8, border: "1px solid var(--od-line)", fontSize: 12 }}
@@ -535,12 +1048,11 @@ export function VisualScreenDirectory({ initialScreen = "stays" }) {
               .filter((s) => !searchFilter || s.name.toLowerCase().includes(searchFilter.toLowerCase()))
               .map((stay) => {
                 const galleryList = Array.isArray(stay.gallery) ? stay.gallery : [];
-                const isHeroUploading = uploadingTarget?.id === stay.id && uploadingTarget?.field === "hero";
-                const isGalleryAdding = uploadingTarget?.id === stay.id && uploadingTarget?.field === "gallery_add";
+                const isHeroUploading = uploadingTarget?.id === (stay.id || stay.slug) && uploadingTarget?.field === "hero";
+                const isGalleryAdding = uploadingTarget?.id === (stay.id || stay.slug) && uploadingTarget?.field === "gallery_add";
 
                 return (
                   <div key={stay.slug || stay.id} className="od-card" style={{ padding: 22, borderRadius: 18 }}>
-                    {/* Stay Card Header */}
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, borderBottom: "1px solid var(--od-line)", paddingBottom: 10, flexWrap: "wrap", gap: 8 }}>
                       <div>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -563,12 +1075,11 @@ export function VisualScreenDirectory({ initialScreen = "stays" }) {
                           onClick={() => openLivePage(`/stays/home/${stay.slug}`)}
                           style={{ padding: "5px 12px", fontSize: 11.5 }}
                         >
-                          View Live Stay <ExternalLink size={11} />
+                          View Live Stay Page <ExternalLink size={11} />
                         </button>
                       </div>
                     </div>
 
-                    {/* Dual-Level Image Architecture */}
                     <div style={{ display: "grid", gridTemplateColumns: "240px 1fr", gap: 24 }} className="cm-form-grid">
                       {/* LEVEL 1: LISTING CARD PHOTO */}
                       <div>
@@ -630,7 +1141,7 @@ export function VisualScreenDirectory({ initialScreen = "stays" }) {
                         ) : (
                           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(115px, 1fr))", gap: 10 }}>
                             {galleryList.map((photoUrl, photoIdx) => {
-                              const isReplacing = uploadingTarget?.id === stay.id && uploadingTarget?.field === `gallery_${photoIdx}`;
+                              const isReplacing = uploadingTarget?.id === (stay.id || stay.slug) && uploadingTarget?.field === `gallery_${photoIdx}`;
                               return (
                                 <div
                                   key={photoIdx}
@@ -651,7 +1162,6 @@ export function VisualScreenDirectory({ initialScreen = "stays" }) {
                                     </div>
                                   )}
 
-                                  {/* Quick Overlay Actions */}
                                   <div
                                     style={{
                                       position: "absolute",
@@ -701,23 +1211,23 @@ export function VisualScreenDirectory({ initialScreen = "stays" }) {
       )}
 
       {/* =========================================================================
-          SCREEN 3: ARCHITECTURAL PROJECTS (Card Photo + Detail Gallery After Clicking)
+          SCREEN 03: ARCHITECTURAL PROJECTS (Browse Cards + Detail Galleries)
          ========================================================================= */}
       {activeScreen === "projects" && (
         <div>
           <div style={{ marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
             <div>
               <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>
-                Architectural Projects: Browse Cards & Detail Galleries
+                Architectural Projects: Browse Cards & In-Place Detail Galleries
               </h4>
               <p style={{ margin: "2px 0 0", color: "var(--od-muted)", fontSize: 12.5 }}>
-                For each project, the left box is the card photo on <code>/projects</code> and homepage slideshow. The right gallery contains the photos visitors see <strong>after clicking into the project</strong>.
+                For each project: the left box is the card photo on <code>/projects</code> and the homepage slideshow. The right gallery contains the photos visitors see <strong>after clicking into the project</strong>.
               </p>
             </div>
             <div style={{ width: 240, position: "relative" }}>
               <input
                 type="text"
-                placeholder="Filter projects (e.g. Villa)..."
+                placeholder="Filter projects (e.g. Meridian)..."
                 value={searchFilter}
                 onChange={(e) => setSearchFilter(e.target.value)}
                 style={{ width: "100%", padding: "8px 10px 8px 30px", borderRadius: 8, border: "1px solid var(--od-line)", fontSize: 12 }}
@@ -731,12 +1241,11 @@ export function VisualScreenDirectory({ initialScreen = "stays" }) {
               .filter((p) => !searchFilter || p.title.toLowerCase().includes(searchFilter.toLowerCase()))
               .map((proj) => {
                 const galleryList = Array.isArray(proj.gallery) ? proj.gallery : [];
-                const isHeroUploading = uploadingTarget?.id === proj.id && uploadingTarget?.field === "hero";
-                const isGalleryAdding = uploadingTarget?.id === proj.id && uploadingTarget?.field === "gallery_add";
+                const isHeroUploading = uploadingTarget?.id === (proj.id || proj.slug) && uploadingTarget?.field === "hero";
+                const isGalleryAdding = uploadingTarget?.id === (proj.id || proj.slug) && uploadingTarget?.field === "gallery_add";
 
                 return (
                   <div key={proj.slug || proj.id} className="od-card" style={{ padding: 22, borderRadius: 18 }}>
-                    {/* Project Header */}
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, borderBottom: "1px solid var(--od-line)", paddingBottom: 10, flexWrap: "wrap", gap: 8 }}>
                       <div>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -744,7 +1253,7 @@ export function VisualScreenDirectory({ initialScreen = "stays" }) {
                             {proj.segment} · {proj.category}
                           </span>
                           <span style={{ color: "var(--od-muted)", fontSize: 12 }}>·</span>
-                          <span style={{ color: "var(--od-muted)", fontSize: 12 }}>{proj.location}</span>
+                          <span style={{ color: "var(--od-muted)", fontSize: 12 }}>{proj.location} ({proj.year})</span>
                         </div>
                         <h3 style={{ margin: "2px 0 0", fontSize: 22, fontFamily: "'Cormorant Garamond', serif" }}>
                           {proj.title}
@@ -761,7 +1270,6 @@ export function VisualScreenDirectory({ initialScreen = "stays" }) {
                       </button>
                     </div>
 
-                    {/* Dual-Level Image Architecture */}
                     <div style={{ display: "grid", gridTemplateColumns: "240px 1fr", gap: 24 }} className="cm-form-grid">
                       {/* LEVEL 1: LISTING CARD PHOTO */}
                       <div>
@@ -823,7 +1331,7 @@ export function VisualScreenDirectory({ initialScreen = "stays" }) {
                         ) : (
                           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(115px, 1fr))", gap: 10 }}>
                             {galleryList.map((photoUrl, photoIdx) => {
-                              const isReplacing = uploadingTarget?.id === proj.id && uploadingTarget?.field === `gallery_${photoIdx}`;
+                              const isReplacing = uploadingTarget?.id === (proj.id || proj.slug) && uploadingTarget?.field === `gallery_${photoIdx}`;
                               return (
                                 <div
                                   key={photoIdx}
@@ -893,7 +1401,7 @@ export function VisualScreenDirectory({ initialScreen = "stays" }) {
       )}
 
       {/* =========================================================================
-          SCREEN 4: MATERIALS CATALOGUE (Browse Cards + Detail Galleries)
+          SCREEN 04: MATERIALS CATALOGUE (Browse Cards + Detail Galleries)
          ========================================================================= */}
       {activeScreen === "catalogue" && (
         <div>
@@ -903,7 +1411,7 @@ export function VisualScreenDirectory({ initialScreen = "stays" }) {
                 Materials Catalogue: Browse Cards & Detail Galleries
               </h4>
               <p style={{ margin: "2px 0 0", color: "var(--od-muted)", fontSize: 12.5 }}>
-                For each material or product, the left box is the card photo on <code>/catalogue</code>. The right gallery contains the photos visitors see <strong>after clicking into the item</strong>.
+                For each material: the left box is the card photo on <code>/catalogue</code>. The right gallery contains the slab swatches and finish photos visitors see <strong>after clicking into the item</strong>.
               </p>
             </div>
             <div style={{ width: 240, position: "relative" }}>
@@ -1083,85 +1591,438 @@ export function VisualScreenDirectory({ initialScreen = "stays" }) {
       )}
 
       {/* =========================================================================
-          SCREEN 1, 6 & 7: HOMEPAGE, ABOUT & BRAND LOGOS
-         ========================================================================= */}
-      {(activeScreen === "home" || activeScreen === "clients") && (
-        <SiteContentManager />
-      )}
-
-      {/* =========================================================================
-          SCREEN 5: BUSINESS DIVISIONS (The 4 Segments)
+          SCREEN 05: BUSINESS DIVISIONS (The 4 Divisions: Banners & Showcase)
          ========================================================================= */}
       {activeScreen === "businesses" && (
-        <div className="od-card" style={{ padding: 24, borderRadius: 18 }}>
-          <h3 style={{ margin: "0 0 8px", fontSize: 20 }}>05 — Business Division Screens</h3>
-          <p style={{ margin: "0 0 20px", color: "var(--od-muted)", fontSize: 13 }}>
-            BDS Marvel is structured into 4 foundational trade businesses. Click any division to view its live showcase:
-          </p>
+        <div style={{ display: "grid", gap: 24 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+            <div>
+              <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>
+                The 4 Business Divisions: Hero Banners & Live Pages
+              </h4>
+              <p style={{ margin: "2px 0 0", color: "var(--od-muted)", fontSize: 12.5 }}>
+                BDS Marvel is powered by 4 foundational trade businesses. Replace any division's hero banner, update its copy, or preview its live screen.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="od-btn od-btn--primary"
+              onClick={() => persistSiteContent(siteContent, "Business Divisions")}
+              disabled={savingSection === "Business Divisions"}
+              style={{ padding: "6px 14px", fontSize: 12 }}
+            >
+              {savingSection === "Business Divisions" && <Loader2 size={13} className="od-spin" />} Save All Divisions
+            </button>
+          </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16 }}>
-            {[
-              { slug: "marble-and-stone", name: "Marble & Stone (Drawstones)", kicker: "Quarried & Cut in Kishangarh", hero: "photo-1618221195710-dd6b41faaea6" },
-              { slug: "flooring", name: "Flooring (Renest)", kicker: "Wooden Plank & Stone Composite", hero: "photo-1616486338812-3dadae4b4ace" },
-              { slug: "construction", name: "Turnkey Construction (Formwork)", kicker: "Civil, Structure & MEP", hero: "photo-1503387762-592deb58ef4e" },
-              { slug: "interior-designing", name: "Interior Designing & Decor", kicker: "3D Spatial Planning & Detailing", hero: "photo-1631679706909-1844bbd07221" },
-            ].map((b) => (
-              <div key={b.slug} style={{ background: "var(--od-paper)", border: "1px solid var(--od-line)", borderRadius: 14, overflow: "hidden" }}>
-                <div style={{ height: 120, background: "#e3dbcc" }}>
-                  <img src={img(b.hero, 400)} alt={b.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          <div style={{ display: "grid", gap: 20 }}>
+            {siteContent.divisions.map((div, divIdx) => {
+              const isUploading = uploadingTarget?.id === "division" && uploadingTarget?.field === `hero_${divIdx}`;
+              return (
+                <div key={div.slug} className="od-card" style={{ padding: 22, borderRadius: 18 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, borderBottom: "1px solid var(--od-line)", paddingBottom: 10, flexWrap: "wrap", gap: 8 }}>
+                    <div>
+                      <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", color: "var(--od-gold-d)" }}>
+                        {div.parent} · {div.kicker}
+                      </span>
+                      <h3 style={{ margin: "2px 0 0", fontSize: 22, fontFamily: "'Cormorant Garamond', serif" }}>
+                        {div.name}
+                      </h3>
+                      <span style={{ fontSize: 12, color: "var(--od-muted)", fontFamily: "monospace" }}>
+                        URL: /businesses/{div.slug}
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="od-btn"
+                      onClick={() => openLivePage(`/businesses/${div.slug}`)}
+                      style={{ padding: "5px 12px", fontSize: 11.5 }}
+                    >
+                      View Live Division <ExternalLink size={11} />
+                    </button>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "280px 1fr", gap: 24 }} className="cm-form-grid">
+                    {/* LEVEL 1: DIVISION HERO BANNER */}
+                    <div>
+                      <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: "var(--od-gold-d)", marginBottom: 6 }}>
+                        1. Division Hero Banner
+                      </div>
+                      <div style={{ width: "100%", height: 160, borderRadius: 14, overflow: "hidden", background: "#111", marginBottom: 10, position: "relative" }}>
+                        <img src={img(div.hero, 600)} alt={div.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        {isUploading && (
+                          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.6)", display: "grid", placeItems: "center", color: "#fff" }}>
+                            <Loader2 size={24} className="od-spin" />
+                          </div>
+                        )}
+                      </div>
+                      <label className="od-btn" style={{ width: "100%", justifyContent: "center", padding: "8px 12px", fontSize: 12, cursor: "pointer" }}>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => handleDivisionHeroUpload(divIdx, e.target.files?.[0])}
+                          style={{ display: "none" }}
+                          disabled={isUploading}
+                        />
+                        <UploadCloud size={13} /> {isUploading ? "Uploading..." : "Replace Hero Banner"}
+                      </label>
+                      <p style={{ margin: "6px 0 0", color: "var(--od-muted)", fontSize: 11, textAlign: "center" }}>
+                        Seen at top of /businesses/{div.slug}
+                      </p>
+                    </div>
+
+                    {/* LEVEL 2: DIVISION COPY & SHOWCASE */}
+                    <div style={{ display: "grid", gap: 10 }}>
+                      <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: "var(--od-gold-d)" }}>
+                        2. Tagline & Division Description
+                      </div>
+                      <label className="od-field">
+                        <span>Tagline</span>
+                        <input
+                          type="text"
+                          value={div.tagline || ""}
+                          onChange={(e) => {
+                            const next = [...siteContent.divisions];
+                            next[divIdx] = { ...next[divIdx], tagline: e.target.value };
+                            setSiteContent((prev) => ({ ...prev, divisions: next }));
+                          }}
+                        />
+                      </label>
+                      <label className="od-field">
+                        <span>Body Description</span>
+                        <textarea
+                          rows={3}
+                          value={div.body || ""}
+                          onChange={(e) => {
+                            const next = [...siteContent.divisions];
+                            next[divIdx] = { ...next[divIdx], body: e.target.value };
+                            setSiteContent((prev) => ({ ...prev, divisions: next }));
+                          }}
+                        />
+                      </label>
+                    </div>
+                  </div>
                 </div>
-                <div style={{ padding: "12px 14px" }}>
-                  <span style={{ fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase", color: "var(--od-gold-d)", fontWeight: 700 }}>{b.kicker}</span>
-                  <h4 style={{ margin: "4px 0 10px", fontSize: 16 }}>{b.name}</h4>
-                  <button
-                    type="button"
-                    className="od-btn"
-                    onClick={() => openLivePage(`/businesses/${b.slug}`)}
-                    style={{ width: "100%", justifyContent: "center", fontSize: 11.5, padding: "6px" }}
-                  >
-                    View Live Division <ExternalLink size={11} />
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
 
       {/* =========================================================================
-          SCREEN 6: ABOUT US & WORKSHOP
+          SCREEN 06: ABOUT STUDIO & WORKSHOPS (Heritage Story & 6 Team Portraits)
          ========================================================================= */}
       {activeScreen === "about" && (
-        <div className="od-card" style={{ padding: 24, borderRadius: 18 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
-            <div>
-              <h3 style={{ margin: 0, fontSize: 20 }}>06 — About Studio & Kishangarh Workshops</h3>
-              <p style={{ margin: "4px 0 0", color: "var(--od-muted)", fontSize: 13 }}>
-                Live screen: <code>/about</code> · Showcases the studio story, materials philosophy, and two decades of stonecraft heritage.
-              </p>
+        <div style={{ display: "grid", gap: 24 }}>
+          <div className="od-card" style={{ padding: 24, borderRadius: 18 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, borderBottom: "1px solid var(--od-line)", paddingBottom: 10, flexWrap: "wrap", gap: 10 }}>
+              <div>
+                <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: "var(--od-gold-d)" }}>
+                  06.1 Studio Story & Heritage
+                </span>
+                <h3 style={{ margin: "2px 0 0", fontSize: 20 }}>Studio Story & Two Decades of Heritage</h3>
+              </div>
+              <button
+                type="button"
+                className="od-btn"
+                onClick={() => openLivePage("/about")}
+                style={{ padding: "5px 12px", fontSize: 11.5 }}
+              >
+                View Live About Page <ExternalLink size={11} />
+              </button>
             </div>
-            <button
-              type="button"
-              className="od-btn"
-              onClick={() => openLivePage("/about")}
-              style={{ fontSize: 12 }}
-            >
-              Open Live About Screen <ExternalLink size={12} />
-            </button>
+
+            <div style={{ display: "grid", gap: 12 }}>
+              <label className="od-field">
+                <span>Story Paragraph 1 (Lead Intro)</span>
+                <textarea
+                  rows={2}
+                  value={siteContent.about?.lede_1 || ""}
+                  onChange={(e) => setSiteContent((prev) => ({ ...prev, about: { ...prev.about, lede_1: e.target.value } }))}
+                  placeholder="BDSM · BDS Marvel is one design and build company..."
+                />
+              </label>
+              <label className="od-field">
+                <span>Story Paragraph 2 (Heritage Track Record)</span>
+                <textarea
+                  rows={2}
+                  value={siteContent.about?.lede_2 || ""}
+                  onChange={(e) => setSiteContent((prev) => ({ ...prev, about: { ...prev.about, lede_2: e.target.value } }))}
+                  placeholder="The names are new — our people have built for the country's most demanding..."
+                />
+              </label>
+              <button
+                type="button"
+                className="od-btn od-btn--primary"
+                onClick={() => persistSiteContent(siteContent, "About Studio Story")}
+                disabled={savingSection === "About Studio Story"}
+                style={{ width: "fit-content", padding: "8px 18px", fontSize: 12 }}
+              >
+                {savingSection === "About Studio Story" && <Loader2 size={13} className="od-spin" />} Save Studio Story
+              </button>
+            </div>
           </div>
 
-          <div style={{ background: "var(--od-paper)", border: "1px solid var(--od-line)", borderRadius: 14, padding: 20 }}>
-            <p style={{ margin: "0 0 14px", fontSize: 14, lineHeight: 1.6 }}>
-              The About Page automatically syncs with the <strong>Material Craft Story Pillars</strong> and <strong>Brand Logos</strong> managed in the Homepage editor.
-            </p>
-            <button
-              type="button"
-              className="od-btn od-btn--primary"
-              onClick={() => setActiveScreen("home")}
-              style={{ fontSize: 12.5 }}
-            >
-              Edit Material Craft Story & Philosophy Pillars →
-            </button>
+          {/* Section 2: The 6 Leadership & Craft Workshop Team Portraits */}
+          <div className="od-card" style={{ padding: 24, borderRadius: 18 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, borderBottom: "1px solid var(--od-line)", paddingBottom: 10, flexWrap: "wrap", gap: 10 }}>
+              <div>
+                <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: "var(--od-gold-d)" }}>
+                  06.2 The People Behind The Work
+                </span>
+                <h3 style={{ margin: "2px 0 0", fontSize: 20 }}>The 6 Workshop & Leadership Craft Portraits</h3>
+                <p style={{ margin: "2px 0 0", color: "var(--od-muted)", fontSize: 12.5 }}>
+                  The portraits shown in "People Behind The Work" grid on the <code>/about</code> screen.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="od-btn od-btn--primary"
+                onClick={() => persistSiteContent(siteContent, "About Team Portraits")}
+                disabled={savingSection === "About Team Portraits"}
+                style={{ padding: "6px 14px", fontSize: 12 }}
+              >
+                {savingSection === "About Team Portraits" && <Loader2 size={13} className="od-spin" />} Save All 6 Portraits
+              </button>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 18 }}>
+              {(siteContent.about?.team || DEFAULT_ABOUT.team).map((member, idx) => {
+                const isUploading = uploadingTarget?.id === "about_team" && uploadingTarget?.field === `portrait_${idx}`;
+                return (
+                  <div key={member.name || idx} style={{ background: "var(--od-paper)", border: "1px solid var(--od-line)", borderRadius: 14, padding: 14 }}>
+                    <div style={{ width: "100%", height: 180, borderRadius: 10, overflow: "hidden", background: "#111", position: "relative", marginBottom: 10 }}>
+                      <img src={img(member.image, 500)} alt={member.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      {isUploading && (
+                        <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.6)", display: "grid", placeItems: "center", color: "#fff" }}>
+                          <Loader2 size={24} className="od-spin" />
+                        </div>
+                      )}
+                    </div>
+
+                    <label className="od-btn" style={{ width: "100%", justifyContent: "center", padding: "6px 10px", fontSize: 11.5, cursor: "pointer", marginBottom: 10 }}>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleTeamPortraitUpload(idx, e.target.files?.[0])}
+                        style={{ display: "none" }}
+                        disabled={isUploading}
+                      />
+                      <UploadCloud size={12} /> {isUploading ? "Uploading..." : "Replace Portrait Photo"}
+                    </label>
+
+                    <input
+                      type="text"
+                      value={member.name || ""}
+                      onChange={(e) => {
+                        const nextTeam = [...(siteContent.about?.team || DEFAULT_ABOUT.team)];
+                        nextTeam[idx] = { ...nextTeam[idx], name: e.target.value };
+                        setSiteContent((prev) => ({ ...prev, about: { ...prev.about, team: nextTeam } }));
+                      }}
+                      style={{ width: "100%", padding: "6px 8px", borderRadius: 6, border: "1px solid var(--od-line)", fontSize: 12, fontWeight: 700, marginBottom: 6 }}
+                    />
+                    <input
+                      type="text"
+                      value={member.role || ""}
+                      onChange={(e) => {
+                        const nextTeam = [...(siteContent.about?.team || DEFAULT_ABOUT.team)];
+                        nextTeam[idx] = { ...nextTeam[idx], role: e.target.value };
+                        setSiteContent((prev) => ({ ...prev, about: { ...prev.about, team: nextTeam } }));
+                      }}
+                      style={{ width: "100%", padding: "6px 8px", borderRadius: 6, border: "1px solid var(--od-line)", fontSize: 11.5, color: "var(--od-muted)" }}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          SCREEN 07: CLIENTELE & BRAND LOGOS MARQUEE (Live Reel + 24+ Brand Directory)
+         ========================================================================= */}
+      {activeScreen === "clients" && (
+        <div style={{ display: "grid", gap: 24 }}>
+          {/* Section 1: Live Animated Marquee Reel */}
+          <div className="od-card" style={{ padding: 24, borderRadius: 18 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, borderBottom: "1px solid var(--od-line)", paddingBottom: 10, flexWrap: "wrap", gap: 10 }}>
+              <div>
+                <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: "var(--od-gold-d)" }}>
+                  07.1 Live Reel Preview
+                </span>
+                <h3 style={{ margin: "2px 0 0", fontSize: 20 }}>Continuous Partner Brand Marquee</h3>
+                <p style={{ margin: "2px 0 0", color: "var(--od-muted)", fontSize: 12.5 }}>
+                  This is the exact animated marquee reel prospective clients see at the bottom of the homepage (<code>/#contact</code>).
+                </p>
+              </div>
+              <button
+                type="button"
+                className="od-btn"
+                onClick={() => openLivePage("/#contact")}
+                style={{ padding: "5px 12px", fontSize: 11.5 }}
+              >
+                View Live Marquee <ExternalLink size={11} />
+              </button>
+            </div>
+
+            <div style={{ background: "#0a0806", padding: "20px 10px", borderRadius: 14, overflow: "hidden" }}>
+              <div style={{ display: "flex", gap: 24, overflowX: "auto", paddingBottom: 10 }}>
+                {siteContent.clients.map((c, i) => {
+                  const logoUrl = c.logo?.startsWith("http") || c.logo?.startsWith("/") ? resolveBackendMedia(c.logo) : publicAsset(c.logo);
+                  return (
+                    <div
+                      key={i}
+                      style={{
+                        minWidth: 120,
+                        height: 52,
+                        background: "#fff",
+                        borderRadius: 8,
+                        display: "grid",
+                        placeItems: "center",
+                        padding: "4px 10px",
+                        flexShrink: 0,
+                      }}
+                    >
+                      {logoUrl ? (
+                        <img src={logoUrl} alt={c.name} style={{ maxHeight: 38, maxWidth: "100%", objectFit: "contain" }} />
+                      ) : (
+                        <span style={{ fontSize: 11, fontWeight: 700, color: "#111", textAlign: "center" }}>{c.name}</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* Section 2: Searchable & Editable Directory of all 24+ Brand Logos */}
+          <div className="od-card" style={{ padding: 24, borderRadius: 18 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, borderBottom: "1px solid var(--od-line)", paddingBottom: 10, flexWrap: "wrap", gap: 12 }}>
+              <div>
+                <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: "var(--od-gold-d)" }}>
+                  07.2 Brand Directory
+                </span>
+                <h3 style={{ margin: "2px 0 0", fontSize: 20 }}>
+                  Manage All 24+ Client Brand Logos ({siteContent.clients.length} Total)
+                </h3>
+              </div>
+
+              <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                <div style={{ width: 220, position: "relative" }}>
+                  <input
+                    type="text"
+                    placeholder="Search logo (e.g. Taj)..."
+                    value={searchFilter}
+                    onChange={(e) => setSearchFilter(e.target.value)}
+                    style={{ width: "100%", padding: "7px 10px 7px 28px", borderRadius: 8, border: "1px solid var(--od-line)", fontSize: 12 }}
+                  />
+                  <Search size={13} style={{ position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)", color: "var(--od-muted)" }} />
+                </div>
+
+                <label className="od-btn od-btn--primary" style={{ padding: "6px 12px", fontSize: 12, cursor: "pointer" }}>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const name = window.prompt("Enter company or brand name for this logo:");
+                      if (name) handleAddClientLogo(file, name);
+                    }}
+                    style={{ display: "none" }}
+                  />
+                  <Plus size={13} /> Add Brand Logo
+                </label>
+
+                <button
+                  type="button"
+                  className="od-btn"
+                  onClick={() => persistSiteContent(siteContent, "Brand Logos")}
+                  disabled={savingSection === "Brand Logos"}
+                  style={{ padding: "6px 14px", fontSize: 12 }}
+                >
+                  {savingSection === "Brand Logos" && <Loader2 size={13} className="od-spin" />} Save Brand Directory
+                </button>
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 14 }}>
+              {siteContent.clients
+                .map((client, originalIdx) => ({ client, originalIdx }))
+                .filter(({ client }) => !searchFilter || client.name.toLowerCase().includes(searchFilter.toLowerCase()))
+                .map(({ client, originalIdx }) => {
+                  const logoUrl = client.logo?.startsWith("http") || client.logo?.startsWith("/") ? resolveBackendMedia(client.logo) : publicAsset(client.logo);
+                  const isUploading = uploadingTarget?.id === "client_logo" && uploadingTarget?.field === `logo_${originalIdx}`;
+
+                  return (
+                    <div
+                      key={originalIdx}
+                      style={{
+                        background: "var(--od-paper)",
+                        border: "1px solid var(--od-line)",
+                        borderRadius: 12,
+                        padding: 12,
+                        display: "flex",
+                        flexDirection: "column",
+                        justifyContent: "space-between",
+                      }}
+                    >
+                      <div
+                        style={{
+                          height: 60,
+                          background: "#fff",
+                          borderRadius: 8,
+                          display: "grid",
+                          placeItems: "center",
+                          marginBottom: 8,
+                          padding: "6px 10px",
+                          position: "relative",
+                          border: "1px solid var(--od-line)",
+                        }}
+                      >
+                        {logoUrl ? (
+                          <img src={logoUrl} alt={client.name} style={{ maxHeight: 44, maxWidth: "100%", objectFit: "contain" }} />
+                        ) : (
+                          <span style={{ fontSize: 11, fontWeight: 700, color: "#111" }}>{client.name}</span>
+                        )}
+                        {isUploading && (
+                          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.6)", display: "grid", placeItems: "center", color: "#fff", borderRadius: 8 }}>
+                            <Loader2 size={18} className="od-spin" />
+                          </div>
+                        )}
+                      </div>
+
+                      <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 8, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {client.name}
+                      </div>
+
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <label className="od-btn" style={{ flex: 1, justifyContent: "center", fontSize: 11, padding: "5px", cursor: "pointer" }} title="Replace Logo">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleClientLogoUpload(originalIdx, e.target.files?.[0])}
+                            style={{ display: "none" }}
+                            disabled={isUploading}
+                          />
+                          <UploadCloud size={11} /> Replace
+                        </label>
+                        <button
+                          type="button"
+                          className="od-btn"
+                          onClick={() => handleDeleteClientLogo(originalIdx)}
+                          style={{ color: "#d9534f", padding: "5px 8px" }}
+                          title="Delete Logo"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
           </div>
         </div>
       )}

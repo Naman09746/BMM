@@ -622,6 +622,8 @@ function NetworkExperience() {
 
 function ExperienceSpotlight() {
   const { setOpen } = useContact();
+  const { livingStudio: lsFromStore } = useSiteContent();
+  const currentLS = lsFromStore || livingStudio;
   const copyRef = useRef(null);
   const [revealed, setRevealed] = useState(false);
   useEffect(() => {
@@ -640,16 +642,16 @@ function ExperienceSpotlight() {
       <p data-testid="experience-spotlight-status">A stayable home by BDSM · BDS Marvel</p>
     </div>
     <div className="experience-spotlight__layout">
-      <DeferredBackground className="experience-spotlight__visual" style={{ backgroundImage: `linear-gradient(180deg, rgba(8,8,8,.08), rgba(8,8,8,.68)), url(${img(livingStudio.hero)})` }} data-testid="experience-spotlight-image">
-        <span data-testid="experience-spotlight-location">{livingStudio.kicker}</span>
+      <DeferredBackground className="experience-spotlight__visual" style={{ backgroundImage: `linear-gradient(180deg, rgba(8,8,8,.08), rgba(8,8,8,.68)), url(${img(currentLS.hero)})` }} data-testid="experience-spotlight-image">
+        <span data-testid="experience-spotlight-location">{currentLS.kicker}</span>
         <strong data-testid="experience-spotlight-image-title">STAY INSIDE<br />WHAT WE BUILT.</strong>
       </DeferredBackground>
       <div className="experience-spotlight__copy" ref={copyRef}>
         <span className="experience-spotlight__badge" data-testid="experience-spotlight-badge">STAY OVER</span>
         <h2 data-testid="experience-spotlight-title">Air BnB<br /><em>Living Studio.</em></h2>
-        <h3 data-testid="experience-spotlight-tagline">{livingStudio.tagline}</h3>
-        <p data-testid="experience-spotlight-description">{livingStudio.body}</p>
-        <ul data-testid="experience-spotlight-details">{livingStudio.details.map((detail, index) => <li key={detail} style={{ "--i": index }}>{detail}</li>)}</ul>
+        <h3 data-testid="experience-spotlight-tagline">{currentLS.tagline}</h3>
+        <p data-testid="experience-spotlight-description">{currentLS.body}</p>
+        <ul data-testid="experience-spotlight-details">{(currentLS.details || livingStudio.details).map((detail, index) => <li key={detail} style={{ "--i": index }}>{detail}</li>)}</ul>
         <div className="experience-spotlight__actions">
           <Link to="/stays?start=where" className="np-btn np-btn--solid" data-testid="experience-spotlight-explore">EXPLORE THE STAY <ArrowUpRight size={16} /></Link>
           <Link to="/experience" className="np-btn np-btn--ghost" data-testid="experience-spotlight-request">REQUEST A NIGHT <ArrowUpRight size={16} /></Link>

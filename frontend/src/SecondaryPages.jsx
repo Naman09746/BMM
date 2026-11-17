@@ -10,7 +10,7 @@ import { registerStaysData } from "./stays/data";
 import "@/stays/stays.css";
 import { buildMaterialGallery } from "@/catalogueGallery";
 import { ContactTrigger, CountUp, SampleTrigger, approach, img, projects as staticProjects, segments, stayTiers, stays, tierSlugOf, useConsultation, useContact, useInquiry, usePageMeta, useSample } from "./App";
-import { useProjects } from "./contentStore";
+import { useProjects, useSiteContent } from "./contentStore";
 
 const catalogueContent = wordpressContent("catalogueItems", [
   // DrawStones — the signature product range
@@ -154,7 +154,8 @@ const SEGMENT_SEO = wordpressContent("SEGMENT_SEO", {
 function SegmentPage() {
   const { slug } = useParams();
   const projects = useProjects();
-  const segment = segments.find((item) => item.slug === slug) || segments[0];
+  const { divisions } = useSiteContent();
+  const segment = (divisions || []).find((item) => item.slug === slug) || segments.find((item) => item.slug === slug) || segments[0];
   const related = projects.filter((item) => item.segment === segment.name);
   const extra = serviceExtras[segment.slug];
   const { openConsult } = useConsultation();
@@ -759,6 +760,7 @@ function ContactPage() {
 
 function AboutPage() {
   usePageMeta("About Us | BDSM · BDS Marvel", "One design and build company for stone, flooring, construction and interiors — 20+ years, 200+ projects, studios across India.");
+  const { about: aboutContent } = useSiteContent();
   const principles = wordpressContent("principles", [
     { number: "01", title: "Material comes first", text: "Before the drawing, we specify the stone or the surface. The rest of the project is designed around what the material actually wants to do." },
     { number: "02", title: "One accountable team", text: "Materials, flooring, construction and interiors all report into a single project lead. Fewer handovers, fewer things lost in translation." },
@@ -776,22 +778,23 @@ function AboutPage() {
     { year: "2023", event: "BDSM · BDS Marvel brings stone, flooring, construction and interior decor under one roof — the Drawstones, Renest, Formwork and Vignette teams." },
     { year: "2024", event: "BDSM Living Studio opens in Goa as our public reference and stayable showroom." },
   ]);
-  const team = wordpressContent("team", [
+  const defaultTeam = [
     { name: "Drawstones", role: "Materials & Sourcing", image: "photo-1618221195710-dd6b41faaea6" },
     { name: "Renest", role: "Specification & Distribution", image: "photo-1616486338812-3dadae4b4ace" },
     { name: "Formwork", role: "Structure & Site Management", image: "photo-1503387762-592deb58ef4e" },
     { name: "Vignette", role: "Design & Execution", image: "photo-1600585154340-be6161a56a0c" },
     { name: "Head of Craft", role: "Workshop & Fabrication", image: "photo-1600607687939-ce8a6c25118c" },
     { name: "Head of Living Studio", role: "B&B & Client Experience", image: "photo-1600566753190-17f0baa2a6c3" },
-  ]);
+  ];
+  const team = wordpressContent("team", (aboutContent?.team && aboutContent.team.length > 0) ? aboutContent.team : defaultTeam);
   return <main className="about-page" data-testid="about-page">
     <section className="about-hero">
       <div className="detail-kicker"><span>BDSM · ABOUT</span><Link to="/" state={{ restore: true }} data-testid="about-back-link">BACK HOME</Link></div>
       <p className="eyebrow">THE STUDIO</p>
       <h1>One team, from<br /><em>quarry to keys.</em></h1>
       <div className="about-hero__lede">
-        <p><strong>BDSM · BDS Marvel</strong> is one design and build company — stone, flooring, construction and interiors, handled in-house by our own teams: Drawstones, Renest, Formwork and Vignette. One contract, one accountable team, from facade to floor to furniture.</p>
-        <p>The names are new — our people have built for the country's most demanding hotels, developers and civic projects for over twenty years.</p>
+        <p><strong>BDSM · BDS Marvel</strong> {aboutContent?.lede_1 || "is one design and build company — stone, flooring, construction and interiors, handled in-house by our own teams: Drawstones, Renest, Formwork and Vignette. One contract, one accountable team, from facade to floor to furniture."}</p>
+        <p>{aboutContent?.lede_2 || "The names are new — our people have built for the country's most demanding hotels, developers and civic projects for over twenty years."}</p>
       </div>
     </section>
 

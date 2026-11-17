@@ -464,22 +464,22 @@ function Dashboard() {
         <span className="od-tab-group-label">VISUAL DIRECTORY:</span>
         <button type="button" role="tab" aria-selected={tab === "screens"} className={`od-tab ${tab === "screens" ? "is-on" : ""}`} onClick={() => setTab("screens")} data-testid="owner-tab-screens">🖥️ All 7 Screens (Images & Pages)</button>
 
-        <span className="od-tab-group-label" style={{ marginLeft: 8 }}>BOOKINGS:</span>
+        <span className="od-tab-group-label" style={{ marginLeft: 8 }}>BOOKINGS & ENQUIRIES:</span>
         <button type="button" role="tab" aria-selected={tab === "requests"} className={`od-tab ${tab === "requests" ? "is-on" : ""}`} onClick={() => setTab("requests")} data-testid="owner-tab-requests">Night requests{requests.length > 0 && <span className="od-tab__count">{requests.length}</span>}</button>
         <button type="button" role="tab" aria-selected={tab === "bookings"} className={`od-tab ${tab === "bookings" ? "is-on" : ""}`} onClick={() => setTab("bookings")} data-testid="owner-tab-bookings">All bookings</button>
         <button type="button" role="tab" aria-selected={tab === "enquiries"} className={`od-tab ${tab === "enquiries" ? "is-on" : ""}`} onClick={() => setTab("enquiries")} data-testid="owner-tab-enquiries">Enquiries</button>
         
-        <span className="od-tab-group-label" style={{ marginLeft: 8 }}>REPOSITORIES:</span>
-        <button type="button" role="tab" aria-selected={tab === "stays"} className={`od-tab ${tab === "stays" ? "is-on" : ""}`} onClick={() => setTab("stays")} data-testid="owner-tab-stays">Luxury Stays</button>
-        <button type="button" role="tab" aria-selected={tab === "projects"} className={`od-tab ${tab === "projects" ? "is-on" : ""}`} onClick={() => setTab("projects")} data-testid="owner-tab-projects">Projects & Work</button>
-        <button type="button" role="tab" aria-selected={tab === "catalogue"} className={`od-tab ${tab === "catalogue" ? "is-on" : ""}`} onClick={() => setTab("catalogue")} data-testid="owner-tab-catalogue">Materials Catalogue</button>
-        <button type="button" role="tab" aria-selected={tab === "content"} className={`od-tab ${tab === "content" ? "is-on" : ""}`} onClick={() => setTab("content")} data-testid="owner-tab-content">Hero & Story</button>
+        <span className="od-tab-group-label" style={{ marginLeft: 8 }}>DIRECT SCREEN EDITORS:</span>
+        <button type="button" role="tab" aria-selected={tab === "stays"} className={`od-tab ${tab === "stays" ? "is-on" : ""}`} onClick={() => setTab("stays")} data-testid="owner-tab-stays">02. Luxury Stays</button>
+        <button type="button" role="tab" aria-selected={tab === "projects"} className={`od-tab ${tab === "projects" ? "is-on" : ""}`} onClick={() => setTab("projects")} data-testid="owner-tab-projects">03. Projects & Work</button>
+        <button type="button" role="tab" aria-selected={tab === "catalogue"} className={`od-tab ${tab === "catalogue" ? "is-on" : ""}`} onClick={() => setTab("catalogue")} data-testid="owner-tab-catalogue">04. Materials</button>
+        <button type="button" role="tab" aria-selected={tab === "content"} className={`od-tab ${tab === "content" ? "is-on" : ""}`} onClick={() => setTab("content")} data-testid="owner-tab-content">01. Hero & Philosophy</button>
         
         <span className="od-tab-group-label" style={{ marginLeft: 8 }}>SYSTEM:</span>
         <button type="button" role="tab" aria-selected={tab === "security"} className={`od-tab ${tab === "security" ? "is-on" : ""}`} onClick={() => setTab("security")} data-testid="owner-tab-security"><ShieldCheck size={14} style={{ display: "inline-block", marginRight: 5, verticalAlign: "middle" }} />Security & 2FA</button>
       </div>
 
-      {tab === "screens" && <section data-testid="owner-screens"><VisualScreenDirectory /></section>}
+      {tab === "screens" && <section data-testid="owner-screens"><VisualScreenDirectory initialScreen="home" /></section>}
 
       {tab === "requests" && <section data-testid="owner-requests">
         {requests.length === 0
@@ -502,13 +502,15 @@ function Dashboard() {
           : enquiries.map((e) => e.type === "Quote request" ? <QuoteCard key={`${e.type}-${e.id}`} item={e} /> : <EnquiryCard key={`${e.type}-${e.id}`} item={e} />)}
       </section>}
 
-      {tab === "catalogue" && <section data-testid="owner-catalogue"><CatalogueManager /></section>}
+      {tab === "catalogue" && <section data-testid="owner-catalogue"><VisualScreenDirectory initialScreen="catalogue" /></section>}
 
-      {tab === "projects" && <section data-testid="owner-projects"><ProjectsManager /></section>}
+      {tab === "projects" && <section data-testid="owner-projects"><VisualScreenDirectory initialScreen="projects" /></section>}
 
-      {tab === "content" && <section data-testid="owner-content"><SiteContentManager onJumpToTab={setTab} /></section>}
+      {tab === "content" && <section data-testid="owner-content"><VisualScreenDirectory initialScreen="home" /></section>}
 
-      {tab === "stays" && <section data-testid="owner-stays"><StaysManager /></section>}
+      {tab === "stays" && <section data-testid="owner-stays"><VisualScreenDirectory initialScreen="stays" /></section>}
+
+      {tab === "security" && <section data-testid="owner-security"><SecurityManager /></section>}
 
       {tab === "security" && <section data-testid="owner-security"><SecurityManager /></section>}
     </>}

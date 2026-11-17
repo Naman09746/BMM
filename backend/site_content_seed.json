@@ -136,5 +136,62 @@
       "name": "Marriott",
       "logo": "/clients/marriott.webp"
     }
-  ]
+  ],
+  "divisions": [
+    {
+      "slug": "marble-and-stone",
+      "name": "MARBLE & STONE",
+      "parent": "Drawstones",
+      "kicker": "Quarried & Cut in Kishangarh",
+      "hero": "photo-1618221195710-dd6b41faaea6",
+      "tagline": "Stone that carries the building's silhouette.",
+      "body": "Facade and face stone for structures that need to age well. Interior stone — tables, fountains, decorative work — cut and finished in our own workshops."
+    },
+    {
+      "slug": "flooring",
+      "name": "FLOORING",
+      "parent": "Renest",
+      "kicker": "Wooden Plank & Stone Composite",
+      "hero": "photo-1616486338812-3dadae4b4ace",
+      "tagline": "Flooring, specified for how a space is actually lived in.",
+      "body": "Residential, hospitality and commercial projects — a distributed range and a proprietary line built for high-traffic floors."
+    },
+    {
+      "slug": "construction",
+      "name": "CONSTRUCTION",
+      "parent": "Formwork",
+      "kicker": "Civil, Structure & MEP",
+      "hero": "photo-1503387762-592deb58ef4e",
+      "tagline": "Buildings built the way the material wants to be used.",
+      "body": "Foundation, structure, finishes and site management for residential, hospitality and commercial builds — with a material-first sensibility."
+    },
+    {
+      "slug": "interior-designing",
+      "name": "INTERIOR DESIGNING",
+      "parent": "BDS Marvel",
+      "kicker": "3D Spatial Planning & Detailing",
+      "hero": "photo-1631679706909-1844bbd07221",
+      "tagline": "Design that decides before the build begins.",
+      "body": "Concept, spatial planning, material palettes and detailing — resolved with our own stone, flooring and construction teams before a single wall is touched."
+    }
+  ],
+  "about": {
+    "lede_1": "BDSM · BDS Marvel is one design and build company — stone, flooring, construction and interiors, handled in-house by our own teams: Drawstones, Renest, Formwork and Vignette. One contract, one accountable team, from facade to floor to furniture.",
+    "lede_2": "The names are new — our people have built for the country's most demanding hotels, developers and civic projects for over twenty years.",
+    "team": [
+      { "name": "Drawstones", "role": "Materials & Sourcing", "image": "photo-1618221195710-dd6b41faaea6" },
+      { "name": "Renest", "role": "Specification & Distribution", "image": "photo-1616486338812-3dadae4b4ace" },
+      { "name": "Formwork", "role": "Structure & Site Management", "image": "photo-1503387762-592deb58ef4e" },
+      { "name": "Vignette", "role": "Design & Execution", "image": "photo-1600585154340-be6161a56a0c" },
+      { "name": "Head of Craft", "role": "Workshop & Fabrication", "image": "photo-1600607687939-ce8a6c25118c" },
+      { "name": "Head of Living Studio", "role": "B&B & Client Experience", "image": "photo-1600566753190-17f0baa2a6c3" }
+    ]
+  },
+  "living_studio": {
+    "name": "Air BnB Living Studio",
+    "kicker": "Stayable showroom",
+    "tagline": "Not a showroom — a home we built ourselves.",
+    "body": "A guesthouse we built ourselves — our own stone, flooring, finishes and furniture throughout. Stay the night, live with every surface and plan your project from inside a working home.",
+    "hero": "photo-1600607687939-ce8a6c25118c"
+  }
 }
