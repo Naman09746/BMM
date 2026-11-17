@@ -32,6 +32,12 @@ export function AuthPanel({ onDone, returnTo }) {
         setStatus({ busy: false, error: "" });
         return;
       }
+      if (res.access_token) {
+        try {
+          sessionStorage.setItem("bds_token", res.access_token);
+          localStorage.setItem("bds_token", res.access_token);
+        } catch {}
+      }
       setUser(res);
       onDone?.(res);
     } catch (err) { setStatus({ busy: false, error: err.message }); }
@@ -49,6 +55,12 @@ export function AuthPanel({ onDone, returnTo }) {
         method: "POST",
         body: { mfa_token: mfaData.mfa_token, totp_code: totpCode.trim() }
       });
+      if (verified.access_token) {
+        try {
+          sessionStorage.setItem("bds_token", verified.access_token);
+          localStorage.setItem("bds_token", verified.access_token);
+        } catch {}
+      }
       setUser(verified);
       onDone?.(verified);
     } catch (err) {
@@ -125,7 +137,16 @@ export function AuthCallback() {
     done.current = true;
     const sessionId = new URLSearchParams(location.hash.slice(1)).get("session_id");
     api("/auth/session", { method: "POST", body: { session_id: sessionId } })
-      .then((user) => { setUser(user); navigate(`${location.pathname}${location.search}`, { replace: true }); })
+      .then((user) => {
+        if (user.access_token) {
+          try {
+            sessionStorage.setItem("bds_token", user.access_token);
+            localStorage.setItem("bds_token", user.access_token);
+          } catch {}
+        }
+        setUser(user);
+        navigate(`${location.pathname}${location.search}`, { replace: true });
+      })
       .catch((e) => { setError(e.message); setUser(false); });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

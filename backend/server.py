@@ -1131,8 +1131,8 @@ async def register(payload: RegisterIn, response: Response, _rl=Depends(rate_lim
     user = {"user_id": f"user_{uuid.uuid4().hex[:12]}", "email": email, "name": payload.name.strip(),
             "password_hash": hash_password(payload.password), "role": "guest", "created_at": datetime.now(timezone.utc).isoformat()}
     await db.users.insert_one(user)
-    _issue_jwt(response, user["user_id"])
-    return UserOut(**user)
+    access_token = _issue_jwt(response, user["user_id"])
+    return UserOut(**user, access_token=access_token)
 
 
 @api_router.post("/auth/login", response_model=UserOut)
@@ -1314,7 +1314,7 @@ async def google_session(payload: SessionIn, response: Response):
                                        "created_at": datetime.now(timezone.utc).isoformat()})
     _set_cookie(response, "session_token", data["session_token"], 604800)
     user = await db.users.find_one({"user_id": user_id}, {"_id": 0, "password_hash": 0})
-    return UserOut(**user)
+    return UserOut(**user, access_token=data["session_token"])
 
 
 @api_router.get("/auth/me", response_model=UserOut)
@@ -2470,26 +2470,26 @@ async def get_media_file(filename: str):
 
 @app.on_event("startup")
 async def startup_auth():
-    await db.users.create_index("email", unique=True)
-    await db.users.create_index("user_id", unique=True)
-    # Convert legacy ISO-string timestamps so TTL cleanup also covers existing
-    # sessions and failed-login records created before these indexes existed.
-    await db.user_sessions.update_many(
-        {"expires_at": {"$type": "string"}},
-        [{"$set": {"expires_at": {"$convert": {"input": "$expires_at", "to": "date", "onError": datetime.now(timezone.utc), "onNull": datetime.now(timezone.utc)}}}}],
-    )
-    await db.login_attempts.update_many(
-        {"updated_at": {"$type": "string"}},
-        [{"$set": {"updated_at": {"$convert": {"input": "$updated_at", "to": "date", "onError": datetime.now(timezone.utc), "onNull": datetime.now(timezone.utc)}}}}],
-    )
-    await db.user_sessions.create_index("session_token", unique=True)
-    await db.user_sessions.create_index("expires_at", expireAfterSeconds=0)
-    await db.login_attempts.create_index("identifier")
-    # Expire abandoned auth/rate-limit state and accelerate booking lookups.
-    await db.login_attempts.create_index("updated_at", expireAfterSeconds=86400)
-    await db.rate_limits.create_index("expires_at", expireAfterSeconds=0)
-    await db.bookings.create_index([("stay", 1), ("status", 1), ("check_in", 1), ("check_out", 1)])
-    await db.bookings.create_index([("user_id", 1), ("created_at", -1)])
+    try:
+        await db.users.create_index("email", unique=True)
+        await db.users.create_index("user_id", unique=True)
+        await db.user_sessions.update_many(
+            {"expires_at": {"$type": "string"}},
+            [{"$set": {"expires_at": {"$convert": {"input": "$expires_at", "to": "date", "onError": datetime.now(timezone.utc), "onNull": datetime.now(timezone.utc)}}}}],
+        )
+        await db.login_attempts.update_many(
+            {"updated_at": {"$type": "string"}},
+            [{"$set": {"updated_at": {"$convert": {"input": "$updated_at", "to": "date", "onError": datetime.now(timezone.utc), "onNull": datetime.now(timezone.utc)}}}}],
+        )
+        await db.user_sessions.create_index("session_token", unique=True)
+        await db.user_sessions.create_index("expires_at", expireAfterSeconds=0)
+        await db.login_attempts.create_index("identifier")
+        await db.login_attempts.create_index("updated_at", expireAfterSeconds=86400)
+        await db.rate_limits.create_index("expires_at", expireAfterSeconds=0)
+        await db.bookings.create_index([("stay", 1), ("status", 1), ("check_in", 1), ("check_out", 1)])
+        await db.bookings.create_index([("user_id", 1), ("created_at", -1)])
+    except Exception as exc:
+        logger.warning("Startup database index notice: %s", exc)
 
     # Seed catalogue collection if empty
     try:
@@ -2596,6 +2596,30 @@ cors_env = os.environ.get("CORS_ORIGINS", "http://localhost:3000,http://127.0.0.
 ALLOWED_ORIGINS = [o.strip().rstrip("/") for o in cors_env.split(",") if o.strip() and o.strip() != "*"]
 
 
+def _is_origin_allowed(origin: Optional[str], host: str) -> bool:
+    if not origin:
+        return True
+    origin_clean = origin.strip().rstrip("/")
+    if origin_clean in ALLOWED_ORIGINS:
+        return True
+    if urlparse(origin_clean).netloc == host:
+        return True
+    netloc = urlparse(origin_clean).netloc.lower()
+    if netloc.endswith(".vercel.app") or netloc in ("localhost:3000", "127.0.0.1:3000"):
+        return True
+    for allowed in ALLOWED_ORIGINS:
+        allowed_netloc = urlparse(allowed).netloc.lower()
+        if allowed_netloc and (netloc == allowed_netloc or netloc.endswith("." + allowed_netloc)):
+            return True
+    return False
+
+
+@api_router.get("/health")
+@app.get("/health")
+async def health_check():
+    return {"status": "ok", "app": "BDS Marvel"}
+
+
 @app.middleware("http")
 async def origin_guard_and_headers(request: Request, call_next):
     cl = request.headers.get("content-length")
@@ -2607,7 +2631,7 @@ async def origin_guard_and_headers(request: Request, call_next):
     origin = request.headers.get("origin")
     if request.method in ("POST", "PUT", "PATCH", "DELETE") and origin:
         host = request.headers.get("x-forwarded-host") or request.headers.get("host", "")
-        if origin.rstrip("/") not in ALLOWED_ORIGINS and urlparse(origin).netloc != host:
+        if not _is_origin_allowed(origin, host):
             return Response(content='{"detail":"Origin not allowed"}', status_code=403, media_type="application/json")
     response = await call_next(request)
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
@@ -2627,6 +2651,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
     allow_origins=ALLOWED_ORIGINS,
+    allow_origin_regex=r"^https://.*\.vercel\.app$",
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization"],
 )

@@ -1,4 +1,4 @@
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
+const BACKEND_URL = (process.env.REACT_APP_BACKEND_URL || "http://localhost:8000").replace(/\/$/, "");
 
 export const nativeWordPress =
   typeof window !== "undefined" && Boolean(window.BDS_WORDPRESS?.apiUrl);
