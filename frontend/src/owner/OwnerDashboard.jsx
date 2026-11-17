@@ -460,13 +460,20 @@ function Dashboard() {
       </div>}
 
       <div className="od-tabs" role="tablist">
+        <span className="od-tab-group-label">BOOKINGS:</span>
         <button type="button" role="tab" aria-selected={tab === "requests"} className={`od-tab ${tab === "requests" ? "is-on" : ""}`} onClick={() => setTab("requests")} data-testid="owner-tab-requests">Night requests{requests.length > 0 && <span className="od-tab__count">{requests.length}</span>}</button>
         <button type="button" role="tab" aria-selected={tab === "bookings"} className={`od-tab ${tab === "bookings" ? "is-on" : ""}`} onClick={() => setTab("bookings")} data-testid="owner-tab-bookings">All bookings</button>
         <button type="button" role="tab" aria-selected={tab === "enquiries"} className={`od-tab ${tab === "enquiries" ? "is-on" : ""}`} onClick={() => setTab("enquiries")} data-testid="owner-tab-enquiries">Enquiries</button>
-        <button type="button" role="tab" aria-selected={tab === "catalogue"} className={`od-tab ${tab === "catalogue" ? "is-on" : ""}`} onClick={() => setTab("catalogue")} data-testid="owner-tab-catalogue">Catalogue & Inventory</button>
+        
+        <span className="od-tab-group-label" style={{ marginLeft: 8 }}>DIRECTORIES:</span>
+        <button type="button" role="tab" aria-selected={tab === "catalogue"} className={`od-tab ${tab === "catalogue" ? "is-on" : ""}`} onClick={() => setTab("catalogue")} data-testid="owner-tab-catalogue">Materials Catalogue</button>
         <button type="button" role="tab" aria-selected={tab === "projects"} className={`od-tab ${tab === "projects" ? "is-on" : ""}`} onClick={() => setTab("projects")} data-testid="owner-tab-projects">Projects & Work</button>
-        <button type="button" role="tab" aria-selected={tab === "content"} className={`od-tab ${tab === "content" ? "is-on" : ""}`} onClick={() => setTab("content")} data-testid="owner-tab-content">Hero & Story</button>
-        <button type="button" role="tab" aria-selected={tab === "stays"} className={`od-tab ${tab === "stays" ? "is-on" : ""}`} onClick={() => setTab("stays")} data-testid="owner-tab-stays">Airbnb Stays</button>
+        <button type="button" role="tab" aria-selected={tab === "stays"} className={`od-tab ${tab === "stays" ? "is-on" : ""}`} onClick={() => setTab("stays")} data-testid="owner-tab-stays">Luxury Stays</button>
+        
+        <span className="od-tab-group-label" style={{ marginLeft: 8 }}>WEBSITE:</span>
+        <button type="button" role="tab" aria-selected={tab === "content"} className={`od-tab ${tab === "content" ? "is-on" : ""}`} onClick={() => setTab("content")} data-testid="owner-tab-content">Hero, Story & Brands</button>
+        
+        <span className="od-tab-group-label" style={{ marginLeft: 8 }}>SYSTEM:</span>
         <button type="button" role="tab" aria-selected={tab === "security"} className={`od-tab ${tab === "security" ? "is-on" : ""}`} onClick={() => setTab("security")} data-testid="owner-tab-security"><ShieldCheck size={14} style={{ display: "inline-block", marginRight: 5, verticalAlign: "middle" }} />Security & 2FA</button>
       </div>
 
