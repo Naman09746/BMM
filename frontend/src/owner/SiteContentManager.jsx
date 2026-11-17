@@ -13,10 +13,12 @@ import {
   Search,
   ArrowUp,
   ArrowDown,
-  ArrowDownRight,
-  Eye,
+  ArrowRight,
+  ArrowLeft,
   SlidersHorizontal,
   X,
+  ExternalLink,
+  Briefcase,
 } from "lucide-react";
 import { api, resolveBackendMedia } from "../stays/store";
 import { publicAsset } from "../wordpress";
@@ -30,25 +32,30 @@ const DEFAULT_HERO_STATE = {
   subtitle: "One design and build studio for marble and stone, flooring, turnkey construction and interior design.",
 };
 
-export function SiteContentManager() {
+export function SiteContentManager({ onJumpToTab }) {
   const [content, setContent] = useState({
     hero: DEFAULT_HERO_STATE,
     approach: [],
     clients: [],
   });
+  const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   
-  // Navigation & Sub-Tab Hierarchy
-  const [activeTab, setActiveTab] = useState("hero"); // "hero" | "pillars" | "brands"
-  
-  // Pillar Selection
+  // Sequential Website Page Flow:
+  // Step 0: "hero" (00 - Opening & Hero Banner)
+  // Step 1: "approach" (02 - How BDS Marvel Builds)
+  // Step 2: "projects" (03 - Project Catalogue Slideshow)
+  // Step 3: "clients" (04 - Partner Brands & Clientele Marquee)
+  const [activeStep, setActiveStep] = useState("hero");
+
+  // Pillar Selection (Section 02)
   const [activePillarIdx, setActivePillarIdx] = useState(0);
   const [pillarViewMode, setPillarViewMode] = useState("focused"); // "focused" | "all"
 
-  // Brand Directory Search & Filters
+  // Brand Directory Search & Filters (Section 04)
   const [brandSearch, setBrandSearch] = useState("");
   const [brandFilter, setBrandFilter] = useState("all"); // "all" | "has_logo" | "no_logo"
 
@@ -60,14 +67,23 @@ export function SiteContentManager() {
     setLoading(true);
     setError("");
     try {
-      const data = await api("/site-content");
-      setContent({
-        hero: data.hero && typeof data.hero === "object" && Object.keys(data.hero).length > 0
-          ? { ...DEFAULT_HERO_STATE, ...data.hero }
-          : DEFAULT_HERO_STATE,
-        approach: Array.isArray(data.approach) ? data.approach : [],
-        clients: Array.isArray(data.clients) ? data.clients : [],
-      });
+      const [siteData, projData] = await Promise.all([
+        api("/site-content").catch(() => null),
+        api("/projects?all=true").catch(() => []),
+      ]);
+
+      if (siteData && typeof siteData === "object") {
+        setContent({
+          hero: siteData.hero && typeof siteData.hero === "object" && Object.keys(siteData.hero).length > 0
+            ? { ...DEFAULT_HERO_STATE, ...siteData.hero }
+            : DEFAULT_HERO_STATE,
+          approach: Array.isArray(siteData.approach) ? siteData.approach : [],
+          clients: Array.isArray(siteData.clients) ? siteData.clients : [],
+        });
+      }
+      if (Array.isArray(projData)) {
+        setProjects(projData);
+      }
     } catch (err) {
       setError(err.message || "Failed to load site content");
     } finally {
@@ -132,7 +148,6 @@ export function SiteContentManager() {
     if (!window.confirm("Are you sure you want to remove this story pillar?")) return;
     setContent((prev) => {
       const filtered = prev.approach.filter((_, i) => i !== index);
-      // Renumber
       const renumbered = filtered.map((item, idx) => ({
         ...item,
         number: String(idx + 1).padStart(2, "0"),
@@ -152,7 +167,6 @@ export function SiteContentManager() {
       const temp = copy[index];
       copy[index] = copy[targetIdx];
       copy[targetIdx] = temp;
-      // Re-normalize numbers
       return {
         ...prev,
         approach: copy.map((item, idx) => ({
@@ -227,7 +241,6 @@ export function SiteContentManager() {
     return publicAsset(logo);
   };
 
-  // Filtered & Searched Brands
   const filteredBrands = useMemo(() => {
     return content.clients.map((c, originalIdx) => ({ ...c, originalIdx })).filter((c) => {
       const matchesSearch = !brandSearch.trim() || c.name.toLowerCase().includes(brandSearch.trim().toLowerCase());
@@ -277,17 +290,17 @@ export function SiteContentManager() {
 
   return (
     <div className="cm-container" data-testid="site-content-manager">
-      {/* Top Header & Breadcrumb */}
+      {/* Top Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, flexWrap: "wrap", gap: 14 }}>
         <div>
           <div style={{ fontSize: 11, letterSpacing: 2, textTransform: "uppercase", color: "var(--od-gold-d)", fontWeight: 700, marginBottom: 4 }}>
-            Website Architecture & Brand Control
+            Website Page Sequence & Visual Series
           </div>
           <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 30, margin: 0 }}>
-            Homepage & Brand Assets Directory
+            Visual Homepage Editor
           </h2>
           <p style={{ color: "var(--od-muted)", fontSize: 13, margin: "4px 0 0" }}>
-            Hierarchical management for homepage hero typography, craft philosophy pillars, and partner client logos.
+            Sections are ordered in the exact sequence they appear on the live website from top to bottom.
           </p>
         </div>
         <div style={{ display: "flex", gap: 10 }}>
@@ -307,42 +320,75 @@ export function SiteContentManager() {
         </div>
       )}
 
-      {/* Segmented Sub-Navigation Bar */}
-      <div className="site-nav-pills" role="tablist">
-        <button
-          type="button"
-          className={`site-nav-pill ${activeTab === "hero" ? "is-active" : ""}`}
-          onClick={() => setActiveTab("hero")}
+      {/* =========================================================================
+          EXACT WEBSITE PAGE FLOW RAIL (Top-to-Bottom Sequence)
+         ========================================================================= */}
+      <div className="site-flow-rail" role="tablist">
+        {/* Step 1: Hero */}
+        <div
+          className={`site-flow-step ${activeStep === "hero" ? "is-active" : ""}`}
+          onClick={() => setActiveStep("hero")}
+          role="button"
+          tabIndex={0}
         >
-          <Sparkles size={16} />
-          <span>1. Homepage Hero Banner</span>
-        </button>
+          <div className="site-flow-step__badge">
+            <Sparkles size={12} />
+            <span>00 · Page Top</span>
+          </div>
+          <h4 className="site-flow-step__title">Hero & Opening</h4>
+          <span className="site-flow-step__meta">Craftsmanship Headlines & Eyebrow</span>
+        </div>
 
-        <button
-          type="button"
-          className={`site-nav-pill ${activeTab === "pillars" ? "is-active" : ""}`}
-          onClick={() => setActiveTab("pillars")}
+        {/* Step 2: 02 Approach */}
+        <div
+          className={`site-flow-step ${activeStep === "approach" ? "is-active" : ""}`}
+          onClick={() => setActiveStep("approach")}
+          role="button"
+          tabIndex={0}
         >
-          <Layers size={16} />
-          <span>2. Craft Story Pillars</span>
-          <span className="pill-badge">{content.approach.length}</span>
-        </button>
+          <div className="site-flow-step__badge">
+            <Layers size={12} />
+            <span>02 · Section 02</span>
+          </div>
+          <h4 className="site-flow-step__title">How We Build</h4>
+          <span className="site-flow-step__meta">{content.approach.length} Material Craft Pillars</span>
+        </div>
 
-        <button
-          type="button"
-          className={`site-nav-pill ${activeTab === "brands" ? "is-active" : ""}`}
-          onClick={() => setActiveTab("brands")}
+        {/* Step 3: 03 Projects */}
+        <div
+          className={`site-flow-step ${activeStep === "projects" ? "is-active" : ""}`}
+          onClick={() => setActiveStep("projects")}
+          role="button"
+          tabIndex={0}
         >
-          <Award size={16} />
-          <span>3. Brand Logos & Clientele</span>
-          <span className="pill-badge">{content.clients.length}</span>
-        </button>
+          <div className="site-flow-step__badge">
+            <Briefcase size={12} />
+            <span>03 · Section 03</span>
+          </div>
+          <h4 className="site-flow-step__title">Project Catalogue</h4>
+          <span className="site-flow-step__meta">{projects.length} Frame-by-Frame Works</span>
+        </div>
+
+        {/* Step 4: 04 Clientele */}
+        <div
+          className={`site-flow-step ${activeStep === "clients" ? "is-active" : ""}`}
+          onClick={() => setActiveStep("clients")}
+          role="button"
+          tabIndex={0}
+        >
+          <div className="site-flow-step__badge">
+            <Award size={12} />
+            <span>04 · Page Bottom</span>
+          </div>
+          <h4 className="site-flow-step__title">Partner Brands</h4>
+          <span className="site-flow-step__meta">{content.clients.length} Logo Marquee Track</span>
+        </div>
       </div>
 
       {/* =========================================================================
-          TAB 1: HOMEPAGE HERO BANNER
+          SECTION 00: HOMEPAGE HERO BANNER (Page Top)
          ========================================================================= */}
-      {activeTab === "hero" && (
+      {activeStep === "hero" && (
         <div>
           {/* Live Mockup Preview */}
           <div className="hero-live-preview">
@@ -363,13 +409,13 @@ export function SiteContentManager() {
           </div>
 
           {/* Form Editor Card */}
-          <div className="od-card" style={{ padding: 24 }}>
+          <div className="od-card" style={{ padding: 24, marginBottom: 20 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
               <Sparkles size={18} color="var(--od-gold-d)" />
-              <h3 style={{ margin: 0, fontSize: 18 }}>Hero Typography & Tagline Configuration</h3>
+              <h3 style={{ margin: 0, fontSize: 18 }}>00 — Hero Typography & Studio Tagline</h3>
             </div>
             <p style={{ color: "var(--od-muted)", fontSize: 13, marginTop: 0, marginBottom: 20 }}>
-              Edits made here update the opening typography rendered over the craftsmanship hero video.
+              This opening typography is rendered full-screen over the craftsmanship video reel on the homepage.
             </p>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }}>
@@ -425,22 +471,38 @@ export function SiteContentManager() {
               </label>
             </div>
           </div>
+
+          {/* Sequential Step Footer */}
+          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 20 }}>
+            <button
+              type="button"
+              className="od-btn od-btn--primary"
+              onClick={() => setActiveStep("approach")}
+              style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 22px" }}
+            >
+              Continue to Section 02: How BDS Marvel Builds <ArrowRight size={15} />
+            </button>
+          </div>
         </div>
       )}
 
       {/* =========================================================================
-          TAB 2: CRAFT STORY PILLARS (02 How BDS Marvel Builds)
+          SECTION 02: HOW BDS MARVEL BUILDS (Craft Story Pillars)
          ========================================================================= */}
-      {activeTab === "pillars" && (
+      {activeStep === "approach" && (
         <div>
-          {/* Top Control Bar with Selector Pills */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, flexWrap: "wrap", gap: 12 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <Layers size={18} color="var(--od-gold-d)" />
-              <h3 style={{ margin: 0, fontSize: 18 }}>02 — Material Craft Story Pillars</h3>
-              <span style={{ background: "var(--od-line)", fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 999 }}>
-                {content.approach.length} Pillars
-              </span>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <Layers size={18} color="var(--od-gold-d)" />
+                <h3 style={{ margin: 0, fontSize: 18 }}>02 — Material Craft Story Pillars</h3>
+                <span style={{ background: "var(--od-line)", fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 999 }}>
+                  {content.approach.length} Pillars
+                </span>
+              </div>
+              <p style={{ color: "var(--od-muted)", fontSize: 12.5, margin: "4px 0 0" }}>
+                Corresponds to the 5 background photo accordion cards in homepage Section 02.
+              </p>
             </div>
 
             <div style={{ display: "flex", gap: 10 }}>
@@ -483,8 +545,8 @@ export function SiteContentManager() {
 
           {/* Content Rendering: Focused Mode vs All Stack Mode */}
           {pillarViewMode === "focused" && currentPillar ? (
-            <div className="od-card" style={{ padding: 24 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18, borderBottom: "1px solid var(--od-line)", paddingBottom: 12 }}>
+            <div className="od-card" style={{ padding: 24, marginBottom: 20 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18, borderBottom: "1px solid var(--od-line)", paddingBottom: 12, flexWrap: "wrap", gap: 10 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <span style={{ background: "var(--od-ink)", color: "#fff", fontWeight: 700, padding: "4px 10px", borderRadius: 8, fontSize: 14 }}>
                     {currentPillar.number}
@@ -501,9 +563,9 @@ export function SiteContentManager() {
                     onClick={() => moveApproach(activePillarIdx, -1)}
                     disabled={activePillarIdx === 0}
                     style={{ padding: "6px 10px" }}
-                    title="Move Earlier"
+                    title="Move Earlier in Series"
                   >
-                    <ArrowUp size={13} /> Move Up
+                    <ArrowUp size={13} /> Move Earlier
                   </button>
                   <button
                     type="button"
@@ -511,9 +573,9 @@ export function SiteContentManager() {
                     onClick={() => moveApproach(activePillarIdx, 1)}
                     disabled={activePillarIdx === content.approach.length - 1}
                     style={{ padding: "6px 10px" }}
-                    title="Move Later"
+                    title="Move Later in Series"
                   >
-                    <ArrowDown size={13} /> Move Down
+                    <ArrowDown size={13} /> Move Later
                   </button>
                   <button
                     type="button"
@@ -584,7 +646,7 @@ export function SiteContentManager() {
                       value={currentPillar.text || ""}
                       onChange={(e) => handleApproachChange(activePillarIdx, "text", e.target.value)}
                       style={{ width: "100%", padding: 12, borderRadius: 12, border: "1px solid var(--od-line)", fontFamily: "inherit", fontSize: 13.5, resize: "vertical" }}
-                      placeholder="Explain how BDS Marvel builds and specifies materials..."
+                      placeholder="Explain how BDS Marvel specifies and crafts the material..."
                     />
                   </label>
                 </div>
@@ -592,7 +654,7 @@ export function SiteContentManager() {
             </div>
           ) : (
             /* All Stacks View */
-            <div style={{ display: "grid", gap: 16 }}>
+            <div style={{ display: "grid", gap: 16, marginBottom: 20 }}>
               {content.approach.map((item, idx) => (
                 <div key={idx} className="od-card" style={{ padding: 18, display: "grid", gridTemplateColumns: "180px 1fr", gap: 18 }}>
                   <div>
@@ -637,24 +699,129 @@ export function SiteContentManager() {
               ))}
             </div>
           )}
+
+          {/* Sequential Step Footer */}
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 20 }}>
+            <button
+              type="button"
+              className="od-btn"
+              onClick={() => setActiveStep("hero")}
+              style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
+            >
+              <ArrowLeft size={14} /> Back to 00: Hero Banner
+            </button>
+            <button
+              type="button"
+              className="od-btn od-btn--primary"
+              onClick={() => setActiveStep("projects")}
+              style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 22px" }}
+            >
+              Continue to Section 03: Project Works <ArrowRight size={15} />
+            </button>
+          </div>
         </div>
       )}
 
       {/* =========================================================================
-          TAB 3: BRAND LOGOS & CLIENTELE DIRECTORY (For Large Directories)
+          SECTION 03: PROJECT CATALOGUE (Selected Work, Frame by Frame)
          ========================================================================= */}
-      {activeTab === "brands" && (
+      {activeStep === "projects" && (
+        <div>
+          <div className="od-card" style={{ padding: 24, marginBottom: 20 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <Briefcase size={20} color="var(--od-gold-d)" />
+                <div>
+                  <h3 style={{ margin: 0, fontSize: 18 }}>03 — Project Catalogue (Frame-by-Frame Slideshow)</h3>
+                  <p style={{ margin: "2px 0 0", color: "var(--od-muted)", fontSize: 12.5 }}>
+                    These selected architectural projects rotate on the homepage frame-by-frame slideshow.
+                  </p>
+                </div>
+              </div>
+
+              {onJumpToTab && (
+                <button
+                  type="button"
+                  className="od-btn od-btn--primary"
+                  onClick={() => onJumpToTab("projects")}
+                  style={{ fontSize: 12.5, display: "inline-flex", alignItems: "center", gap: 6 }}
+                >
+                  Open Full Projects Manager <ExternalLink size={13} />
+                </button>
+              )}
+            </div>
+
+            {/* Project Frame Grid Overview */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 14 }}>
+              {projects.map((p, idx) => (
+                <div
+                  key={p.slug || idx}
+                  style={{
+                    background: "var(--od-paper)",
+                    borderRadius: 14,
+                    overflow: "hidden",
+                    border: "1px solid var(--od-line)",
+                    display: "flex",
+                    flexDirection: "column",
+                  }}
+                >
+                  <div style={{ width: "100%", height: 130, background: "#e3dbcc", overflow: "hidden" }}>
+                    <img
+                      src={img(p.image, 400)}
+                      alt={p.title}
+                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    />
+                  </div>
+                  <div style={{ padding: "12px 14px", flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                    <div>
+                      <div style={{ fontSize: 10.5, letterSpacing: 1.5, color: "var(--od-gold-d)", textTransform: "uppercase", fontWeight: 700 }}>
+                        {p.segment} · {p.category}
+                      </div>
+                      <h4 style={{ margin: "4px 0 2px", fontSize: 15, fontWeight: 700 }}>{p.title}</h4>
+                      <div style={{ fontSize: 12, color: "var(--od-muted)" }}>{p.location}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Sequential Step Footer */}
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 20 }}>
+            <button
+              type="button"
+              className="od-btn"
+              onClick={() => setActiveStep("approach")}
+              style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
+            >
+              <ArrowLeft size={14} /> Back to 02: How BDS Marvel Builds
+            </button>
+            <button
+              type="button"
+              className="od-btn od-btn--primary"
+              onClick={() => setActiveStep("clients")}
+              style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 22px" }}
+            >
+              Continue to Section 04: Partner Brands <ArrowRight size={15} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          SECTION 04: PARTNER BRANDS & CLIENTELE (Marquee Track at Page Bottom)
+         ========================================================================= */}
+      {activeStep === "clients" && (
         <div>
           {/* Top Directory Controls */}
           <div className="brand-dir-toolbar">
-            {/* Search Box */}
             <div className="brand-search-box">
               <Search size={16} />
               <input
                 type="text"
                 value={brandSearch}
                 onChange={(e) => setBrandSearch(e.target.value)}
-                placeholder="Search across partner brands (e.g. Taj, L&T, Marriott, Hospital)..."
+                placeholder="Search across 24+ partner brands (e.g. Taj, L&T, Marriott, Hospital)..."
               />
               {brandSearch && (
                 <button
@@ -667,7 +834,6 @@ export function SiteContentManager() {
               )}
             </div>
 
-            {/* Filter Chips */}
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
               <button
                 type="button"
@@ -692,7 +858,6 @@ export function SiteContentManager() {
               </button>
             </div>
 
-            {/* Add Brand Action */}
             <button
               type="button"
               className="od-btn od-btn--primary"
@@ -703,15 +868,13 @@ export function SiteContentManager() {
             </button>
           </div>
 
-          {/* Directory Count Status */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, fontSize: 12, color: "var(--od-muted)" }}>
-            <span>Showing {filteredBrands.length} of {content.clients.length} brand partners in infinite marquee</span>
+            <span>Showing {filteredBrands.length} of {content.clients.length} brand partners in bottom marquee</span>
             {brandSearch && <span>Filtered by: "{brandSearch}"</span>}
           </div>
 
-          {/* Directory Grid */}
           {filteredBrands.length === 0 ? (
-            <div className="od-empty" style={{ padding: 40 }}>
+            <div className="od-empty" style={{ padding: 40, marginBottom: 20 }}>
               <Award size={32} style={{ marginBottom: 10, opacity: 0.5 }} />
               <p style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 600 }}>No partner brands matched your search.</p>
               <button type="button" className="od-btn" onClick={() => { setBrandSearch(""); setBrandFilter("all"); }}>
@@ -719,13 +882,12 @@ export function SiteContentManager() {
               </button>
             </div>
           ) : (
-            <div className="brand-dir-grid">
+            <div className="brand-dir-grid" style={{ marginBottom: 20 }}>
               {filteredBrands.map((c) => {
                 const idx = c.originalIdx;
                 const logoSrc = resolveClientLogo(c.logo);
                 return (
                   <div key={idx} className="brand-dir-card">
-                    {/* High-Contrast Logo Preview Box */}
                     <div className="brand-logo-preview">
                       {logoSrc ? (
                         <img src={logoSrc} alt={c.name} />
@@ -733,7 +895,6 @@ export function SiteContentManager() {
                         <ImageIcon size={20} color="var(--od-muted)" />
                       )}
 
-                      {/* Floating Upload Pill */}
                       <label className="brand-logo-upload-btn" title="Upload or Replace Logo">
                         <input
                           type="file"
@@ -746,7 +907,6 @@ export function SiteContentManager() {
                       </label>
                     </div>
 
-                    {/* Brand Name Input & Controls */}
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <input
                         type="text"
@@ -762,7 +922,6 @@ export function SiteContentManager() {
                       </div>
                     </div>
 
-                    {/* Actions: Reorder & Delete */}
                     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                       <button
                         type="button"
@@ -796,13 +955,34 @@ export function SiteContentManager() {
               })}
             </div>
           )}
+
+          {/* Sequential Step Footer */}
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 20 }}>
+            <button
+              type="button"
+              className="od-btn"
+              onClick={() => setActiveStep("projects")}
+              style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
+            >
+              <ArrowLeft size={14} /> Back to 03: Project Works
+            </button>
+            <button
+              type="button"
+              className="od-btn od-btn--primary"
+              onClick={handleSave}
+              disabled={saving}
+              style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 24px" }}
+            >
+              {saving ? <Loader2 size={14} className="od-spin" /> : <Check size={14} />} Save All Changes to Website
+            </button>
+          </div>
         </div>
       )}
 
       {/* Floating Bottom Sticky Action Bar */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 32, paddingTop: 18, borderTop: "1px solid var(--od-line)" }}>
         <span style={{ fontSize: 12, color: "var(--od-muted)" }}>
-          Unsaved changes will be discarded on page refresh unless saved.
+          Changes apply live across all sections once saved.
         </span>
         <button
           type="button"

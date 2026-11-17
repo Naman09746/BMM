@@ -502,7 +502,7 @@ function Dashboard() {
 
       {tab === "projects" && <section data-testid="owner-projects"><ProjectsManager /></section>}
 
-      {tab === "content" && <section data-testid="owner-content"><SiteContentManager /></section>}
+      {tab === "content" && <section data-testid="owner-content"><SiteContentManager onJumpToTab={setTab} /></section>}
 
       {tab === "stays" && <section data-testid="owner-stays"><StaysManager /></section>}
 
