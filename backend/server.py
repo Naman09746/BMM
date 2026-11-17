@@ -2439,11 +2439,13 @@ async def admin_upload_media(file: UploadFile = File(...), admin: dict = Depends
     media_id = f"img_{uuid.uuid4().hex[:12]}.{ext}"
     saved_path = f"{APP_NAME}/media/{media_id}"
     try:
+        (UPLOAD_DIR / media_id).write_bytes(data)
+    except Exception as exc:
+        logger.warning("Local media cache write failed: %s", exc)
+    try:
         put_object(saved_path, data, _MIME_TYPES[ext])
     except Exception as exc:
         logger.error("Media upload put_object failed: %s", exc)
-        local_dest = UPLOAD_DIR / media_id
-        local_dest.write_bytes(data)
 
     url = f"/api/media/{media_id}"
     await log_admin_action(admin, "upload_media", f"media:{media_id}", {"filename": filename, "size": len(data)}, request=request)

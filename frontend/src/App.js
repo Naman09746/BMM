@@ -14,7 +14,7 @@ const OwnerDashboard = lazyStyled(() => import("./owner/OwnerDashboard"), "owner
 const OwnerLogin = lazy(() => import("./owner/OwnerDashboard").then(module => ({default:module.OwnerLogin})));
 import "@/App.css";
 import { initSmoothScroll, smoothScrollTo, startSmoothScroll, stopSmoothScroll } from "@/lib/smoothScroll";
-import { AuthProvider, StaysProvider, useAuth } from "./stays/store";
+import { AuthProvider, StaysProvider, useAuth, resolveBackendMedia, formatDriveImg } from "./stays/store";
 import { registerStaysData } from "./stays/data";
 import { ContentProvider, useProjects, useSiteContent, DEFAULT_PROJECTS, DEFAULT_APPROACH, DEFAULT_CLIENTS } from "./contentStore";
 import "@/stays/stays.css";
@@ -31,17 +31,9 @@ const MyTrips = lazyStyled(() => import("./stays/MyTrips"), "stays");
 const Account = lazyStyled(() => import("./stays/Account"), "stays");
 
 const IMG = "https://images.unsplash.com/";
-const formatDriveImg = (url) => {
-  if (!url || typeof url !== "string") return url;
-  if (url.includes("drive.google.com")) {
-    const m = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-    if (m && m[1]) return `https://lh3.googleusercontent.com/d/${m[1]}`;
-  }
-  return url;
-};
 const img = (id, w = 1600) => {
   if (!id) return "";
-  const cleaned = formatDriveImg(id);
+  const cleaned = resolveBackendMedia(formatDriveImg(id));
   return (cleaned.startsWith("http") || cleaned.startsWith("/") || cleaned.startsWith("data:"))
     ? cleaned
     : `${IMG}${cleaned}?auto=format&fit=crop&w=${w}&q=80`;

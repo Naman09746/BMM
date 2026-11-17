@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BedDouble, Boxes, Key, Loader2, LogOut, RefreshCw, ShieldCheck } from "lucide-react";
-import { api, useAuth } from "../stays/store";
+import { api, useAuth, resolveBackendMedia } from "../stays/store";
 import CatalogueManager from "./CatalogueManager";
 import StaysManager from "./StaysManager";
 import ProjectsManager from "./ProjectsManager";
@@ -203,7 +203,7 @@ function EnquiryCard({ item }) {
 function QuoteCard({ item }) {
   const specs = [["Collection", item.collection], ["Brand", item.brand], ["Material", item.material], ["Finish", item.finish], ["Best for", item.use], ["Quantity", item.quantity], ["Needed by", item.timeline]].filter(([, v]) => v);
   return <article className="od-card od-quote" data-testid={`quote-card-${item.id}`}>
-    {item.image && <img className="od-quote__img" src={item.image} alt={item.product} data-testid={`quote-image-${item.id}`} />}
+    {item.image && <img className="od-quote__img" src={resolveBackendMedia(item.image)} alt={item.product} data-testid={`quote-image-${item.id}`} />}
     <div className="od-quote__body">
       <div className="od-card__top">
         <div>

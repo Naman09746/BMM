@@ -23,7 +23,7 @@ import {
   X,
   Zap,
 } from "lucide-react";
-import { api } from "../stays/store";
+import { api, resolveBackendMedia, formatDriveImg } from "../stays/store";
 import { stopSmoothScroll, startSmoothScroll } from "../lib/smoothScroll";
 
 const TIERS = ["Premium", "Mid", "Budget-friendly"];
@@ -71,12 +71,9 @@ const PRESET_RULES = [
 const IMG_PREFIX = "https://images.unsplash.com/";
 const resolveImg = (id) => {
   if (!id) return "";
-  if (typeof id === "string" && id.includes("drive.google.com")) {
-    const m = id.match(/\/d\/([a-zA-Z0-9_-]+)/) || id.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-    if (m && m[1]) return `https://lh3.googleusercontent.com/d/${m[1]}`;
-  }
-  if (id.startsWith("http") || id.startsWith("/") || id.startsWith("data:")) return id;
-  return `${IMG_PREFIX}${id}?auto=format&fit=crop&w=600&q=80`;
+  const cleaned = resolveBackendMedia(formatDriveImg(id));
+  if (cleaned.startsWith("http") || cleaned.startsWith("/") || cleaned.startsWith("data:")) return cleaned;
+  return `${IMG_PREFIX}${cleaned}?auto=format&fit=crop&w=600&q=80`;
 };
 
 const DEFAULT_STAY = {

@@ -1,6 +1,25 @@
 import { createContext, createElement, useCallback, useContext, useEffect, useState } from "react";
 
-const API = (process.env.REACT_APP_BACKEND_URL || (typeof window !== "undefined" ? window.location.origin : "")).replace(/\/$/, "");
+export const API = (process.env.REACT_APP_BACKEND_URL || (typeof window !== "undefined" ? window.location.origin : "")).replace(/\/$/, "");
+
+export function formatDriveImg(url) {
+  if (!url || typeof url !== "string") return url || "";
+  if (url.includes("drive.google.com")) {
+    const m = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (m && m[1]) return `https://lh3.googleusercontent.com/d/${m[1]}`;
+  }
+  return url;
+}
+
+export function resolveBackendMedia(url) {
+  if (!url || typeof url !== "string") return "";
+  const cleaned = formatDriveImg(url);
+  if (cleaned.startsWith("/api/") || cleaned.startsWith("api/") || cleaned.startsWith("/uploads/") || cleaned.startsWith("uploads/")) {
+    const clean = cleaned.startsWith("/") ? cleaned : `/${cleaned}`;
+    return API ? `${API}${clean}` : clean;
+  }
+  return cleaned;
+}
 
 export function formatApiError(detail) {
   if (detail == null) return "Something went wrong. Please try again.";
