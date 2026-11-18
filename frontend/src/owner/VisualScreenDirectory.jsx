@@ -21,6 +21,8 @@ import {
   Sparkles,
   Info,
   CheckCircle2,
+  Grid as GridIcon,
+  Film,
 } from "lucide-react";
 import { api, resolveBackendMedia } from "../stays/store";
 import { publicAsset } from "../wordpress";
@@ -33,10 +35,14 @@ import {
   DEFAULT_ABOUT,
   DEFAULT_LIVING_STUDIO,
 } from "../contentStore";
+import HorizontalScrollArea from "./HorizontalScrollArea";
 
 export function VisualScreenDirectory({ initialScreen = "home" }) {
   // Master sequence of all 7 core website screens
   const [activeScreen, setActiveScreen] = useState(initialScreen);
+
+  // Gallery view mode toggle: "grid" or "filmstrip"
+  const [galleryViewMode, setGalleryViewMode] = useState("grid");
 
   // Collections state
   const [stays, setStays] = useState([]);
@@ -638,56 +644,48 @@ export function VisualScreenDirectory({ initialScreen = "home" }) {
       )}
 
       {/* =========================================================================
-          MASTER VISUAL SCREEN SELECTOR (All 7 Screens in Sequence)
+          MASTER VISUAL SCREEN SELECTOR: Smooth Horizontal Scroll Rail with Gradient Fades
          ========================================================================= */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-          gap: 10,
-          marginBottom: 24,
-        }}
-        role="tablist"
-      >
-        {screens.map((s) => {
-          const IconComp = s.icon;
-          const isActive = activeScreen === s.id;
-          return (
-            <button
-              key={s.id}
-              type="button"
-              className={`site-flow-step ${isActive ? "is-active" : ""}`}
-              onClick={() => {
-                setActiveScreen(s.id);
-                setSearchFilter("");
-              }}
-              style={{
-                padding: "12px 14px",
-                borderWidth: isActive ? 2 : 1,
-                textAlign: "left",
-                cursor: "pointer",
-                background: isActive ? "var(--od-surface)" : "var(--od-paper)",
-                borderColor: isActive ? "var(--od-gold-d)" : "var(--od-line)",
-                borderRadius: 14,
-                boxShadow: isActive ? "0 4px 16px rgba(184, 151, 107, 0.15)" : "none",
-                transition: "all 0.15s ease",
-              }}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", marginBottom: 6 }}>
-                <span className="site-flow-step__badge" style={{ fontSize: 11, fontWeight: 700 }}>
-                  <IconComp size={12} style={{ display: "inline-block", marginRight: 3, verticalAlign: "middle" }} /> {s.number}
+      <div style={{ marginBottom: 22 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, flexWrap: "wrap", gap: 6 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", color: "var(--od-gold-d)" }}>
+            Select Website Screen (01 — 07)
+          </span>
+          <span className="vsd-scroll-cue">
+            ✦ Horizontal Scroll / Swipe to browse all 7 screens ➔
+          </span>
+        </div>
+
+        <HorizontalScrollArea scrollAmount={220}>
+          {screens.map((s) => {
+            const IconComp = s.icon;
+            const isActive = activeScreen === s.id;
+            return (
+              <button
+                key={s.id}
+                type="button"
+                className={`vsd-screen-step ${isActive ? "is-active" : ""}`}
+                onClick={() => {
+                  setActiveScreen(s.id);
+                  setSearchFilter("");
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", marginBottom: 4 }}>
+                  <span className="site-flow-step__badge" style={{ fontSize: 11, fontWeight: 700 }}>
+                    <IconComp size={12} style={{ display: "inline-block", marginRight: 3, verticalAlign: "middle" }} /> {s.number}
+                  </span>
+                  <span style={{ fontSize: 10, opacity: 0.6, fontFamily: "monospace" }}>{s.path}</span>
+                </div>
+                <h4 className="site-flow-step__title" style={{ fontSize: 13.5, margin: "0 0 2px", fontWeight: 700 }}>
+                  {s.name}
+                </h4>
+                <span className="site-flow-step__meta" style={{ fontSize: 10.5, lineHeight: 1.2, color: "var(--od-muted)", display: "block" }}>
+                  {s.tag}
                 </span>
-                <span style={{ fontSize: 10, opacity: 0.6, fontFamily: "monospace" }}>{s.path}</span>
-              </div>
-              <h4 className="site-flow-step__title" style={{ fontSize: 13.5, margin: "0 0 2px", fontWeight: 700 }}>
-                {s.name}
-              </h4>
-              <span className="site-flow-step__meta" style={{ fontSize: 10.5, lineHeight: 1.2, color: "var(--od-muted)", display: "block" }}>
-                {s.tag}
-              </span>
-            </button>
-          );
-        })}
+              </button>
+            );
+          })}
+        </HorizontalScrollArea>
       </div>
 
       {/* =========================================================================
@@ -719,7 +717,7 @@ export function VisualScreenDirectory({ initialScreen = "home" }) {
             <Info size={13} />
             <span>WHERE IS THIS ON WEBSITE: {currentScreenMeta.whereIsIt}</span>
           </div>
-          <div style={{ display: "flex", gap: 14, marginTop: 8, fontSize: 12, color: "var(--od-muted)" }}>
+          <div style={{ display: "flex", gap: 14, marginTop: 8, fontSize: 12, color: "var(--od-muted)", flexWrap: "wrap" }}>
             <div>
               <strong style={{ color: "var(--od-ink)" }}>1. {currentScreenMeta.level1Name}</strong> = What visitors see browsing this screen
             </div>
@@ -764,17 +762,16 @@ export function VisualScreenDirectory({ initialScreen = "home" }) {
               </button>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "280px 1fr", gap: 24 }} className="cm-form-grid">
+            <div className="vsd-card-grid">
               {/* Hero Media Box */}
               <div>
                 <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: "var(--od-gold-d)", marginBottom: 6 }}>
                   1. Hero Poster / Background Image
                 </div>
-                <div style={{ width: "100%", height: 180, borderRadius: 14, overflow: "hidden", background: "#111", marginBottom: 10, position: "relative" }}>
+                <div className="vsd-aspect-banner">
                   <img
                     src={siteContent.hero?.poster ? resolveBackendMedia(siteContent.hero.poster) : publicAsset("/hero/craftsmanship-poster.webp")}
                     alt="Homepage Hero"
-                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
                   />
                   {uploadingTarget?.id === "hero" && (
                     <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.6)", display: "grid", placeItems: "center", color: "#fff" }}>
@@ -812,7 +809,7 @@ export function VisualScreenDirectory({ initialScreen = "home" }) {
                       placeholder="BDSM · BDS MARVEL"
                     />
                   </label>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10 }}>
                     <label className="od-field">
                       <span>Title Line 1</span>
                       <input
@@ -887,7 +884,7 @@ export function VisualScreenDirectory({ initialScreen = "home" }) {
               </button>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 18 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(clamp(240px, 28vw, 320px), 1fr))", gap: 18 }}>
               {siteContent.approach.map((pillar, idx) => {
                 const isUploading = uploadingTarget?.id === "approach" && uploadingTarget?.field === `pillar_${idx}`;
                 return (
@@ -897,8 +894,8 @@ export function VisualScreenDirectory({ initialScreen = "home" }) {
                       <span style={{ fontSize: 11, color: "var(--od-muted)" }}>Homepage Section 02</span>
                     </div>
 
-                    <div style={{ width: "100%", height: 130, borderRadius: 10, overflow: "hidden", background: "#111", position: "relative", marginBottom: 10 }}>
-                      <img src={img(pillar.image, 500)} alt={pillar.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    <div className="vsd-aspect-card">
+                      <img src={img(pillar.image, 500)} alt={pillar.title} />
                       {isUploading && (
                         <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.6)", display: "grid", placeItems: "center", color: "#fff" }}>
                           <Loader2 size={20} className="od-spin" />
@@ -966,13 +963,13 @@ export function VisualScreenDirectory({ initialScreen = "home" }) {
               </button>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "280px 1fr", gap: 24 }} className="cm-form-grid">
+            <div className="vsd-card-grid">
               <div>
                 <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: "var(--od-gold-d)", marginBottom: 6 }}>
                   Spotlight Hero Banner
                 </div>
-                <div style={{ width: "100%", height: 160, borderRadius: 14, overflow: "hidden", background: "#111", marginBottom: 10, position: "relative" }}>
-                  <img src={img(siteContent.living_studio?.hero, 500)} alt="Living Studio" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                <div className="vsd-aspect-banner">
+                  <img src={img(siteContent.living_studio?.hero, 500)} alt="Living Studio" />
                   {uploadingTarget?.id === "living_studio" && (
                     <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.6)", display: "grid", placeItems: "center", color: "#fff" }}>
                       <Loader2 size={24} className="od-spin" />
@@ -1022,7 +1019,7 @@ export function VisualScreenDirectory({ initialScreen = "home" }) {
          ========================================================================= */}
       {activeScreen === "stays" && (
         <div>
-          <div style={{ marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+          <div className="vsd-toolbar">
             <div>
               <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>
                 All 6 Stays: Browse Cards & Inner Detail Galleries
@@ -1031,15 +1028,54 @@ export function VisualScreenDirectory({ initialScreen = "home" }) {
                 For each stay: the left box is the card photo on <code>/stays</code>. The right gallery contains the high-res photos visitors see <strong>after clicking into the stay</strong>.
               </p>
             </div>
-            <div style={{ width: 240, position: "relative" }}>
-              <input
-                type="text"
-                placeholder="Filter stays (e.g. Living Studio)..."
-                value={searchFilter}
-                onChange={(e) => setSearchFilter(e.target.value)}
-                style={{ width: "100%", padding: "8px 10px 8px 30px", borderRadius: 8, border: "1px solid var(--od-line)", fontSize: 12 }}
-              />
-              <Search size={14} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--od-muted)" }} />
+            <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+              <div className="vsd-search-box">
+                <input
+                  type="text"
+                  placeholder="Filter stays (e.g. Living Studio)..."
+                  value={searchFilter}
+                  onChange={(e) => setSearchFilter(e.target.value)}
+                />
+                <Search size={14} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--od-muted)" }} />
+              </div>
+              <div style={{ display: "flex", gap: 4, background: "var(--od-surface)", border: "1px solid var(--od-line)", borderRadius: 8, padding: 3 }}>
+                <button
+                  type="button"
+                  onClick={() => setGalleryViewMode("grid")}
+                  style={{
+                    padding: "4px 8px",
+                    borderRadius: 6,
+                    border: "none",
+                    background: galleryViewMode === "grid" ? "var(--od-ink)" : "transparent",
+                    color: galleryViewMode === "grid" ? "#fff" : "var(--od-muted)",
+                    fontSize: 11,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4,
+                  }}
+                  title="Grid View"
+                >
+                  <GridIcon size={12} /> Grid
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGalleryViewMode("filmstrip")}
+                  style={{
+                    padding: "4px 8px",
+                    borderRadius: 6,
+                    border: "none",
+                    background: galleryViewMode === "filmstrip" ? "var(--od-ink)" : "transparent",
+                    color: galleryViewMode === "filmstrip" ? "#fff" : "var(--od-muted)",
+                    fontSize: 11,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4,
+                  }}
+                  title="Filmstrip Carousel View"
+                >
+                  <Film size={12} /> Filmstrip
+                </button>
+              </div>
             </div>
           </div>
 
@@ -1080,15 +1116,15 @@ export function VisualScreenDirectory({ initialScreen = "home" }) {
                       </div>
                     </div>
 
-                    <div style={{ display: "grid", gridTemplateColumns: "240px 1fr", gap: 24 }} className="cm-form-grid">
+                    <div className="vsd-card-grid">
                       {/* LEVEL 1: LISTING CARD PHOTO */}
                       <div>
                         <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: "var(--od-gold-d)", marginBottom: 6 }}>
                           1. Browse Card Photo
                         </div>
-                        <div style={{ width: "100%", height: 160, borderRadius: 14, overflow: "hidden", background: "#e3dbcc", marginBottom: 10, position: "relative" }}>
+                        <div className="vsd-aspect-card">
                           {stay.hero ? (
-                            <img src={img(stay.hero, 500)} alt={stay.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                            <img src={img(stay.hero, 500)} alt={stay.name} />
                           ) : (
                             <div style={{ display: "grid", placeItems: "center", height: "100%", color: "var(--od-muted)" }}>
                               <ImageIcon size={28} />
@@ -1117,7 +1153,7 @@ export function VisualScreenDirectory({ initialScreen = "home" }) {
 
                       {/* LEVEL 2: DETAIL PHOTOS AFTER CLICKING */}
                       <div>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, flexWrap: "wrap", gap: 8 }}>
                           <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: "var(--od-gold-d)" }}>
                             2. Photos After Clicking (Inner Detail Gallery · {galleryList.length} Photos)
                           </div>
@@ -1138,23 +1174,68 @@ export function VisualScreenDirectory({ initialScreen = "home" }) {
                             <ImageIcon size={24} style={{ marginBottom: 6, opacity: 0.5 }} />
                             <p style={{ margin: 0, fontSize: 13 }}>No inner gallery photos added yet.</p>
                           </div>
-                        ) : (
-                          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(115px, 1fr))", gap: 10 }}>
+                        ) : galleryViewMode === "filmstrip" ? (
+                          /* Filmstrip View: Smooth Horizontal Scroll with Gradient Fades */
+                          <HorizontalScrollArea scrollAmount={220}>
                             {galleryList.map((photoUrl, photoIdx) => {
                               const isReplacing = uploadingTarget?.id === (stay.id || stay.slug) && uploadingTarget?.field === `gallery_${photoIdx}`;
                               return (
                                 <div
                                   key={photoIdx}
-                                  style={{
-                                    borderRadius: 10,
-                                    overflow: "hidden",
-                                    background: "#e3dbcc",
-                                    height: 100,
-                                    position: "relative",
-                                    border: "1px solid var(--od-line)",
-                                  }}
+                                  className="vsd-gallery-thumb"
+                                  style={{ flex: "0 0 140px", scrollSnapAlign: "start" }}
                                 >
-                                  <img src={img(photoUrl, 300)} alt={`Detail ${photoIdx + 1}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                                  <img src={img(photoUrl, 300)} alt={`Detail ${photoIdx + 1}`} />
+
+                                  {isReplacing && (
+                                    <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.6)", display: "grid", placeItems: "center", color: "#fff" }}>
+                                      <Loader2 size={18} className="od-spin" />
+                                    </div>
+                                  )}
+
+                                  <div
+                                    style={{
+                                      position: "absolute",
+                                      bottom: 0,
+                                      left: 0,
+                                      right: 0,
+                                      background: "linear-gradient(180deg, transparent, rgba(0,0,0,0.75))",
+                                      padding: "4px 6px",
+                                      display: "flex",
+                                      justifyContent: "space-between",
+                                      alignItems: "center",
+                                    }}
+                                  >
+                                    <label title="Replace this photo" style={{ cursor: "pointer", color: "#fff" }}>
+                                      <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={(e) => handleStayGalleryReplace(stay, photoIdx, e.target.files?.[0])}
+                                        style={{ display: "none" }}
+                                      />
+                                      <UploadCloud size={12} />
+                                    </label>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleStayGalleryDelete(stay, photoIdx)}
+                                      style={{ border: "none", background: "none", color: "#ff8b82", cursor: "pointer", padding: 0 }}
+                                      title="Delete photo"
+                                    >
+                                      <Trash2 size={12} />
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </HorizontalScrollArea>
+                        ) : (
+                          /* Grid View: Flexible Auto-Fill Grid */
+                          <div className="vsd-gallery-grid">
+                            {galleryList.map((photoUrl, photoIdx) => {
+                              const isReplacing = uploadingTarget?.id === (stay.id || stay.slug) && uploadingTarget?.field === `gallery_${photoIdx}`;
+                              return (
+                                <div key={photoIdx} className="vsd-gallery-thumb">
+                                  <img src={img(photoUrl, 300)} alt={`Detail ${photoIdx + 1}`} />
 
                                   {isReplacing && (
                                     <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.6)", display: "grid", placeItems: "center", color: "#fff" }}>
@@ -1215,7 +1296,7 @@ export function VisualScreenDirectory({ initialScreen = "home" }) {
          ========================================================================= */}
       {activeScreen === "projects" && (
         <div>
-          <div style={{ marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+          <div className="vsd-toolbar">
             <div>
               <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>
                 Architectural Projects: Browse Cards & In-Place Detail Galleries
@@ -1224,15 +1305,54 @@ export function VisualScreenDirectory({ initialScreen = "home" }) {
                 For each project: the left box is the card photo on <code>/projects</code> and the homepage slideshow. The right gallery contains the photos visitors see <strong>after clicking into the project</strong>.
               </p>
             </div>
-            <div style={{ width: 240, position: "relative" }}>
-              <input
-                type="text"
-                placeholder="Filter projects (e.g. Meridian)..."
-                value={searchFilter}
-                onChange={(e) => setSearchFilter(e.target.value)}
-                style={{ width: "100%", padding: "8px 10px 8px 30px", borderRadius: 8, border: "1px solid var(--od-line)", fontSize: 12 }}
-              />
-              <Search size={14} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--od-muted)" }} />
+            <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+              <div className="vsd-search-box">
+                <input
+                  type="text"
+                  placeholder="Filter projects (e.g. Meridian)..."
+                  value={searchFilter}
+                  onChange={(e) => setSearchFilter(e.target.value)}
+                />
+                <Search size={14} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--od-muted)" }} />
+              </div>
+              <div style={{ display: "flex", gap: 4, background: "var(--od-surface)", border: "1px solid var(--od-line)", borderRadius: 8, padding: 3 }}>
+                <button
+                  type="button"
+                  onClick={() => setGalleryViewMode("grid")}
+                  style={{
+                    padding: "4px 8px",
+                    borderRadius: 6,
+                    border: "none",
+                    background: galleryViewMode === "grid" ? "var(--od-ink)" : "transparent",
+                    color: galleryViewMode === "grid" ? "#fff" : "var(--od-muted)",
+                    fontSize: 11,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4,
+                  }}
+                  title="Grid View"
+                >
+                  <GridIcon size={12} /> Grid
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGalleryViewMode("filmstrip")}
+                  style={{
+                    padding: "4px 8px",
+                    borderRadius: 6,
+                    border: "none",
+                    background: galleryViewMode === "filmstrip" ? "var(--od-ink)" : "transparent",
+                    color: galleryViewMode === "filmstrip" ? "#fff" : "var(--od-muted)",
+                    fontSize: 11,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4,
+                  }}
+                  title="Filmstrip Carousel View"
+                >
+                  <Film size={12} /> Filmstrip
+                </button>
+              </div>
             </div>
           </div>
 
@@ -1270,15 +1390,15 @@ export function VisualScreenDirectory({ initialScreen = "home" }) {
                       </button>
                     </div>
 
-                    <div style={{ display: "grid", gridTemplateColumns: "240px 1fr", gap: 24 }} className="cm-form-grid">
+                    <div className="vsd-card-grid">
                       {/* LEVEL 1: LISTING CARD PHOTO */}
                       <div>
                         <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: "var(--od-gold-d)", marginBottom: 6 }}>
                           1. Browse Card Photo
                         </div>
-                        <div style={{ width: "100%", height: 160, borderRadius: 14, overflow: "hidden", background: "#e3dbcc", marginBottom: 10, position: "relative" }}>
+                        <div className="vsd-aspect-card">
                           {proj.image ? (
-                            <img src={img(proj.image, 500)} alt={proj.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                            <img src={img(proj.image, 500)} alt={proj.title} />
                           ) : (
                             <div style={{ display: "grid", placeItems: "center", height: "100%", color: "var(--od-muted)" }}>
                               <ImageIcon size={28} />
@@ -1307,7 +1427,7 @@ export function VisualScreenDirectory({ initialScreen = "home" }) {
 
                       {/* LEVEL 2: DETAIL PHOTOS AFTER CLICKING */}
                       <div>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, flexWrap: "wrap", gap: 8 }}>
                           <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: "var(--od-gold-d)" }}>
                             2. Photos After Clicking (Project Detail Page · {galleryList.length} Photos)
                           </div>
@@ -1328,23 +1448,66 @@ export function VisualScreenDirectory({ initialScreen = "home" }) {
                             <ImageIcon size={24} style={{ marginBottom: 6, opacity: 0.5 }} />
                             <p style={{ margin: 0, fontSize: 13 }}>No detail gallery photos added yet.</p>
                           </div>
-                        ) : (
-                          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(115px, 1fr))", gap: 10 }}>
+                        ) : galleryViewMode === "filmstrip" ? (
+                          <HorizontalScrollArea scrollAmount={220}>
                             {galleryList.map((photoUrl, photoIdx) => {
                               const isReplacing = uploadingTarget?.id === (proj.id || proj.slug) && uploadingTarget?.field === `gallery_${photoIdx}`;
                               return (
                                 <div
                                   key={photoIdx}
-                                  style={{
-                                    borderRadius: 10,
-                                    overflow: "hidden",
-                                    background: "#e3dbcc",
-                                    height: 100,
-                                    position: "relative",
-                                    border: "1px solid var(--od-line)",
-                                  }}
+                                  className="vsd-gallery-thumb"
+                                  style={{ flex: "0 0 140px", scrollSnapAlign: "start" }}
                                 >
-                                  <img src={img(photoUrl, 300)} alt={`Project ${photoIdx + 1}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                                  <img src={img(photoUrl, 300)} alt={`Project ${photoIdx + 1}`} />
+
+                                  {isReplacing && (
+                                    <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.6)", display: "grid", placeItems: "center", color: "#fff" }}>
+                                      <Loader2 size={18} className="od-spin" />
+                                    </div>
+                                  )}
+
+                                  <div
+                                    style={{
+                                      position: "absolute",
+                                      bottom: 0,
+                                      left: 0,
+                                      right: 0,
+                                      background: "linear-gradient(180deg, transparent, rgba(0,0,0,0.75))",
+                                      padding: "4px 6px",
+                                      display: "flex",
+                                      justifyContent: "space-between",
+                                      alignItems: "center",
+                                    }}
+                                  >
+                                    <label title="Replace this photo" style={{ cursor: "pointer", color: "#fff" }}>
+                                      <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={(e) => handleProjectGalleryReplace(proj, photoIdx, e.target.files?.[0])}
+                                        style={{ display: "none" }}
+                                      />
+                                      <UploadCloud size={12} />
+                                    </label>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleProjectGalleryDelete(proj, photoIdx)}
+                                      style={{ border: "none", background: "none", color: "#ff8b82", cursor: "pointer", padding: 0 }}
+                                      title="Delete photo"
+                                    >
+                                      <Trash2 size={12} />
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </HorizontalScrollArea>
+                        ) : (
+                          <div className="vsd-gallery-grid">
+                            {galleryList.map((photoUrl, photoIdx) => {
+                              const isReplacing = uploadingTarget?.id === (proj.id || proj.slug) && uploadingTarget?.field === `gallery_${photoIdx}`;
+                              return (
+                                <div key={photoIdx} className="vsd-gallery-thumb">
+                                  <img src={img(photoUrl, 300)} alt={`Project ${photoIdx + 1}`} />
 
                                   {isReplacing && (
                                     <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.6)", display: "grid", placeItems: "center", color: "#fff" }}>
@@ -1405,7 +1568,7 @@ export function VisualScreenDirectory({ initialScreen = "home" }) {
          ========================================================================= */}
       {activeScreen === "catalogue" && (
         <div>
-          <div style={{ marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+          <div className="vsd-toolbar">
             <div>
               <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>
                 Materials Catalogue: Browse Cards & Detail Galleries
@@ -1414,15 +1577,54 @@ export function VisualScreenDirectory({ initialScreen = "home" }) {
                 For each material: the left box is the card photo on <code>/catalogue</code>. The right gallery contains the slab swatches and finish photos visitors see <strong>after clicking into the item</strong>.
               </p>
             </div>
-            <div style={{ width: 240, position: "relative" }}>
-              <input
-                type="text"
-                placeholder="Filter catalogue (e.g. Marble)..."
-                value={searchFilter}
-                onChange={(e) => setSearchFilter(e.target.value)}
-                style={{ width: "100%", padding: "8px 10px 8px 30px", borderRadius: 8, border: "1px solid var(--od-line)", fontSize: 12 }}
-              />
-              <Search size={14} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--od-muted)" }} />
+            <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+              <div className="vsd-search-box">
+                <input
+                  type="text"
+                  placeholder="Filter catalogue (e.g. Marble)..."
+                  value={searchFilter}
+                  onChange={(e) => setSearchFilter(e.target.value)}
+                />
+                <Search size={14} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--od-muted)" }} />
+              </div>
+              <div style={{ display: "flex", gap: 4, background: "var(--od-surface)", border: "1px solid var(--od-line)", borderRadius: 8, padding: 3 }}>
+                <button
+                  type="button"
+                  onClick={() => setGalleryViewMode("grid")}
+                  style={{
+                    padding: "4px 8px",
+                    borderRadius: 6,
+                    border: "none",
+                    background: galleryViewMode === "grid" ? "var(--od-ink)" : "transparent",
+                    color: galleryViewMode === "grid" ? "#fff" : "var(--od-muted)",
+                    fontSize: 11,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4,
+                  }}
+                  title="Grid View"
+                >
+                  <GridIcon size={12} /> Grid
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGalleryViewMode("filmstrip")}
+                  style={{
+                    padding: "4px 8px",
+                    borderRadius: 6,
+                    border: "none",
+                    background: galleryViewMode === "filmstrip" ? "var(--od-ink)" : "transparent",
+                    color: galleryViewMode === "filmstrip" ? "#fff" : "var(--od-muted)",
+                    fontSize: 11,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4,
+                  }}
+                  title="Filmstrip Carousel View"
+                >
+                  <Film size={12} /> Filmstrip
+                </button>
+              </div>
             </div>
           </div>
 
@@ -1460,15 +1662,15 @@ export function VisualScreenDirectory({ initialScreen = "home" }) {
                       </button>
                     </div>
 
-                    <div style={{ display: "grid", gridTemplateColumns: "240px 1fr", gap: 24 }} className="cm-form-grid">
+                    <div className="vsd-card-grid">
                       {/* LEVEL 1: CARD PHOTO */}
                       <div>
                         <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: "var(--od-gold-d)", marginBottom: 6 }}>
                           1. Browse Card Photo
                         </div>
-                        <div style={{ width: "100%", height: 160, borderRadius: 14, overflow: "hidden", background: "#e3dbcc", marginBottom: 10, position: "relative" }}>
+                        <div className="vsd-aspect-card">
                           {item.image ? (
-                            <img src={img(item.image, 500)} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                            <img src={img(item.image, 500)} alt={item.name} />
                           ) : (
                             <div style={{ display: "grid", placeItems: "center", height: "100%", color: "var(--od-muted)" }}>
                               <ImageIcon size={28} />
@@ -1497,7 +1699,7 @@ export function VisualScreenDirectory({ initialScreen = "home" }) {
 
                       {/* LEVEL 2: DETAIL GALLERY PHOTOS AFTER CLICKING */}
                       <div>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, flexWrap: "wrap", gap: 8 }}>
                           <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: "var(--od-gold-d)" }}>
                             2. Photos After Clicking (Product Detail Page · {galleryList.length} Photos)
                           </div>
@@ -1518,23 +1720,66 @@ export function VisualScreenDirectory({ initialScreen = "home" }) {
                             <ImageIcon size={24} style={{ marginBottom: 6, opacity: 0.5 }} />
                             <p style={{ margin: 0, fontSize: 13 }}>No product gallery photos added yet.</p>
                           </div>
-                        ) : (
-                          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(115px, 1fr))", gap: 10 }}>
+                        ) : galleryViewMode === "filmstrip" ? (
+                          <HorizontalScrollArea scrollAmount={220}>
                             {galleryList.map((photoUrl, photoIdx) => {
                               const isReplacing = uploadingTarget?.id === (item.id || item.slug) && uploadingTarget?.field === `gallery_${photoIdx}`;
                               return (
                                 <div
                                   key={photoIdx}
-                                  style={{
-                                    borderRadius: 10,
-                                    overflow: "hidden",
-                                    background: "#e3dbcc",
-                                    height: 100,
-                                    position: "relative",
-                                    border: "1px solid var(--od-line)",
-                                  }}
+                                  className="vsd-gallery-thumb"
+                                  style={{ flex: "0 0 140px", scrollSnapAlign: "start" }}
                                 >
-                                  <img src={img(photoUrl, 300)} alt={`Product ${photoIdx + 1}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                                  <img src={img(photoUrl, 300)} alt={`Product ${photoIdx + 1}`} />
+
+                                  {isReplacing && (
+                                    <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.6)", display: "grid", placeItems: "center", color: "#fff" }}>
+                                      <Loader2 size={18} className="od-spin" />
+                                    </div>
+                                  )}
+
+                                  <div
+                                    style={{
+                                      position: "absolute",
+                                      bottom: 0,
+                                      left: 0,
+                                      right: 0,
+                                      background: "linear-gradient(180deg, transparent, rgba(0,0,0,0.75))",
+                                      padding: "4px 6px",
+                                      display: "flex",
+                                      justifyContent: "space-between",
+                                      alignItems: "center",
+                                    }}
+                                  >
+                                    <label title="Replace this photo" style={{ cursor: "pointer", color: "#fff" }}>
+                                      <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={(e) => handleCatalogueGalleryReplace(item, photoIdx, e.target.files?.[0])}
+                                        style={{ display: "none" }}
+                                      />
+                                      <UploadCloud size={12} />
+                                    </label>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleCatalogueGalleryDelete(item, photoIdx)}
+                                      style={{ border: "none", background: "none", color: "#ff8b82", cursor: "pointer", padding: 0 }}
+                                      title="Delete photo"
+                                    >
+                                      <Trash2 size={12} />
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </HorizontalScrollArea>
+                        ) : (
+                          <div className="vsd-gallery-grid">
+                            {galleryList.map((photoUrl, photoIdx) => {
+                              const isReplacing = uploadingTarget?.id === (item.id || item.slug) && uploadingTarget?.field === `gallery_${photoIdx}`;
+                              return (
+                                <div key={photoIdx} className="vsd-gallery-thumb">
+                                  <img src={img(photoUrl, 300)} alt={`Product ${photoIdx + 1}`} />
 
                                   {isReplacing && (
                                     <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.6)", display: "grid", placeItems: "center", color: "#fff" }}>
@@ -1643,14 +1888,14 @@ export function VisualScreenDirectory({ initialScreen = "home" }) {
                     </button>
                   </div>
 
-                  <div style={{ display: "grid", gridTemplateColumns: "280px 1fr", gap: 24 }} className="cm-form-grid">
+                  <div className="vsd-card-grid">
                     {/* LEVEL 1: DIVISION HERO BANNER */}
                     <div>
                       <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: "var(--od-gold-d)", marginBottom: 6 }}>
                         1. Division Hero Banner
                       </div>
-                      <div style={{ width: "100%", height: 160, borderRadius: 14, overflow: "hidden", background: "#111", marginBottom: 10, position: "relative" }}>
-                        <img src={img(div.hero, 600)} alt={div.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      <div className="vsd-aspect-banner">
+                        <img src={img(div.hero, 600)} alt={div.name} />
                         {isUploading && (
                           <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.6)", display: "grid", placeItems: "center", color: "#fff" }}>
                             <Loader2 size={24} className="od-spin" />
@@ -1787,13 +2032,13 @@ export function VisualScreenDirectory({ initialScreen = "home" }) {
               </button>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 18 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(clamp(200px, 22vw, 260px), 1fr))", gap: 18 }}>
               {(siteContent.about?.team || DEFAULT_ABOUT.team).map((member, idx) => {
                 const isUploading = uploadingTarget?.id === "about_team" && uploadingTarget?.field === `portrait_${idx}`;
                 return (
                   <div key={member.name || idx} style={{ background: "var(--od-paper)", border: "1px solid var(--od-line)", borderRadius: 14, padding: 14 }}>
-                    <div style={{ width: "100%", height: 180, borderRadius: 10, overflow: "hidden", background: "#111", position: "relative", marginBottom: 10 }}>
-                      <img src={img(member.image, 500)} alt={member.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    <div className="vsd-aspect-portrait">
+                      <img src={img(member.image, 500)} alt={member.name} />
                       {isUploading && (
                         <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.6)", display: "grid", placeItems: "center", color: "#fff" }}>
                           <Loader2 size={24} className="od-spin" />
@@ -1845,7 +2090,7 @@ export function VisualScreenDirectory({ initialScreen = "home" }) {
          ========================================================================= */}
       {activeScreen === "clients" && (
         <div style={{ display: "grid", gap: 24 }}>
-          {/* Section 1: Live Animated Marquee Reel */}
+          {/* Section 1: Live Animated Marquee Reel with Smooth Horizontal Scroll & Dark Edge Fades */}
           <div className="od-card" style={{ padding: 24, borderRadius: 18 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, borderBottom: "1px solid var(--od-line)", paddingBottom: 10, flexWrap: "wrap", gap: 10 }}>
               <div>
@@ -1867,22 +2112,31 @@ export function VisualScreenDirectory({ initialScreen = "home" }) {
               </button>
             </div>
 
-            <div style={{ background: "#0a0806", padding: "20px 10px", borderRadius: 14, overflow: "hidden" }}>
-              <div style={{ display: "flex", gap: 24, overflowX: "auto", paddingBottom: 10 }}>
+            <div style={{ background: "#0a0806", padding: "20px 16px", borderRadius: 14, overflow: "hidden" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", fontFamily: "monospace", textTransform: "uppercase" }}>
+                  Interactive Reel Preview · {siteContent.clients.length} Partner Brands
+                </span>
+                <span style={{ fontSize: 11, color: "var(--od-gold)" }}>
+                  ✦ Drag / Scroll to inspect logos ➔
+                </span>
+              </div>
+
+              <HorizontalScrollArea dark={true} scrollAmount={300}>
                 {siteContent.clients.map((c, i) => {
                   const logoUrl = c.logo?.startsWith("http") || c.logo?.startsWith("/") ? resolveBackendMedia(c.logo) : publicAsset(c.logo);
                   return (
                     <div
                       key={i}
                       style={{
-                        minWidth: 120,
-                        height: 52,
+                        flex: "0 0 130px",
+                        height: 54,
                         background: "#fff",
                         borderRadius: 8,
                         display: "grid",
                         placeItems: "center",
                         padding: "4px 10px",
-                        flexShrink: 0,
+                        scrollSnapAlign: "start",
                       }}
                     >
                       {logoUrl ? (
@@ -1893,7 +2147,7 @@ export function VisualScreenDirectory({ initialScreen = "home" }) {
                     </div>
                   );
                 })}
-              </div>
+              </HorizontalScrollArea>
             </div>
           </div>
 
@@ -1910,13 +2164,12 @@ export function VisualScreenDirectory({ initialScreen = "home" }) {
               </div>
 
               <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                <div style={{ width: 220, position: "relative" }}>
+                <div className="vsd-search-box">
                   <input
                     type="text"
                     placeholder="Search logo (e.g. Taj)..."
                     value={searchFilter}
                     onChange={(e) => setSearchFilter(e.target.value)}
-                    style={{ width: "100%", padding: "7px 10px 7px 28px", borderRadius: 8, border: "1px solid var(--od-line)", fontSize: 12 }}
                   />
                   <Search size={13} style={{ position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)", color: "var(--od-muted)" }} />
                 </div>
@@ -1948,7 +2201,7 @@ export function VisualScreenDirectory({ initialScreen = "home" }) {
               </div>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 14 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(clamp(150px, 18vw, 210px), 1fr))", gap: 14 }}>
               {siteContent.clients
                 .map((client, originalIdx) => ({ client, originalIdx }))
                 .filter(({ client }) => !searchFilter || client.name.toLowerCase().includes(searchFilter.toLowerCase()))
@@ -1969,19 +2222,7 @@ export function VisualScreenDirectory({ initialScreen = "home" }) {
                         justifyContent: "space-between",
                       }}
                     >
-                      <div
-                        style={{
-                          height: 60,
-                          background: "#fff",
-                          borderRadius: 8,
-                          display: "grid",
-                          placeItems: "center",
-                          marginBottom: 8,
-                          padding: "6px 10px",
-                          position: "relative",
-                          border: "1px solid var(--od-line)",
-                        }}
-                      >
+                      <div className="vsd-brand-logo-tile">
                         {logoUrl ? (
                           <img src={logoUrl} alt={client.name} style={{ maxHeight: 44, maxWidth: "100%", objectFit: "contain" }} />
                         ) : (

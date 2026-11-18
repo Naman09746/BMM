@@ -687,6 +687,302 @@
   border-color: var(--od-ink);
 }
 
+/* =========================================================================
+   FLEXIBLE ARCHITECTURE & HORIZONTAL SCROLL EFFECTS
+   ========================================================================= */
+
+/* Reusable Horizontal Scroll Container with Edge Fade Indicators */
+.h-scroll-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.h-scroll-track {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--od-gold-d, #c9a262) transparent;
+  padding: 4px 2px 14px;
+}
+
+.h-scroll-track::-webkit-scrollbar {
+  height: 5px;
+}
+
+.h-scroll-track::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.h-scroll-track::-webkit-scrollbar-thumb {
+  background: var(--od-line, #e3dbcc);
+  border-radius: 999px;
+  transition: background 0.2s;
+}
+
+.h-scroll-track:hover::-webkit-scrollbar-thumb {
+  background: var(--od-gold-d, #c9a262);
+}
+
+/* Gradient edge indicators that tell users content continues horizontally */
+.h-scroll-fade {
+  position: absolute;
+  top: 0;
+  bottom: 14px;
+  width: 48px;
+  pointer-events: none;
+  z-index: 4;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.h-scroll-fade--left {
+  left: 0;
+  background: linear-gradient(90deg, var(--od-paper, #f4efe6) 0%, rgba(244, 239, 230, 0) 100%);
+}
+
+.h-scroll-fade--right {
+  right: 0;
+  background: linear-gradient(270deg, var(--od-paper, #f4efe6) 0%, rgba(244, 239, 230, 0) 100%);
+}
+
+.h-scroll-fade.is-visible {
+  opacity: 1;
+}
+
+/* Dark mode variant for marquees / dark containers */
+.h-scroll-wrap--dark .h-scroll-fade--left {
+  background: linear-gradient(90deg, #0a0806 0%, rgba(10, 8, 6, 0) 100%);
+}
+
+.h-scroll-wrap--dark .h-scroll-fade--right {
+  background: linear-gradient(270deg, #0a0806 0%, rgba(10, 8, 6, 0) 100%);
+}
+
+/* Navigation arrow buttons */
+.h-scroll-arrow {
+  position: absolute;
+  top: calc(50% - 7px);
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--od-surface, #fff);
+  color: var(--od-ink, #0d0b09);
+  border: 1px solid var(--od-line, #e3dbcc);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.h-scroll-arrow:hover {
+  background: var(--od-ink, #0d0b09);
+  color: #fff;
+  border-color: var(--od-ink, #0d0b09);
+  transform: translateY(-50%) scale(1.08);
+}
+
+.h-scroll-arrow--left {
+  left: 4px;
+}
+
+.h-scroll-arrow--right {
+  right: 4px;
+}
+
+/* Screen Selector Step Pill */
+.vsd-screen-step {
+  flex: 0 0 clamp(160px, 17vw, 210px);
+  scroll-snap-align: start;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--od-line);
+  background: var(--od-surface);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-shadow: none;
+}
+
+.vsd-screen-step:hover {
+  border-color: var(--od-gold);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(13, 11, 9, 0.08);
+}
+
+.vsd-screen-step.is-active {
+  background: var(--od-ink);
+  color: #fff;
+  border-color: var(--od-ink);
+  box-shadow: 0 8px 24px rgba(13, 11, 9, 0.22);
+}
+
+.vsd-screen-step.is-active .site-flow-step__badge {
+  color: var(--od-gold);
+}
+
+.vsd-screen-step.is-active .site-flow-step__title {
+  color: #fff;
+}
+
+.vsd-screen-step.is-active .site-flow-step__meta {
+  color: #c5beaf;
+}
+
+/* Flexible Dual-Pane Layout */
+.vsd-card-grid {
+  display: grid;
+  grid-template-columns: minmax(min(100%, 250px), 320px) 1fr;
+  gap: clamp(16px, 2.5vw, 28px);
+  align-items: start;
+}
+
+@media (max-width: 860px) {
+  .vsd-card-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Aspect-ratio based media containers (Flexible, no hardcoded px heights) */
+.vsd-aspect-card {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #e3dbcc;
+  position: relative;
+  margin-bottom: 10px;
+}
+
+.vsd-aspect-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.vsd-aspect-card:hover img {
+  transform: scale(1.03);
+}
+
+.vsd-aspect-banner {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: 240px;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #111;
+  position: relative;
+  margin-bottom: 10px;
+}
+
+.vsd-aspect-banner img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.vsd-aspect-portrait {
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #111;
+  position: relative;
+  margin-bottom: 10px;
+}
+
+.vsd-aspect-portrait img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Flexible Gallery Thumbnails Grid */
+.vsd-gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(clamp(95px, 12vw, 125px), 1fr));
+  gap: clamp(8px, 1.2vw, 12px);
+}
+
+.vsd-gallery-thumb {
+  border-radius: 10px;
+  overflow: hidden;
+  background: #e3dbcc;
+  aspect-ratio: 4 / 3;
+  position: relative;
+  border: 1px solid var(--od-line);
+}
+
+.vsd-gallery-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Brand Directory Logo Tile */
+.vsd-brand-logo-tile {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: 68px;
+  background: #fff;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  padding: 6px 12px;
+  border: 1px solid var(--od-line);
+  position: relative;
+  margin-bottom: 8px;
+}
+
+/* Flexible Search & Filter Toolbars */
+.vsd-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.vsd-search-box {
+  flex: 1 1 220px;
+  max-width: 380px;
+  position: relative;
+}
+
+.vsd-search-box input {
+  width: 100%;
+  padding: 8px 10px 8px 30px;
+  border-radius: 8px;
+  border: 1px solid var(--od-line);
+  font-size: 12.5px;
+  background: var(--od-surface);
+  color: var(--od-ink);
+}
+
+.vsd-scroll-cue {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--od-gold-d);
+  letter-spacing: 0.5px;
+  margin-left: 6px;
+}
+
+
 
 
 
