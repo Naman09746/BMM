@@ -9,9 +9,26 @@
     "application": "Living",
     "origin": "Black & white marble",
     "image": "photo-1692262089751-7e26b69ad8d1",
-    "desc": "A collection of marble centre and end tables that redefine sophistication in living spaces — each top showing the timeless allure of carefully chosen black and white marble and its natural patterns.",
-    "specs": [["Material", "Black & white marble"], ["Build", "Solid top, crafted base"], ["Lead time", "4 – 6 weeks"]],
-    "gallery": ["photo-1692262089751-7e26b69ad8d1", "photo-1649011327045-624a1bd2c3e7", "photo-1614348531934-c338408a46bb"],
+    "desc": "A collection of marble centre and end tables that redefine sophistication in living spaces \u2014 each top showing the timeless allure of carefully chosen black and white marble and its natural patterns.",
+    "specs": [
+      [
+        "Material",
+        "Black & white marble"
+      ],
+      [
+        "Build",
+        "Solid top, crafted base"
+      ],
+      [
+        "Lead time",
+        "4 \u2013 6 weeks"
+      ]
+    ],
+    "gallery": [
+      "photo-1692262089751-7e26b69ad8d1",
+      "photo-1649011327045-624a1bd2c3e7",
+      "photo-1614348531934-c338408a46bb"
+    ],
     "is_active": true
   },
   {
@@ -24,9 +41,26 @@
     "application": "Living",
     "origin": "Pietra dura inlay",
     "image": "photo-1506463108611-88834e9f6169",
-    "desc": "A captivating collection of marble inlay table tops where the timeless art of pietra dura meets luxury — florals and geometries cut from coloured stone and set by hand, with full customisation.",
-    "specs": [["Craft", "Pietra dura inlay"], ["Customisation", "Pattern & stone"], ["Lead time", "6 – 8 weeks"]],
-    "gallery": ["photo-1506463108611-88834e9f6169", "photo-1531165424588-80b93de6f807", "photo-1784937275795-685af009b219"],
+    "desc": "A captivating collection of marble inlay table tops where the timeless art of pietra dura meets luxury \u2014 florals and geometries cut from coloured stone and set by hand, with full customisation.",
+    "specs": [
+      [
+        "Craft",
+        "Pietra dura inlay"
+      ],
+      [
+        "Customisation",
+        "Pattern & stone"
+      ],
+      [
+        "Lead time",
+        "6 \u2013 8 weeks"
+      ]
+    ],
+    "gallery": [
+      "photo-1506463108611-88834e9f6169",
+      "photo-1531165424588-80b93de6f807",
+      "photo-1784937275795-685af009b219"
+    ],
     "is_active": true
   },
   {
@@ -39,9 +73,26 @@
     "application": "Interior",
     "origin": "Carved surround",
     "image": "photo-1603039531759-1a1bbe4f9f94",
-    "desc": "Fireplaces that make a statement — elevating a living space with the warmth and natural elegance of marble and stone, hand-finished and built to order.",
-    "specs": [["Material", "Marble & stone"], ["Finish", "Natural, hand-finished"], ["Lead time", "6 – 8 weeks"]],
-    "gallery": ["photo-1603039531759-1a1bbe4f9f94", "photo-1612031737124-28aeae3f2863", "photo-1648303098204-258fc88bc69f"],
+    "desc": "Fireplaces that make a statement \u2014 elevating a living space with the warmth and natural elegance of marble and stone, hand-finished and built to order.",
+    "specs": [
+      [
+        "Material",
+        "Marble & stone"
+      ],
+      [
+        "Finish",
+        "Natural, hand-finished"
+      ],
+      [
+        "Lead time",
+        "6 \u2013 8 weeks"
+      ]
+    ],
+    "gallery": [
+      "photo-1603039531759-1a1bbe4f9f94",
+      "photo-1612031737124-28aeae3f2863",
+      "photo-1648303098204-258fc88bc69f"
+    ],
     "is_active": true
   },
   {
@@ -54,9 +105,26 @@
     "application": "Interior",
     "origin": "Vietnam white marble",
     "image": "photo-1678593628844-6ea49dee8ce3",
-    "desc": "Exquisite works of art that infuse spirituality into your home — carved and detailed temples in Vietnam white marble that create a sacred haven in any living space.",
-    "specs": [["Material", "Vietnam white marble"], ["Work", "Carved & detailed"], ["Lead time", "8 – 10 weeks"]],
-    "gallery": ["photo-1678593628844-6ea49dee8ce3", "photo-1593739594181-dcd2709bc51d", "photo-1664851451771-2a78ed2b20fe"],
+    "desc": "Exquisite works of art that infuse spirituality into your home \u2014 carved and detailed temples in Vietnam white marble that create a sacred haven in any living space.",
+    "specs": [
+      [
+        "Material",
+        "Vietnam white marble"
+      ],
+      [
+        "Work",
+        "Carved & detailed"
+      ],
+      [
+        "Lead time",
+        "8 \u2013 10 weeks"
+      ]
+    ],
+    "gallery": [
+      "photo-1678593628844-6ea49dee8ce3",
+      "photo-1593739594181-dcd2709bc51d",
+      "photo-1664851451771-2a78ed2b20fe"
+    ],
     "is_active": true
   },
   {
@@ -69,9 +137,26 @@
     "application": "Bathroom",
     "origin": "Carved from block",
     "image": "photo-1576698483491-8c43f0862543",
-    "desc": "A collection of stone basins and bathtubs in a range of styles and finishes — transforming a bathroom into a sanctuary where luxury meets durability, each piece carved from solid block.",
-    "specs": [["Build", "Solid block"], ["Range", "Basins & bathtubs"], ["Sample size", "e.g. 70 × 46 × 12 cm"]],
-    "gallery": ["photo-1576698483491-8c43f0862543", "photo-1610178167104-488495443e01", "photo-1756079664354-34944e001f6d"],
+    "desc": "A collection of stone basins and bathtubs in a range of styles and finishes \u2014 transforming a bathroom into a sanctuary where luxury meets durability, each piece carved from solid block.",
+    "specs": [
+      [
+        "Build",
+        "Solid block"
+      ],
+      [
+        "Range",
+        "Basins & bathtubs"
+      ],
+      [
+        "Sample size",
+        "e.g. 70 \u00d7 46 \u00d7 12 cm"
+      ]
+    ],
+    "gallery": [
+      "photo-1576698483491-8c43f0862543",
+      "photo-1610178167104-488495443e01",
+      "photo-1756079664354-34944e001f6d"
+    ],
     "is_active": true
   },
   {
@@ -84,9 +169,26 @@
     "application": "Interior",
     "origin": "Hand-carved",
     "image": "photo-1660140889200-59994b203546",
-    "desc": "Hand-carved statues of deities and figures in sandstone and white marble — devotional and decorative pieces finished by our master carvers.",
-    "specs": [["Material", "Marble / sandstone"], ["Work", "Hand-carved"], ["Lead time", "On selection"]],
-    "gallery": ["photo-1660140889200-59994b203546", "photo-1662808141421-54240cbfd45f", "photo-1621422747516-240c0f5f987a"],
+    "desc": "Hand-carved statues of deities and figures in sandstone and white marble \u2014 devotional and decorative pieces finished by our master carvers.",
+    "specs": [
+      [
+        "Material",
+        "Marble / sandstone"
+      ],
+      [
+        "Work",
+        "Hand-carved"
+      ],
+      [
+        "Lead time",
+        "On selection"
+      ]
+    ],
+    "gallery": [
+      "photo-1660140889200-59994b203546",
+      "photo-1662808141421-54240cbfd45f",
+      "photo-1621422747516-240c0f5f987a"
+    ],
     "is_active": true
   },
   {
@@ -99,9 +201,26 @@
     "application": "Garden",
     "origin": "Contemporary forms",
     "image": "photo-1662808141421-54240cbfd45f",
-    "desc": "Garden spheres and contemporary stone forms — sculptural pieces that anchor a courtyard or lawn without crowding it.",
-    "specs": [["Forms", "Spheres & abstract"], ["Setting", "Indoor / garden"], ["Lead time", "On selection"]],
-    "gallery": ["photo-1662808141421-54240cbfd45f", "photo-1621422747516-240c0f5f987a", "photo-1660140889200-59994b203546"],
+    "desc": "Garden spheres and contemporary stone forms \u2014 sculptural pieces that anchor a courtyard or lawn without crowding it.",
+    "specs": [
+      [
+        "Forms",
+        "Spheres & abstract"
+      ],
+      [
+        "Setting",
+        "Indoor / garden"
+      ],
+      [
+        "Lead time",
+        "On selection"
+      ]
+    ],
+    "gallery": [
+      "photo-1662808141421-54240cbfd45f",
+      "photo-1621422747516-240c0f5f987a",
+      "photo-1660140889200-59994b203546"
+    ],
     "is_active": true
   },
   {
@@ -114,9 +233,26 @@
     "application": "Garden",
     "origin": "Tiered & wall",
     "image": "photo-1761024300156-aff4bec70b6a",
-    "desc": "Tiered fountains, wall fountains and sculptural water features hand-carved in sandstone and marble — the sound of water worked over honed and rough-hewn faces.",
-    "specs": [["Types", "Tiered · wall · sculptural"], ["Setting", "Garden, outdoor rated"], ["Lead time", "6 – 8 weeks"]],
-    "gallery": ["photo-1761024300156-aff4bec70b6a", "photo-1761024300151-eed15857ea31", "photo-1783933676729-de12e55f5546"],
+    "desc": "Tiered fountains, wall fountains and sculptural water features hand-carved in sandstone and marble \u2014 the sound of water worked over honed and rough-hewn faces.",
+    "specs": [
+      [
+        "Types",
+        "Tiered \u00b7 wall \u00b7 sculptural"
+      ],
+      [
+        "Setting",
+        "Garden, outdoor rated"
+      ],
+      [
+        "Lead time",
+        "6 \u2013 8 weeks"
+      ]
+    ],
+    "gallery": [
+      "photo-1761024300156-aff4bec70b6a",
+      "photo-1761024300151-eed15857ea31",
+      "photo-1783933676729-de12e55f5546"
+    ],
     "is_active": true
   },
   {
@@ -129,9 +265,26 @@
     "application": "Garden",
     "origin": "Carved & contemporary",
     "image": "photo-1768700519431-5297f11808a3",
-    "desc": "Carved and contemporary benches in marble and sandstone — seating that weathers gracefully in gardens and courtyards.",
-    "specs": [["Material", "Marble & sandstone"], ["Style", "Carved / contemporary"], ["Setting", "Outdoor rated"]],
-    "gallery": ["photo-1768700519431-5297f11808a3", "photo-1764444218648-75a52322c489", "photo-1786467642735-1342f43034ae"],
+    "desc": "Carved and contemporary benches in marble and sandstone \u2014 seating that weathers gracefully in gardens and courtyards.",
+    "specs": [
+      [
+        "Material",
+        "Marble & sandstone"
+      ],
+      [
+        "Style",
+        "Carved / contemporary"
+      ],
+      [
+        "Setting",
+        "Outdoor rated"
+      ]
+    ],
+    "gallery": [
+      "photo-1768700519431-5297f11808a3",
+      "photo-1764444218648-75a52322c489",
+      "photo-1786467642735-1342f43034ae"
+    ],
     "is_active": true
   },
   {
@@ -144,9 +297,26 @@
     "application": "Garden",
     "origin": "Carved vases",
     "image": "photo-1787497017406-9f54de5921df",
-    "desc": "Carved planters, urns and vases for gardens and entrances — hand-worked sandstone in a range of profiles and scales.",
-    "specs": [["Pieces", "Planters · urns · vases"], ["Material", "Carved sandstone"], ["Setting", "Garden & entrance"]],
-    "gallery": ["photo-1787497017406-9f54de5921df", "photo-1786467642735-1342f43034ae", "photo-1768700519431-5297f11808a3"],
+    "desc": "Carved planters, urns and vases for gardens and entrances \u2014 hand-worked sandstone in a range of profiles and scales.",
+    "specs": [
+      [
+        "Pieces",
+        "Planters \u00b7 urns \u00b7 vases"
+      ],
+      [
+        "Material",
+        "Carved sandstone"
+      ],
+      [
+        "Setting",
+        "Garden & entrance"
+      ]
+    ],
+    "gallery": [
+      "photo-1787497017406-9f54de5921df",
+      "photo-1786467642735-1342f43034ae",
+      "photo-1768700519431-5297f11808a3"
+    ],
     "is_active": true
   },
   {
@@ -159,9 +329,26 @@
     "application": "Garden",
     "origin": "Garden lighting",
     "image": "photo-1786467642735-1342f43034ae",
-    "desc": "Garden lanterns and carved lamp posts in sandstone — soft, grounded lighting for paths, courts and entrances.",
-    "specs": [["Pieces", "Lanterns & lamp posts"], ["Material", "Carved sandstone"], ["Use", "Garden lighting"]],
-    "gallery": ["photo-1786467642735-1342f43034ae", "photo-1787497017406-9f54de5921df", "photo-1764444218648-75a52322c489"],
+    "desc": "Garden lanterns and carved lamp posts in sandstone \u2014 soft, grounded lighting for paths, courts and entrances.",
+    "specs": [
+      [
+        "Pieces",
+        "Lanterns & lamp posts"
+      ],
+      [
+        "Material",
+        "Carved sandstone"
+      ],
+      [
+        "Use",
+        "Garden lighting"
+      ]
+    ],
+    "gallery": [
+      "photo-1786467642735-1342f43034ae",
+      "photo-1787497017406-9f54de5921df",
+      "photo-1764444218648-75a52322c489"
+    ],
     "is_active": true
   },
   {
@@ -174,9 +361,26 @@
     "application": "Architectural",
     "origin": "Pierced panels",
     "image": "photo-1763295492544-7850fa8671cf",
-    "desc": "Intricately pierced jali panels, railings and balustrades — traditional lattice screens cut from a single stone for light, air and privacy.",
-    "specs": [["Work", "Pierced jali"], ["Pieces", "Panels · railings · balustrades"], ["Lead time", "Per project"]],
-    "gallery": ["photo-1763295492544-7850fa8671cf", "photo-1763295492872-a4ec4141de92", "photo-1763295492547-53c6c64833e1"],
+    "desc": "Intricately pierced jali panels, railings and balustrades \u2014 traditional lattice screens cut from a single stone for light, air and privacy.",
+    "specs": [
+      [
+        "Work",
+        "Pierced jali"
+      ],
+      [
+        "Pieces",
+        "Panels \u00b7 railings \u00b7 balustrades"
+      ],
+      [
+        "Lead time",
+        "Per project"
+      ]
+    ],
+    "gallery": [
+      "photo-1763295492544-7850fa8671cf",
+      "photo-1763295492872-a4ec4141de92",
+      "photo-1763295492547-53c6c64833e1"
+    ],
     "is_active": true
   },
   {
@@ -189,9 +393,25 @@
     "application": "Architectural",
     "origin": "Traditional carved",
     "image": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/02/Jaisalmer_-_Patwa_Haveli_26.jpg/1280px-Jaisalmer_-_Patwa_Haveli_26.jpg",
-    "desc": "Traditional carved jharokhas, balconies and window frames in sandstone — Rajasthani architectural detail made to measure.",
-    "specs": [["Pieces", "Jharokhas · balconies · frames"], ["Material", "Carved sandstone"], ["Lead time", "Per project"]],
-    "gallery": ["https://thumb.wikimedia.org/wikipedia/commons/thumb/0/02/Jaisalmer_-_Patwa_Haveli_26.jpg/1280px-Jaisalmer_-_Patwa_Haveli_26.jpg", "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/59/Jodhpur_Mehrangarh_-_Palast_4a_Jharokha.jpg/1280px-Jodhpur_Mehrangarh_-_Palast_4a_Jharokha.jpg"],
+    "desc": "Traditional carved jharokhas, balconies and window frames in sandstone \u2014 Rajasthani architectural detail made to measure.",
+    "specs": [
+      [
+        "Pieces",
+        "Jharokhas \u00b7 balconies \u00b7 frames"
+      ],
+      [
+        "Material",
+        "Carved sandstone"
+      ],
+      [
+        "Lead time",
+        "Per project"
+      ]
+    ],
+    "gallery": [
+      "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/02/Jaisalmer_-_Patwa_Haveli_26.jpg/1280px-Jaisalmer_-_Patwa_Haveli_26.jpg",
+      "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/59/Jodhpur_Mehrangarh_-_Palast_4a_Jharokha.jpg/1280px-Jodhpur_Mehrangarh_-_Palast_4a_Jharokha.jpg"
+    ],
     "is_active": true
   },
   {
@@ -204,9 +424,26 @@
     "application": "Architectural",
     "origin": "Carved capitals",
     "image": "photo-1672215053161-5778b0fbb9ea",
-    "desc": "Carved pillars, columns and capitals for facades, verandahs and temple structures — load-bearing stone detailed by hand.",
-    "specs": [["Pieces", "Pillars · columns · capitals"], ["Material", "Sandstone / marble"], ["Lead time", "Per project"]],
-    "gallery": ["photo-1672215053161-5778b0fbb9ea", "photo-1665003725647-3ae0f01140b1", "photo-1672215055915-e6143dc70e6a"],
+    "desc": "Carved pillars, columns and capitals for facades, verandahs and temple structures \u2014 load-bearing stone detailed by hand.",
+    "specs": [
+      [
+        "Pieces",
+        "Pillars \u00b7 columns \u00b7 capitals"
+      ],
+      [
+        "Material",
+        "Sandstone / marble"
+      ],
+      [
+        "Lead time",
+        "Per project"
+      ]
+    ],
+    "gallery": [
+      "photo-1672215053161-5778b0fbb9ea",
+      "photo-1665003725647-3ae0f01140b1",
+      "photo-1672215055915-e6143dc70e6a"
+    ],
     "is_active": true
   },
   {
@@ -219,9 +456,26 @@
     "application": "Architectural",
     "origin": "Architectural carving",
     "image": "photo-1665003725647-3ae0f01140b1",
-    "desc": "Detailed architectural carving for temples — shikhara, mandapa and figure work executed in marble and sandstone by our carving teams.",
-    "specs": [["Scope", "Architectural temple carving"], ["Material", "Marble & sandstone"], ["Lead time", "Per project"]],
-    "gallery": ["photo-1665003725647-3ae0f01140b1", "photo-1672215053161-5778b0fbb9ea", "photo-1763295492872-a4ec4141de92"],
+    "desc": "Detailed architectural carving for temples \u2014 shikhara, mandapa and figure work executed in marble and sandstone by our carving teams.",
+    "specs": [
+      [
+        "Scope",
+        "Architectural temple carving"
+      ],
+      [
+        "Material",
+        "Marble & sandstone"
+      ],
+      [
+        "Lead time",
+        "Per project"
+      ]
+    ],
+    "gallery": [
+      "photo-1665003725647-3ae0f01140b1",
+      "photo-1672215053161-5778b0fbb9ea",
+      "photo-1763295492872-a4ec4141de92"
+    ],
     "is_active": true
   },
   {
@@ -234,9 +488,26 @@
     "application": "Architectural",
     "origin": "Pavilions & domes",
     "image": "photo-1672215055915-e6143dc70e6a",
-    "desc": "Stone pavilions, domes and chhatris in carved sandstone — garden and rooftop structures in a traditional idiom.",
-    "specs": [["Pieces", "Gazebos · domes · chhatris"], ["Material", "Carved sandstone"], ["Lead time", "Per project"]],
-    "gallery": ["photo-1672215055915-e6143dc70e6a", "photo-1593739594181-dcd2709bc51d", "photo-1664851451771-2a78ed2b20fe"],
+    "desc": "Stone pavilions, domes and chhatris in carved sandstone \u2014 garden and rooftop structures in a traditional idiom.",
+    "specs": [
+      [
+        "Pieces",
+        "Gazebos \u00b7 domes \u00b7 chhatris"
+      ],
+      [
+        "Material",
+        "Carved sandstone"
+      ],
+      [
+        "Lead time",
+        "Per project"
+      ]
+    ],
+    "gallery": [
+      "photo-1672215055915-e6143dc70e6a",
+      "photo-1593739594181-dcd2709bc51d",
+      "photo-1664851451771-2a78ed2b20fe"
+    ],
     "is_active": true
   },
   {
@@ -249,9 +520,26 @@
     "application": "Interior",
     "origin": "Water-jet & pietra dura",
     "image": "photo-1790501028719-1c18dc4a895d",
-    "desc": "Water-jet flooring, pietra dura and mother-of-pearl inlay and mosaic — decorative stone floors cut to your pattern.",
-    "specs": [["Techniques", "Water-jet · pietra dura · mosaic"], ["Material", "Marble & coloured stone"], ["Lead time", "Per project"]],
-    "gallery": ["photo-1790501028719-1c18dc4a895d", "photo-1506463108611-88834e9f6169", "photo-1531165424588-80b93de6f807"],
+    "desc": "Water-jet flooring, pietra dura and mother-of-pearl inlay and mosaic \u2014 decorative stone floors cut to your pattern.",
+    "specs": [
+      [
+        "Techniques",
+        "Water-jet \u00b7 pietra dura \u00b7 mosaic"
+      ],
+      [
+        "Material",
+        "Marble & coloured stone"
+      ],
+      [
+        "Lead time",
+        "Per project"
+      ]
+    ],
+    "gallery": [
+      "photo-1790501028719-1c18dc4a895d",
+      "photo-1506463108611-88834e9f6169",
+      "photo-1531165424588-80b93de6f807"
+    ],
     "is_active": true
   },
   {
@@ -264,9 +552,26 @@
     "application": "Architectural",
     "origin": "Large-scale",
     "image": "photo-1586618754080-135516049958",
-    "desc": "Large-scale stone projects and public monuments — including the sandstone monuments on the Eastern Peripheral Expressway and the Ambedkar Smarak, Lucknow.",
-    "specs": [["Scope", "Monuments & infrastructure"], ["Material", "Sandstone & stone"], ["Notable", "EPE · Ambedkar Smarak"]],
-    "gallery": ["photo-1586618754080-135516049958", "photo-1665003725647-3ae0f01140b1", "photo-1672215055915-e6143dc70e6a"],
+    "desc": "Large-scale stone projects and public monuments \u2014 including the sandstone monuments on the Eastern Peripheral Expressway and the Ambedkar Smarak, Lucknow.",
+    "specs": [
+      [
+        "Scope",
+        "Monuments & infrastructure"
+      ],
+      [
+        "Material",
+        "Sandstone & stone"
+      ],
+      [
+        "Notable",
+        "EPE \u00b7 Ambedkar Smarak"
+      ]
+    ],
+    "gallery": [
+      "photo-1586618754080-135516049958",
+      "photo-1665003725647-3ae0f01140b1",
+      "photo-1672215055915-e6143dc70e6a"
+    ],
     "is_active": true
   },
   {
@@ -279,9 +584,26 @@
     "application": "Interior",
     "origin": "Stone-polymer core",
     "image": "photo-1548268364-3acee266b695",
-    "desc": "Rigid stone-polymer core flooring — dimensionally stable click-lock planks that handle moisture and temperature swings.",
-    "specs": [["Core", "Stone-polymer (SPC)"], ["Install", "Click-lock"], ["Finish", "Wood & stone looks"]],
-    "gallery": ["photo-1548268364-3acee266b695", "photo-1519393890420-f28727375fa5", "photo-1598718544285-7180f670198b"],
+    "desc": "Rigid stone-polymer core flooring \u2014 dimensionally stable click-lock planks that handle moisture and temperature swings.",
+    "specs": [
+      [
+        "Core",
+        "Stone-polymer (SPC)"
+      ],
+      [
+        "Install",
+        "Click-lock"
+      ],
+      [
+        "Finish",
+        "Wood & stone looks"
+      ]
+    ],
+    "gallery": [
+      "photo-1548268364-3acee266b695",
+      "photo-1519393890420-f28727375fa5",
+      "photo-1598718544285-7180f670198b"
+    ],
     "is_active": true
   },
   {
@@ -294,9 +616,26 @@
     "application": "Interior",
     "origin": "Oak & walnut tones",
     "image": "photo-1519393890420-f28727375fa5",
-    "desc": "Laminate and engineered wood plank floors — warm wood looks with a tough, scratch-resistant wear layer.",
-    "specs": [["Core", "HDF / engineered"], ["Install", "Click-lock"], ["Range", "Oak & walnut tones"]],
-    "gallery": ["photo-1519393890420-f28727375fa5", "photo-1548268364-3acee266b695", "photo-1560185008-b033106af5c3"],
+    "desc": "Laminate and engineered wood plank floors \u2014 warm wood looks with a tough, scratch-resistant wear layer.",
+    "specs": [
+      [
+        "Core",
+        "HDF / engineered"
+      ],
+      [
+        "Install",
+        "Click-lock"
+      ],
+      [
+        "Range",
+        "Oak & walnut tones"
+      ]
+    ],
+    "gallery": [
+      "photo-1519393890420-f28727375fa5",
+      "photo-1548268364-3acee266b695",
+      "photo-1560185008-b033106af5c3"
+    ],
     "is_active": true
   },
   {
@@ -309,9 +648,26 @@
     "application": "Interior",
     "origin": "Wood & stone looks",
     "image": "photo-1598718544285-7180f670198b",
-    "desc": "Luxury vinyl tile in wood and stone looks — resilient, water-resistant and quiet underfoot.",
-    "specs": [["Material", "LVT"], ["Finish", "Wood & stone looks"], ["Use", "Residential & contract"]],
-    "gallery": ["photo-1598718544285-7180f670198b", "photo-1581858726788-75bc0f6a952d", "photo-1519393890420-f28727375fa5"],
+    "desc": "Luxury vinyl tile in wood and stone looks \u2014 resilient, water-resistant and quiet underfoot.",
+    "specs": [
+      [
+        "Material",
+        "LVT"
+      ],
+      [
+        "Finish",
+        "Wood & stone looks"
+      ],
+      [
+        "Use",
+        "Residential & contract"
+      ]
+    ],
+    "gallery": [
+      "photo-1598718544285-7180f670198b",
+      "photo-1581858726788-75bc0f6a952d",
+      "photo-1519393890420-f28727375fa5"
+    ],
     "is_active": true
   },
   {
@@ -322,11 +678,28 @@
     "material": "Carpet",
     "product": "Carpet",
     "application": "Interior",
-    "origin": "50 × 50 cm tiles",
+    "origin": "50 \u00d7 50 cm tiles",
     "image": "photo-1523350165414-082d792c4bcc",
-    "desc": "Modular carpet tiles for offices, hospitality and contract floors — easy to install, replace and mix into patterns.",
-    "specs": [["Format", "Modular tile"], ["Size", "50 × 50 cm"], ["Use", "Office & contract"]],
-    "gallery": ["photo-1523350165414-082d792c4bcc", "photo-1613124152913-c180d8c1d740", "photo-1660394585016-508f949df960"],
+    "desc": "Modular carpet tiles for offices, hospitality and contract floors \u2014 easy to install, replace and mix into patterns.",
+    "specs": [
+      [
+        "Format",
+        "Modular tile"
+      ],
+      [
+        "Size",
+        "50 \u00d7 50 cm"
+      ],
+      [
+        "Use",
+        "Office & contract"
+      ]
+    ],
+    "gallery": [
+      "photo-1523350165414-082d792c4bcc",
+      "photo-1613124152913-c180d8c1d740",
+      "photo-1660394585016-508f949df960"
+    ],
     "is_active": true
   },
   {
@@ -339,9 +712,26 @@
     "application": "Interior",
     "origin": "Heavy-traffic rated",
     "image": "photo-1560185008-b033106af5c3",
-    "desc": "Hard-wearing commercial flooring for offices, retail and hospitality — specified for traffic, acoustics and cleaning cycles.",
-    "specs": [["Rating", "Heavy commercial"], ["Range", "Vinyl · wood · carpet"], ["Spec", "In-house support"]],
-    "gallery": ["photo-1560185008-b033106af5c3", "photo-1598718544285-7180f670198b", "photo-1548268364-3acee266b695"],
+    "desc": "Hard-wearing commercial flooring for offices, retail and hospitality \u2014 specified for traffic, acoustics and cleaning cycles.",
+    "specs": [
+      [
+        "Rating",
+        "Heavy commercial"
+      ],
+      [
+        "Range",
+        "Vinyl \u00b7 wood \u00b7 carpet"
+      ],
+      [
+        "Spec",
+        "In-house support"
+      ]
+    ],
+    "gallery": [
+      "photo-1560185008-b033106af5c3",
+      "photo-1598718544285-7180f670198b",
+      "photo-1548268364-3acee266b695"
+    ],
     "is_active": true
   },
   {
@@ -354,9 +744,26 @@
     "application": "Garden",
     "origin": "Outdoor rated",
     "image": "photo-1656646549633-80ad4bd2ab40",
-    "desc": "WPC and timber decking for balconies, terraces and poolsides — weather-resistant boards with a natural grain.",
-    "specs": [["Material", "WPC / timber"], ["Use", "Outdoor rated"], ["Finish", "Natural grain"]],
-    "gallery": ["photo-1656646549633-80ad4bd2ab40", "photo-1574120583586-de8847ae992c", "photo-1560185008-b033106af5c3"],
+    "desc": "WPC and timber decking for balconies, terraces and poolsides \u2014 weather-resistant boards with a natural grain.",
+    "specs": [
+      [
+        "Material",
+        "WPC / timber"
+      ],
+      [
+        "Use",
+        "Outdoor rated"
+      ],
+      [
+        "Finish",
+        "Natural grain"
+      ]
+    ],
+    "gallery": [
+      "photo-1656646549633-80ad4bd2ab40",
+      "photo-1574120583586-de8847ae992c",
+      "photo-1560185008-b033106af5c3"
+    ],
     "is_active": true
   },
   {
@@ -369,9 +776,26 @@
     "application": "Living",
     "origin": "Solid hardwood frames",
     "image": "photo-1600607687939-ce8a6c25118c",
-    "desc": "Deep, tailored seating in soft upholstery — hardwood frames built in our own workshop.",
-    "specs": [["Frames", "Solid hardwood"], ["Upholstery", "COM or curated"], ["Lead time", "6 – 8 weeks"]],
-    "gallery": ["photo-1600607687939-ce8a6c25118c", "photo-1631396326646-c06a935ff3a6", "photo-1600566753190-17f0baa2a6c3"],
+    "desc": "Deep, tailored seating in soft upholstery \u2014 hardwood frames built in our own workshop.",
+    "specs": [
+      [
+        "Frames",
+        "Solid hardwood"
+      ],
+      [
+        "Upholstery",
+        "COM or curated"
+      ],
+      [
+        "Lead time",
+        "6 \u2013 8 weeks"
+      ]
+    ],
+    "gallery": [
+      "photo-1600607687939-ce8a6c25118c",
+      "photo-1631396326646-c06a935ff3a6",
+      "photo-1600566753190-17f0baa2a6c3"
+    ],
     "is_active": true
   },
   {
@@ -384,9 +808,26 @@
     "application": "Living",
     "origin": "Made to order",
     "image": "photo-1631396326646-c06a935ff3a6",
-    "desc": "Dining, lounge and accent chairs — prototyped, sat in, adjusted, then made to order.",
-    "specs": [["Range", "Dining · lounge · accent"], ["Build", "Made to order"], ["Lead time", "5 – 7 weeks"]],
-    "gallery": ["photo-1631396326646-c06a935ff3a6", "photo-1737467030068-88ad20e617ca", "photo-1600607687939-ce8a6c25118c"],
+    "desc": "Dining, lounge and accent chairs \u2014 prototyped, sat in, adjusted, then made to order.",
+    "specs": [
+      [
+        "Range",
+        "Dining \u00b7 lounge \u00b7 accent"
+      ],
+      [
+        "Build",
+        "Made to order"
+      ],
+      [
+        "Lead time",
+        "5 \u2013 7 weeks"
+      ]
+    ],
+    "gallery": [
+      "photo-1631396326646-c06a935ff3a6",
+      "photo-1737467030068-88ad20e617ca",
+      "photo-1600607687939-ce8a6c25118c"
+    ],
     "is_active": true
   },
   {
@@ -397,11 +838,28 @@
     "material": "Stone & timber",
     "product": "Tables",
     "application": "Living",
-    "origin": "Stone · timber · cast",
+    "origin": "Stone \u00b7 timber \u00b7 cast",
     "image": "photo-1600585154340-be6161a56a0c",
-    "desc": "Stone, timber and cast tops on considered bases — dining, coffee and side tables.",
-    "specs": [["Tops", "Stone · timber · cast"], ["Bases", "Steel · wood · stone"], ["Lead time", "5 – 7 weeks"]],
-    "gallery": ["photo-1600585154340-be6161a56a0c", "photo-1618221195710-dd6b41faaea6", "photo-1631396326646-c06a935ff3a6"],
+    "desc": "Stone, timber and cast tops on considered bases \u2014 dining, coffee and side tables.",
+    "specs": [
+      [
+        "Tops",
+        "Stone \u00b7 timber \u00b7 cast"
+      ],
+      [
+        "Bases",
+        "Steel \u00b7 wood \u00b7 stone"
+      ],
+      [
+        "Lead time",
+        "5 \u2013 7 weeks"
+      ]
+    ],
+    "gallery": [
+      "photo-1600585154340-be6161a56a0c",
+      "photo-1618221195710-dd6b41faaea6",
+      "photo-1631396326646-c06a935ff3a6"
+    ],
     "is_active": true
   },
   {
@@ -414,9 +872,106 @@
     "application": "Interior",
     "origin": "Built to brief",
     "image": "photo-1737467030068-88ad20e617ca",
-    "desc": "Bespoke joinery built to your brief — from a single headboard to a full suite of casegoods.",
-    "specs": [["Scope", "One-off to full suites"], ["Process", "Brief → prototype → build"], ["Lead time", "6 – 10 weeks"]],
-    "gallery": ["photo-1737467030068-88ad20e617ca", "photo-1631396326646-c06a935ff3a6", "photo-1600585154340-be6161a56a0c"],
+    "desc": "Bespoke joinery built to your brief \u2014 from a single headboard to a full suite of casegoods.",
+    "specs": [
+      [
+        "Scope",
+        "One-off to full suites"
+      ],
+      [
+        "Process",
+        "Brief \u2192 prototype \u2192 build"
+      ],
+      [
+        "Lead time",
+        "6 \u2013 10 weeks"
+      ]
+    ],
+    "gallery": [
+      "photo-1737467030068-88ad20e617ca",
+      "photo-1631396326646-c06a935ff3a6",
+      "photo-1600585154340-be6161a56a0c"
+    ],
+    "is_active": true
+  },
+  {
+    "id": "cat-concept-moodboards",
+    "slug": "concept-moodboards",
+    "name": "Concept & Moodboards",
+    "brand": "BDS Marvel",
+    "category": "Interior Designing",
+    "material": "Design",
+    "product": "Concept",
+    "application": "Interior",
+    "image": "photo-1631679706909-1844bbd07221",
+    "origin": "Direction & references",
+    "gallery": [
+      "photo-1631679706909-1844bbd07221"
+    ],
+    "is_active": true
+  },
+  {
+    "id": "cat-space-planning",
+    "slug": "space-planning",
+    "name": "Space Planning",
+    "brand": "BDS Marvel",
+    "category": "Interior Designing",
+    "material": "Design",
+    "product": "Planning",
+    "application": "Interior",
+    "image": "photo-1618220179428-22790b461013",
+    "origin": "Layouts & flow",
+    "gallery": [
+      "photo-1618220179428-22790b461013"
+    ],
+    "is_active": true
+  },
+  {
+    "id": "cat-material-palettes",
+    "slug": "material-palettes",
+    "name": "Material Palettes",
+    "brand": "BDS Marvel",
+    "category": "Interior Designing",
+    "material": "Design",
+    "product": "Palettes",
+    "application": "Interior",
+    "image": "photo-1600585154340-be6161a56a0c",
+    "origin": "Samples & combinations",
+    "gallery": [
+      "photo-1600585154340-be6161a56a0c"
+    ],
+    "is_active": true
+  },
+  {
+    "id": "cat-3d-visualisation",
+    "slug": "3d-visualisation",
+    "name": "3D Visualisation",
+    "brand": "BDS Marvel",
+    "category": "Interior Designing",
+    "material": "Design",
+    "product": "Visualisation",
+    "application": "Interior",
+    "image": "photo-1631396326646-c06a935ff3a6",
+    "origin": "Photoreal renders",
+    "gallery": [
+      "photo-1631396326646-c06a935ff3a6"
+    ],
+    "is_active": true
+  },
+  {
+    "id": "cat-tensile-structures",
+    "slug": "tensile-structures",
+    "name": "Tensile Structures",
+    "brand": "Formwork",
+    "category": "Construction",
+    "material": "Membrane",
+    "product": "Structures",
+    "application": "Architectural",
+    "image": "photo-1784637663357-cfbf73b09c0d",
+    "origin": "Fabric shade canopies",
+    "gallery": [
+      "photo-1784637663357-cfbf73b09c0d"
+    ],
     "is_active": true
   },
   {
@@ -427,11 +982,300 @@
     "material": "Lighting",
     "product": "Lighting",
     "application": "Interior",
-    "origin": "Ambient · task · feature",
+    "origin": "Ambient \u00b7 task \u00b7 feature",
     "image": "photo-1747258818911-dfde27ecabba",
-    "desc": "Ambient, task and feature lighting — from backlit stone panels to a considered picture light.",
-    "specs": [["Range", "Ambient · task · feature"], ["Colour temp", "2200 – 3000K"], ["Lead time", "2 – 5 weeks"]],
-    "gallery": ["photo-1747258818911-dfde27ecabba", "photo-1618221195710-dd6b41faaea6", "photo-1600566753190-17f0baa2a6c3"],
+    "desc": "Ambient, task and feature lighting \u2014 from backlit stone panels to a considered picture light.",
+    "specs": [
+      [
+        "Range",
+        "Ambient \u00b7 task \u00b7 feature"
+      ],
+      [
+        "Colour temp",
+        "2200 \u2013 3000K"
+      ],
+      [
+        "Lead time",
+        "2 \u2013 5 weeks"
+      ]
+    ],
+    "gallery": [
+      "photo-1747258818911-dfde27ecabba",
+      "photo-1618221195710-dd6b41faaea6",
+      "photo-1600566753190-17f0baa2a6c3"
+    ],
+    "is_active": true
+  },
+  {
+    "id": "cat-decor-pieces",
+    "slug": "decor-pieces",
+    "name": "D\u00e9cor Pieces",
+    "brand": "Vignette",
+    "category": "Interior Decor",
+    "material": "Object",
+    "product": "Objects",
+    "application": "Living",
+    "image": "photo-1600585154340-be6161a56a0c",
+    "origin": "Sculptural objects",
+    "gallery": [
+      "photo-1600585154340-be6161a56a0c"
+    ],
+    "is_active": true
+  },
+  {
+    "id": "cat-decor-accessories",
+    "slug": "decor-accessories",
+    "name": "Accessories",
+    "brand": "Vignette",
+    "category": "Interior Decor",
+    "material": "Accent",
+    "product": "Accessories",
+    "application": "Living",
+    "image": "photo-1618221195710-dd6b41faaea6",
+    "origin": "Trays \u00b7 textiles \u00b7 hardware",
+    "gallery": [
+      "photo-1618221195710-dd6b41faaea6"
+    ],
+    "is_active": true
+  },
+  {
+    "id": "cat-decor-textures",
+    "slug": "decor-textures",
+    "name": "Textures",
+    "brand": "Vignette",
+    "category": "Interior Decor",
+    "material": "Surface",
+    "product": "Textures",
+    "application": "Interior",
+    "image": "photo-1780399334790-64af9ffb45fc",
+    "origin": "Plaster \u00b7 linen \u00b7 stone \u00b7 wood",
+    "gallery": [
+      "photo-1780399334790-64af9ffb45fc"
+    ],
+    "is_active": true
+  },
+  {
+    "id": "cat-decor-finishing",
+    "slug": "decor-finishing",
+    "name": "Finishing Elements",
+    "brand": "Vignette",
+    "category": "Interior Decor",
+    "material": "Trim",
+    "product": "Finishing",
+    "application": "Interior",
+    "image": "photo-1600566753190-17f0baa2a6c3",
+    "origin": "Hardware \u00b7 trims \u00b7 edges",
+    "gallery": [
+      "photo-1600566753190-17f0baa2a6c3"
+    ],
+    "is_active": true
+  },
+  {
+    "id": "cat-artificial-plants-green-walls",
+    "slug": "artificial-plants-green-walls",
+    "name": "Artificial Plants & Green Walls",
+    "brand": "Vignette",
+    "category": "Interior Decor",
+    "material": "Greenery",
+    "product": "Greenery",
+    "application": "Interior",
+    "image": "photo-1585506774639-5e2f8fda6352",
+    "origin": "Vertical gardens",
+    "gallery": [
+      "photo-1585506774639-5e2f8fda6352"
+    ],
+    "is_active": true
+  },
+  {
+    "id": "cat-decorative-planters",
+    "slug": "decorative-planters",
+    "name": "Planters",
+    "brand": "Vignette",
+    "category": "Interior Decor",
+    "material": "Ceramic & stone",
+    "product": "Planters",
+    "application": "Interior",
+    "image": "photo-1588440691140-09155c1be58a",
+    "origin": "Pots & urns",
+    "gallery": [
+      "photo-1588440691140-09155c1be58a"
+    ],
+    "is_active": true
+  },
+  {
+    "id": "cat-garden-umbrella-gazebo",
+    "slug": "garden-umbrella-gazebo",
+    "name": "Garden Umbrella & Gazebo",
+    "brand": "Vignette",
+    "category": "Interior Decor",
+    "material": "Outdoor",
+    "product": "Outdoor",
+    "application": "Garden",
+    "image": "photo-1784454793008-3d6e632db3d7",
+    "origin": "Shade & outdoor living",
+    "gallery": [
+      "photo-1784454793008-3d6e632db3d7"
+    ],
+    "is_active": true
+  },
+  {
+    "id": "cat-broadloom-carpets",
+    "slug": "broadloom-carpets",
+    "name": "Broadloom Carpets",
+    "brand": "Renest",
+    "category": "Flooring",
+    "material": "",
+    "product": "",
+    "application": "",
+    "image": "photo-1660394585016-508f949df960",
+    "origin": "",
+    "gallery": [
+      "photo-1660394585016-508f949df960"
+    ],
+    "is_active": true
+  },
+  {
+    "id": "cat-carpets-rugs",
+    "slug": "carpets-rugs",
+    "name": "Carpets & Rugs",
+    "brand": "Renest",
+    "category": "Flooring",
+    "material": "",
+    "product": "",
+    "application": "",
+    "image": "photo-1572123979839-3749e9973aba",
+    "origin": "",
+    "gallery": [
+      "photo-1572123979839-3749e9973aba"
+    ],
+    "is_active": true
+  },
+  {
+    "id": "cat-gym-flooring",
+    "slug": "gym-flooring",
+    "name": "Gym Flooring",
+    "brand": "Renest",
+    "category": "Flooring",
+    "material": "",
+    "product": "",
+    "application": "",
+    "image": "photo-1603665409265-bdc00027c217",
+    "origin": "",
+    "gallery": [
+      "photo-1603665409265-bdc00027c217"
+    ],
+    "is_active": true
+  },
+  {
+    "id": "cat-heavy-duty-doormats",
+    "slug": "heavy-duty-doormats",
+    "name": "Heavy Duty Doormats",
+    "brand": "Renest",
+    "category": "Flooring",
+    "material": "",
+    "product": "",
+    "application": "",
+    "image": "photo-1574120583586-de8847ae992c",
+    "origin": "",
+    "gallery": [
+      "photo-1574120583586-de8847ae992c"
+    ],
+    "is_active": true
+  },
+  {
+    "id": "cat-hospital-flooring",
+    "slug": "hospital-flooring",
+    "name": "Hospital Flooring",
+    "brand": "Renest",
+    "category": "Flooring",
+    "material": "",
+    "product": "",
+    "application": "",
+    "image": "photo-1581858726788-75bc0f6a952d",
+    "origin": "",
+    "gallery": [
+      "photo-1581858726788-75bc0f6a952d"
+    ],
+    "is_active": true
+  },
+  {
+    "id": "cat-school-flooring",
+    "slug": "school-flooring",
+    "name": "School Flooring",
+    "brand": "Renest",
+    "category": "Flooring",
+    "material": "",
+    "product": "",
+    "application": "",
+    "image": "photo-1613124152913-c180d8c1d740",
+    "origin": "",
+    "gallery": [
+      "photo-1613124152913-c180d8c1d740"
+    ],
+    "is_active": true
+  },
+  {
+    "id": "cat-sports-flooring",
+    "slug": "sports-flooring",
+    "name": "Sports Flooring",
+    "brand": "Renest",
+    "category": "Flooring",
+    "material": "",
+    "product": "",
+    "application": "",
+    "image": "photo-1610684082661-5d4763eecb39",
+    "origin": "",
+    "gallery": [
+      "photo-1610684082661-5d4763eecb39"
+    ],
+    "is_active": true
+  },
+  {
+    "id": "cat-transport-flooring",
+    "slug": "transport-flooring",
+    "name": "Transport Flooring",
+    "brand": "Renest",
+    "category": "Flooring",
+    "material": "",
+    "product": "",
+    "application": "",
+    "image": "photo-1768554630751-6448593749eb",
+    "origin": "",
+    "gallery": [
+      "photo-1768554630751-6448593749eb"
+    ],
+    "is_active": true
+  },
+  {
+    "id": "cat-vibrant-flooring",
+    "slug": "vibrant-flooring",
+    "name": "Vibrant",
+    "brand": "Renest",
+    "category": "Flooring",
+    "material": "",
+    "product": "",
+    "application": "",
+    "image": "photo-1654605305001-8ec64a69c07c",
+    "origin": "",
+    "gallery": [
+      "photo-1654605305001-8ec64a69c07c"
+    ],
+    "is_active": true
+  },
+  {
+    "id": "cat-furniture-materials",
+    "slug": "furniture-materials",
+    "name": "Materials & Finishes",
+    "brand": "DrawStones",
+    "category": "Marble & Stone",
+    "material": "",
+    "product": "",
+    "application": "",
+    "image": "photo-1618221195710-dd6b41faaea6",
+    "origin": "",
+    "gallery": [
+      "photo-1618221195710-dd6b41faaea6"
+    ],
     "is_active": true
   }
 ]

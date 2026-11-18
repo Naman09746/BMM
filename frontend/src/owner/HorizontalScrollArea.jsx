@@ -98,3 +98,4 @@ export function HorizontalScrollArea({
 }
 
 export default HorizontalScrollArea;
+
