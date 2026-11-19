@@ -163,8 +163,8 @@ export function ContentProvider({ children }) {
     async function syncContent() {
       try {
         const [projRes, contentRes] = await Promise.all([
-          fetch(`${BACKEND_URL}/api/projects`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
-          fetch(`${BACKEND_URL}/api/site-content`).then((r) => (r.ok ? r.json() : null)).catch(() => null)
+          fetch(`${BACKEND_URL}/api/projects`, { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+          fetch(`${BACKEND_URL}/api/site-content?t=${Date.now()}`, { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).catch(() => null)
         ]);
 
         if (cancelled) return;
@@ -181,6 +181,7 @@ export function ContentProvider({ children }) {
           const nextDivisions = Array.isArray(contentRes.divisions) && contentRes.divisions.length > 0 ? contentRes.divisions : DEFAULT_DIVISIONS;
           const nextAbout = contentRes.about && typeof contentRes.about === "object" && Object.keys(contentRes.about).length > 0 ? { ...DEFAULT_ABOUT, ...contentRes.about } : DEFAULT_ABOUT;
           const nextLivingStudio = contentRes.living_studio && typeof contentRes.living_studio === "object" && Object.keys(contentRes.living_studio).length > 0 ? { ...DEFAULT_LIVING_STUDIO, ...contentRes.living_studio } : DEFAULT_LIVING_STUDIO;
+          const nextSeo = contentRes.seo && typeof contentRes.seo === "object" ? contentRes.seo : {};
 
           const updatedState = {
             hero: nextHero,
@@ -188,7 +189,8 @@ export function ContentProvider({ children }) {
             clients: nextClients,
             divisions: nextDivisions,
             about: nextAbout,
-            livingStudio: nextLivingStudio
+            livingStudio: nextLivingStudio,
+            seo: nextSeo
           };
           setSiteContent(updatedState);
           liveContentState.hero = nextHero;
@@ -197,6 +199,7 @@ export function ContentProvider({ children }) {
           liveContentState.divisions = nextDivisions;
           liveContentState.about = nextAbout;
           liveContentState.livingStudio = nextLivingStudio;
+          liveContentState.seo = nextSeo;
         }
       } catch (err) {
         // Fallback to defaults seamlessly
@@ -219,6 +222,7 @@ export function ContentProvider({ children }) {
         divisions: siteContent.divisions,
         about: siteContent.about,
         livingStudio: siteContent.livingStudio,
+        seo: siteContent.seo || {},
         loading
       }}
     >
@@ -241,6 +245,7 @@ export function useSiteContent() {
     divisions: ctx?.divisions || DEFAULT_DIVISIONS,
     about: ctx?.about || DEFAULT_ABOUT,
     livingStudio: ctx?.livingStudio || DEFAULT_LIVING_STUDIO,
+    seo: ctx?.seo || {},
     loading: ctx?.loading ?? false
   };
 }

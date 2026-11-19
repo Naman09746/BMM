@@ -1071,6 +1071,8 @@ function AppRoutes() {
           <Route path="/stays/:tier" element={<StaysTierRoute />} />
           <Route path="/contact" element={<ContactPage />} />
           <Route path="/owner" element={<OwnerDashboard />} />
+          <Route path="/owner/studio" element={<OwnerDashboard defaultWorkspace="studio" />} />
+          <Route path="/studio" element={<OwnerDashboard defaultWorkspace="studio" />} />
           <Route path="/work" element={<ProjectsArchive />} />
           <Route path="/work/:slug" element={<ProjectPage />} />
           <Route path="/agency/:slug" element={<SegmentPage />} />

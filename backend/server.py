@@ -28,6 +28,7 @@ from html import escape
 from html.parser import HTMLParser
 from urllib.parse import urlparse
 from datetime import datetime, timezone, timedelta
+import copy
 
 
 ROOT_DIR = Path(__file__).parent
@@ -496,7 +497,7 @@ _storage_key = None
 
 _MIME_TYPES = {
     "jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png", "gif": "image/gif",
-    "webp": "image/webp", "heic": "image/heic", "pdf": "application/pdf",
+    "webp": "image/webp", "heic": "image/heic", "pdf": "application/pdf", "mp4": "video/mp4",
 }
 
 
@@ -506,9 +507,9 @@ _MAGIC = {"jpg": [b"\xff\xd8\xff"], "jpeg": [b"\xff\xd8\xff"], "png": [b"\x89PNG
 def _magic_ok(ext: str, data: bytes) -> bool:
     if ext == "webp":
         return data[:4] == b"RIFF" and data[8:12] == b"WEBP"
-    if ext == "heic":
-        return data[4:8] == b"ftyp"
-    return any(data.startswith(m) for m in _MAGIC[ext])
+    if ext in ("heic", "mp4"):
+        return len(data) >= 8 and data[4:8] == b"ftyp"
+    return any(data.startswith(m) for m in _MAGIC.get(ext, []))
 
 
 UPLOAD_DIR = ROOT_DIR / "uploads"
@@ -2141,6 +2142,16 @@ class SiteContentIn(BaseModel):
     divisions: Optional[List[dict]] = Field(default_factory=list)
     about: Optional[dict] = Field(default_factory=dict)
     living_studio: Optional[dict] = Field(default_factory=dict)
+    seo: Optional[dict] = Field(default_factory=dict)
+
+
+class StudioDraftIn(BaseModel):
+    content: dict = Field(default_factory=dict)
+
+
+class StudioPublishIn(BaseModel):
+    note: Optional[str] = Field(default="Published via Website Studio", max_length=500)
+    content: Optional[dict] = None
 
 
 
@@ -2408,7 +2419,8 @@ async def admin_delete_project(identifier: str, _: dict = Depends(require_admin)
 # --- Site content endpoints ---
 
 @api_router.get("/site-content")
-async def get_site_content():
+async def get_site_content(response: Response):
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     seed = {}
     try:
         seed = json.loads((ROOT_DIR / "site_content_seed.json").read_text())
@@ -2416,10 +2428,12 @@ async def get_site_content():
         pass
     doc = await db.site_content.find_one({"id": "global_site_content"}, {"_id": 0})
     if not doc:
-        return seed or {"hero": {}, "approach": [], "clients": [], "divisions": [], "about": {}, "living_studio": {}}
+        return seed or {"hero": {}, "approach": [], "clients": [], "divisions": [], "about": {}, "living_studio": {}, "seo": {}}
     for k, v in seed.items():
         if k not in doc or doc[k] is None:
             doc[k] = v
+    if "seo" not in doc:
+        doc["seo"] = {}
     return doc
 
 
@@ -2433,6 +2447,163 @@ async def update_site_content(payload: SiteContentIn, _: dict = Depends(require_
     return await db.site_content.find_one({"id": "global_site_content"}, {"_id": 0})
 
 
+# --- Website Studio (CMS) endpoints ---
+
+@api_router.get("/admin/studio/state")
+async def get_studio_state(_: dict = Depends(require_admin)):
+    seed = {}
+    try:
+        seed = json.loads((ROOT_DIR / "site_content_seed.json").read_text())
+    except Exception:
+        pass
+    published = await db.site_content.find_one({"id": "global_site_content"}, {"_id": 0})
+    if not published:
+        published = seed or {"hero": {}, "approach": [], "clients": [], "divisions": [], "about": {}, "living_studio": {}, "seo": {}}
+    for k, v in seed.items():
+        if k not in published or published[k] is None:
+            published[k] = v
+    if "seo" not in published:
+        published["seo"] = {}
+
+    draft_doc = await db.site_content_draft.find_one({"id": "draft_site_content"}, {"_id": 0})
+    has_draft = draft_doc is not None
+    if not draft_doc:
+        draft = copy.deepcopy(published)
+    else:
+        draft = copy.deepcopy(draft_doc.get("content", draft_doc))
+        for k, v in published.items():
+            if k not in draft or draft[k] is None:
+                draft[k] = v
+
+    versions_count = await db.site_content_versions.count_documents({})
+
+    content_keys = ["hero", "approach", "clients", "divisions", "about", "living_studio", "seo"]
+    has_unpublished_changes = False
+    if has_draft:
+        for k in content_keys:
+            if draft.get(k) != published.get(k):
+                has_unpublished_changes = True
+                break
+
+    return {
+        "published": published,
+        "draft": draft,
+        "has_unpublished_changes": has_unpublished_changes,
+        "last_published_at": published.get("published_at") or published.get("updated_at"),
+        "last_published_by": published.get("published_by"),
+        "last_draft_saved_at": draft_doc.get("updated_at") if draft_doc else None,
+        "last_draft_saved_by": draft_doc.get("updated_by") if draft_doc else None,
+        "versions_count": versions_count,
+    }
+
+
+@api_router.put("/admin/studio/draft")
+async def save_studio_draft(payload: StudioDraftIn, admin: dict = Depends(require_admin), request: Request = None):
+    content = payload.content or {}
+    now_iso = datetime.now(timezone.utc).isoformat()
+    record = {
+        "id": "draft_site_content",
+        "content": content,
+        "updated_at": now_iso,
+        "updated_by": admin.get("email", "admin"),
+    }
+    await db.site_content_draft.update_one({"id": "draft_site_content"}, {"$set": record}, upsert=True)
+    await log_admin_action(admin, "studio_save_draft", "studio:draft", request=request)
+    return {"status": "ok", "updated_at": now_iso, "updated_by": record["updated_by"]}
+
+
+@api_router.post("/admin/studio/publish")
+async def publish_studio_content(payload: StudioPublishIn, admin: dict = Depends(require_admin), request: Request = None):
+    now_iso = datetime.now(timezone.utc).isoformat()
+    draft = payload.content
+    if not draft:
+        draft_doc = await db.site_content_draft.find_one({"id": "draft_site_content"}, {"_id": 0})
+        if draft_doc:
+            draft = draft_doc.get("content", draft_doc)
+    if not draft:
+        draft = await db.site_content.find_one({"id": "global_site_content"}, {"_id": 0})
+    if not draft:
+        raise HTTPException(status_code=400, detail="No content available to publish")
+
+    publish_data = copy.deepcopy(draft)
+    publish_data["id"] = "global_site_content"
+    publish_data["published_at"] = now_iso
+    publish_data["published_by"] = admin.get("email")
+    publish_data["updated_at"] = now_iso
+
+    version_id = f"ver_{uuid.uuid4().hex[:12]}"
+    note = (payload.note or "Published via Website Studio").strip()
+    ver_record = {
+        "version_id": version_id,
+        "created_at": now_iso,
+        "created_by": admin.get("email"),
+        "note": note,
+        "data": copy.deepcopy(publish_data),
+    }
+    await db.site_content_versions.insert_one(ver_record)
+
+    await db.site_content.update_one({"id": "global_site_content"}, {"$set": publish_data}, upsert=True)
+    await db.site_content_draft.update_one(
+        {"id": "draft_site_content"},
+        {"$set": {"id": "draft_site_content", "content": publish_data, "updated_at": now_iso, "updated_by": admin.get("email")}},
+        upsert=True
+    )
+
+    await log_admin_action(admin, "studio_publish", f"studio:version:{version_id}", {"note": note}, request=request)
+    return {
+        "status": "ok",
+        "version_id": version_id,
+        "published_at": now_iso,
+        "published_by": admin.get("email"),
+        "note": note,
+    }
+
+
+@api_router.get("/admin/studio/versions")
+async def list_studio_versions(_: dict = Depends(require_admin)):
+    versions = await db.site_content_versions.find({}, {"_id": 0, "data": 0}).sort("created_at", -1).to_list(50)
+    return versions
+
+
+@api_router.post("/admin/studio/rollback/{version_id}")
+async def rollback_studio_version(version_id: str, admin: dict = Depends(require_admin), request: Request = None):
+    target = await db.site_content_versions.find_one({"version_id": version_id}, {"_id": 0})
+    if not target or "data" not in target:
+        raise HTTPException(status_code=404, detail="Version snapshot not found")
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+    restored = copy.deepcopy(target["data"])
+    restored["id"] = "global_site_content"
+    restored["published_at"] = now_iso
+    restored["published_by"] = admin.get("email")
+    restored["updated_at"] = now_iso
+
+    new_version_id = f"ver_{uuid.uuid4().hex[:12]}"
+    note = f"Rollback to {version_id} ({target.get('note', '')})"
+    ver_record = {
+        "version_id": new_version_id,
+        "created_at": now_iso,
+        "created_by": admin.get("email"),
+        "note": note,
+        "data": copy.deepcopy(restored),
+    }
+    await db.site_content_versions.insert_one(ver_record)
+
+    await db.site_content.update_one({"id": "global_site_content"}, {"$set": restored}, upsert=True)
+    await db.site_content_draft.update_one(
+        {"id": "draft_site_content"},
+        {"$set": {"id": "draft_site_content", "content": restored, "updated_at": now_iso, "updated_by": admin.get("email")}},
+        upsert=True
+    )
+
+    await log_admin_action(admin, "studio_rollback", f"studio:rollback:{version_id}", {"new_version": new_version_id}, request=request)
+    return {
+        "status": "ok",
+        "restored_version_id": version_id,
+        "new_version_id": new_version_id,
+        "published_at": now_iso,
+    }
+
 
 # --- Media upload & serving endpoints ---
 
@@ -2443,8 +2614,8 @@ async def admin_upload_media(file: UploadFile = File(...), admin: dict = Depends
         raise HTTPException(status_code=413, detail="File too large (max 15MB)")
     filename = (file.filename or "upload")[-200:]
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
-    if ext not in ("jpg", "jpeg", "png", "webp", "gif") or not _magic_ok(ext, data):
-        raise HTTPException(status_code=415, detail="Only JPG, PNG, WEBP, or GIF images are allowed.")
+    if ext not in ("jpg", "jpeg", "png", "webp", "gif", "mp4") or not _magic_ok(ext, data):
+        raise HTTPException(status_code=415, detail="Only JPG, PNG, WEBP, GIF, or MP4 files are allowed.")
     media_id = f"img_{uuid.uuid4().hex[:12]}.{ext}"
     saved_path = f"{APP_NAME}/media/{media_id}"
     try:
@@ -2457,8 +2628,71 @@ async def admin_upload_media(file: UploadFile = File(...), admin: dict = Depends
         logger.error("Media upload put_object failed: %s", exc)
 
     url = f"/api/media/{media_id}"
+    media_record = {
+        "id": f"med_{uuid.uuid4().hex[:12]}",
+        "filename": media_id,
+        "original_name": filename,
+        "url": url,
+        "size": len(data),
+        "content_type": _MIME_TYPES[ext],
+        "uploaded_at": datetime.now(timezone.utc).isoformat(),
+        "uploaded_by": admin.get("email"),
+    }
+    try:
+        await db.media.update_one({"filename": media_id}, {"$set": media_record}, upsert=True)
+    except Exception as e:
+        logger.warning("Could not persist to db.media: %s", e)
+
     await log_admin_action(admin, "upload_media", f"media:{media_id}", {"filename": filename, "size": len(data)}, request=request)
     return {"url": url, "filename": media_id, "size": len(data), "content_type": _MIME_TYPES[ext]}
+
+
+@api_router.get("/admin/media")
+async def list_admin_media(_: dict = Depends(require_admin)):
+    items = []
+    try:
+        items = await db.media.find({}, {"_id": 0}).sort("uploaded_at", -1).to_list(300)
+    except Exception:
+        items = []
+
+    seen = {it["filename"] for it in items}
+    if UPLOAD_DIR.exists():
+        for f in UPLOAD_DIR.iterdir():
+            if f.is_file() and f.name not in seen and not f.name.startswith("."):
+                ext = f.name.rsplit(".", 1)[-1].lower() if "." in f.name else ""
+                if ext in _MIME_TYPES:
+                    stat = f.stat()
+                    items.append({
+                        "id": f"med_{f.name.replace('.', '_')}",
+                        "filename": f.name,
+                        "original_name": f.name,
+                        "url": f"/api/media/{f.name}",
+                        "size": stat.st_size,
+                        "content_type": _MIME_TYPES[ext],
+                        "uploaded_at": datetime.fromtimestamp(stat.st_mtime, timezone.utc).isoformat(),
+                        "uploaded_by": "system",
+                    })
+                    seen.add(f.name)
+    return sorted(items, key=lambda x: x.get("uploaded_at", ""), reverse=True)
+
+
+@api_router.delete("/admin/media/{filename}")
+async def delete_admin_media(filename: str, admin: dict = Depends(require_admin), request: Request = None):
+    if not re.fullmatch(r"^[a-zA-Z0-9_\-\.]+$", filename) or ".." in filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    local_path = UPLOAD_DIR / filename
+    if local_path.exists() and local_path.is_file():
+        try:
+            local_path.unlink()
+        except Exception as exc:
+            logger.warning("Local delete error: %s", exc)
+    try:
+        delete_object(f"{APP_NAME}/media/{filename}")
+    except Exception:
+        pass
+    await db.media.delete_one({"filename": filename})
+    await log_admin_action(admin, "media_delete", f"media:{filename}", request=request)
+    return {"status": "ok", "deleted": filename}
 
 
 @api_router.get("/media/{filename}")

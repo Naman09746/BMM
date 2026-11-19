@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { BedDouble, Boxes, Key, Loader2, LogOut, RefreshCw, ShieldCheck } from "lucide-react";
+import { BedDouble, Boxes, Key, Loader2, LogOut, RefreshCw, ShieldCheck, Sparkles } from "lucide-react";
 import { api, useAuth, resolveBackendMedia } from "../stays/store";
 import CatalogueManager from "./CatalogueManager";
 import StaysManager from "./StaysManager";
@@ -7,6 +7,8 @@ import ProjectsManager from "./ProjectsManager";
 import SiteContentManager from "./SiteContentManager";
 import VisualScreenDirectory from "./VisualScreenDirectory";
 import HorizontalScrollArea from "./HorizontalScrollArea";
+import WorkspaceSwitcher from "./WorkspaceSwitcher";
+import WebsiteStudio from "./WebsiteStudio";
 import "./owner.css";
 
 const fmtDate = (iso) => {
@@ -386,16 +388,39 @@ function SecurityManager() {
 
 const ENQUIRY_TYPES = ["All", "Quote request", "Contact", "Consultation", "Sample request", "Product inquiry"];
 
-function Dashboard() {
+function Dashboard({ initialWorkspace }) {
   const { user, logout } = useAuth();
   const [data, setData] = useState({ overview: null, bookings: [], enquiries: [] });
   const [state, setState] = useState({ loading: true, error: "" });
+  const [workspace, setWorkspaceState] = useState(() => {
+    if (initialWorkspace) return initialWorkspace;
+    if (typeof window !== "undefined") {
+      if (window.location.pathname.includes("/studio")) return "studio";
+      const q = new URLSearchParams(window.location.search).get("workspace");
+      if (q === "studio") return "studio";
+    }
+    return "business";
+  });
+
+  const setWorkspace = useCallback((nextWs) => {
+    setWorkspaceState(nextWs);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location);
+      if (nextWs === "studio") {
+        url.searchParams.set("workspace", "studio");
+      } else {
+        url.searchParams.delete("workspace");
+      }
+      window.history.replaceState(null, "", url.toString());
+    }
+  }, []);
+
   const [tab, setTabState] = useState(() => {
     if (typeof window !== "undefined") {
       const q = new URLSearchParams(window.location.search).get("tab");
       if (["screens", "requests", "bookings", "enquiries", "catalogue", "projects", "content", "stays", "security"].includes(q)) return q;
     }
-    return "screens";
+    return "requests";
   });
   const [filter, setFilter] = useState("All");
   const [busyId, setBusyId] = useState("");
@@ -438,17 +463,25 @@ function Dashboard() {
     finally { setBusyId(""); }
   };
 
+  if (workspace === "studio") {
+    return <WebsiteStudio onSwitchWorkspace={setWorkspace} />;
+  }
+
   const ov = data.overview;
   return <div className="od-wrap" data-testid="owner-dashboard">
     <div className="od-head">
       <div>
         <p className="od-kicker">BDS Marvel · Owner</p>
-        <h1 className="od-title">Owner dashboard</h1>
+        <h1 className="od-title">Business Administration</h1>
         <p className="od-sub">Signed in as {user.name} · {user.email}</p>
       </div>
-      <div className="od-head__actions">
-        <button type="button" className="od-btn" onClick={load} data-testid="owner-refresh"><RefreshCw size={14} />Refresh</button>
-        <button type="button" className="od-btn" onClick={logout} data-testid="owner-logout"><LogOut size={14} />Sign out</button>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+        <WorkspaceSwitcher activeWorkspace="business" onSwitch={setWorkspace} />
+        <div className="od-head__actions">
+          <button type="button" className="od-btn" onClick={load} data-testid="owner-refresh"><RefreshCw size={14} />Refresh</button>
+          <button type="button" className="od-btn" onClick={logout} data-testid="owner-logout"><LogOut size={14} />Sign out</button>
+        </div>
       </div>
     </div>
 
@@ -464,21 +497,18 @@ function Dashboard() {
       <div style={{ marginBottom: 20 }}>
         <HorizontalScrollArea scrollAmount={280}>
           <div className="od-tabs" role="tablist" style={{ borderBottom: "none", marginBottom: 0, paddingBottom: 0 }}>
-            <span className="od-tab-group-label">VISUAL DIRECTORY:</span>
-            <button type="button" role="tab" aria-selected={tab === "screens"} className={`od-tab ${tab === "screens" ? "is-on" : ""}`} onClick={() => setTab("screens")} data-testid="owner-tab-screens">🖥️ All 7 Screens (Images & Pages)</button>
-
-            <span className="od-tab-group-label" style={{ marginLeft: 8 }}>BOOKINGS & ENQUIRIES:</span>
+            <span className="od-tab-group-label">BOOKINGS & ENQUIRIES:</span>
             <button type="button" role="tab" aria-selected={tab === "requests"} className={`od-tab ${tab === "requests" ? "is-on" : ""}`} onClick={() => setTab("requests")} data-testid="owner-tab-requests">Night requests{requests.length > 0 && <span className="od-tab__count">{requests.length}</span>}</button>
             <button type="button" role="tab" aria-selected={tab === "bookings"} className={`od-tab ${tab === "bookings" ? "is-on" : ""}`} onClick={() => setTab("bookings")} data-testid="owner-tab-bookings">All bookings</button>
             <button type="button" role="tab" aria-selected={tab === "enquiries"} className={`od-tab ${tab === "enquiries" ? "is-on" : ""}`} onClick={() => setTab("enquiries")} data-testid="owner-tab-enquiries">Enquiries</button>
             
-            <span className="od-tab-group-label" style={{ marginLeft: 8 }}>DIRECT SCREEN EDITORS:</span>
-            <button type="button" role="tab" aria-selected={tab === "stays"} className={`od-tab ${tab === "stays" ? "is-on" : ""}`} onClick={() => setTab("stays")} data-testid="owner-tab-stays">02. Luxury Stays</button>
-            <button type="button" role="tab" aria-selected={tab === "projects"} className={`od-tab ${tab === "projects" ? "is-on" : ""}`} onClick={() => setTab("projects")} data-testid="owner-tab-projects">03. Projects & Work</button>
-            <button type="button" role="tab" aria-selected={tab === "catalogue"} className={`od-tab ${tab === "catalogue" ? "is-on" : ""}`} onClick={() => setTab("catalogue")} data-testid="owner-tab-catalogue">04. Materials</button>
-            <button type="button" role="tab" aria-selected={tab === "content"} className={`od-tab ${tab === "content" ? "is-on" : ""}`} onClick={() => setTab("content")} data-testid="owner-tab-content">01. Hero & Philosophy</button>
+            <span className="od-tab-group-label" style={{ marginLeft: 8 }}>WEBSITE & CMS:</span>
+            <button type="button" className="od-tab" onClick={() => setWorkspace("studio")} style={{ color: "var(--od-gold-d)", fontWeight: 700 }} data-testid="owner-tab-goto-studio">
+              <Sparkles size={13} style={{ display: "inline-block", marginRight: 5, verticalAlign: "middle" }} />Website Studio (Visual CMS)
+            </button>
+            <button type="button" role="tab" aria-selected={tab === "screens"} className={`od-tab ${tab === "screens" ? "is-on" : ""}`} onClick={() => setTab("screens")} data-testid="owner-tab-screens">Directory View</button>
             
-            <span className="od-tab-group-label" style={{ marginLeft: 8 }}>SYSTEM:</span>
+            <span className="od-tab-group-label" style={{ marginLeft: 8 }}>SECURITY:</span>
             <button type="button" role="tab" aria-selected={tab === "security"} className={`od-tab ${tab === "security" ? "is-on" : ""}`} onClick={() => setTab("security")} data-testid="owner-tab-security"><ShieldCheck size={14} style={{ display: "inline-block", marginRight: 5, verticalAlign: "middle" }} />Security & 2FA</button>
           </div>
         </HorizontalScrollArea>
@@ -516,20 +546,18 @@ function Dashboard() {
       {tab === "stays" && <section data-testid="owner-stays"><VisualScreenDirectory initialScreen="stays" /></section>}
 
       {tab === "security" && <section data-testid="owner-security"><SecurityManager /></section>}
-
-      {tab === "security" && <section data-testid="owner-security"><SecurityManager /></section>}
     </>}
   </div>;
 }
 
-export default function OwnerDashboard() {
+export default function OwnerDashboard({ defaultWorkspace }) {
   const { user } = useAuth();
   useEffect(() => { document.title = "Owner dashboard · BDS Marvel"; }, []);
   let body;
   if (user === null) body = <div className="od-center" data-testid="owner-loading"><Loader2 size={26} className="od-spin" /></div>;
   else if (!user) body = <OwnerLogin />;
   else if (user.role !== "admin") body = <AccessDenied name={user.name} />;
-  else body = <Dashboard />;
+  else body = <Dashboard initialWorkspace={defaultWorkspace} />;
   return <main className="od-page" data-testid="owner-page">{body}</main>;
 }
 
