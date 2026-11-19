@@ -48,8 +48,16 @@ import "./websiteStudio.css";
 export function WebsiteStudio({ onSwitchWorkspace, theme = "dark", onToggleTheme }) {
   const { user, logout } = useAuth();
 
-  // Navigation & Viewport state
-  const [viewport, setViewport] = useState("desktop"); // "desktop" | "tablet" | "mobile"
+  // Navigation & Viewport state: Auto-detected responsive fluid view by default
+  const [viewport, setViewport] = useState("auto"); // "auto" | "desktop" | "tablet" | "mobile"
+  const [windowWidth, setWindowWidth] = useState(() => (typeof window !== "undefined" ? window.innerWidth : 1200));
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   // Content state
   const [publishedContent, setPublishedContent] = useState(null);
@@ -198,6 +206,16 @@ export function WebsiteStudio({ onSwitchWorkspace, theme = "dark", onToggleTheme
           <div className="ws-viewport-switch" data-testid="viewport-switcher" role="group" aria-label="Device Viewport">
             <button
               type="button"
+              className={`ws-vp-btn ${viewport === "auto" ? "is-active" : ""}`}
+              onClick={() => setViewport("auto")}
+              title="Auto-detect current device dimensions dynamically"
+              data-testid="viewport-auto"
+            >
+              <Sparkles size={13} style={{ color: "var(--ws-gold)" }} />
+              <span>Auto ({windowWidth <= 640 ? "Mobile" : windowWidth <= 1024 ? "Tablet" : "Laptop"} · {windowWidth}px)</span>
+            </button>
+            <button
+              type="button"
               className={`ws-vp-btn ${viewport === "desktop" ? "is-active" : ""}`}
               onClick={() => setViewport("desktop")}
               title="Desktop (100% full width)"
@@ -343,7 +361,7 @@ export function WebsiteStudio({ onSwitchWorkspace, theme = "dark", onToggleTheme
       )}
 
       {/* Main Workspace Canvas Container: Renders all 7 Screens with full sub-screen detail */}
-      <div className="ws-workspace" style={{ background: "#0e0d0b", padding: "24px 16px 80px", display: "flex", justifyContent: "center" }}>
+      <div className="ws-workspace" style={{ background: "var(--ws-bg)", padding: "24px 16px 80px", display: "flex", justifyContent: "center", transition: "background-color 0.25s ease" }}>
         <div className={`ws-viewport-frame is-${viewport}`} style={{ width: "100%", background: "var(--od-paper)", color: "var(--od-ink)", padding: 24, borderRadius: 16 }}>
           {loading ? (
             <div className="ws-center-box"><Loader2 size={26} className="od-spin" /><p>Loading Website Studio Screens...</p></div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   ExternalLink,
   Image as ImageIcon,
@@ -117,6 +117,48 @@ export function VisualScreenDirectory({ initialScreen = "home" }) {
     return res.url;
   };
 
+  // Dynamic Auto-Detection & Auto-Save engine
+  const [autoSaveStatus, setAutoSaveStatus] = useState("idle"); // "idle" | "saving" | "saved" | "error"
+  const isInitialMount = useRef(true);
+  const autoSaveTimer = useRef(null);
+  const lastSavedJson = useRef("");
+
+  // Auto-detect changes and save dynamically without needing button clicks
+  useEffect(() => {
+    if (isInitialMount.current) {
+      if (siteContent && siteContent.hero) {
+        lastSavedJson.current = JSON.stringify(siteContent);
+        isInitialMount.current = false;
+      }
+      return;
+    }
+
+    const currentJson = JSON.stringify(siteContent);
+    if (!currentJson || currentJson === lastSavedJson.current) return;
+
+    setAutoSaveStatus("saving");
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+
+    autoSaveTimer.current = setTimeout(async () => {
+      try {
+        await api("/admin/site-content", {
+          method: "PUT",
+          body: siteContent,
+        });
+        lastSavedJson.current = currentJson;
+        setAutoSaveStatus("saved");
+        setTimeout(() => setAutoSaveStatus("idle"), 2500);
+      } catch (err) {
+        console.error("Dynamic auto-save error:", err);
+        setAutoSaveStatus("error");
+      }
+    }, 700);
+
+    return () => {
+      if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    };
+  }, [siteContent]);
+
   // Save Site Content to backend
   const persistSiteContent = async (updatedContent, sectionName) => {
     setSavingSection(sectionName);
@@ -129,6 +171,8 @@ export function VisualScreenDirectory({ initialScreen = "home" }) {
         ...prev,
         ...res,
       }));
+      lastSavedJson.current = JSON.stringify(updatedContent);
+      setAutoSaveStatus("saved");
       showToast(`Saved changes for ${sectionName}`);
     } catch (err) {
       alert(`Failed to save ${sectionName}: ${err.message}`);
@@ -663,10 +707,42 @@ export function VisualScreenDirectory({ initialScreen = "home" }) {
           MASTER VISUAL SCREEN SELECTOR: Smooth Horizontal Scroll Rail with Gradient Fades
          ========================================================================= */}
       <div style={{ marginBottom: 22 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, flexWrap: "wrap", gap: 6 }}>
-          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", color: "var(--od-gold-d)" }}>
-            Select Website Screen (01 — 07)
-          </span>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, flexWrap: "wrap", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", color: "var(--od-gold-d)" }}>
+              Select Website Screen (01 — 07)
+            </span>
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "3px 10px",
+                borderRadius: 999,
+                fontSize: 11,
+                fontWeight: 600,
+                background: autoSaveStatus === "saving" ? "rgba(201, 162, 98, 0.15)" : autoSaveStatus === "saved" ? "rgba(46, 107, 63, 0.12)" : "var(--od-surface-subtle)",
+                color: autoSaveStatus === "saving" ? "var(--od-gold-d)" : autoSaveStatus === "saved" ? "var(--od-green)" : "var(--od-muted)",
+                border: "1px solid var(--od-line)",
+                transition: "all 0.25s ease",
+              }}
+              data-testid="vsd-autosave-status"
+            >
+              {autoSaveStatus === "saving" && (
+                <><Loader2 size={12} className="od-spin" /> Auto-saving changes dynamically...</>
+              )}
+              {autoSaveStatus === "saved" && (
+                <><CheckCircle2 size={12} /> Auto-saved dynamically</>
+              )}
+              {autoSaveStatus === "idle" && (
+                <><Sparkles size={11} style={{ color: "var(--od-gold)" }} /> Dynamic Auto-Save Active</>
+              )}
+              {autoSaveStatus === "error" && (
+                <span style={{ color: "var(--od-red)" }}>Auto-save failed · Will retry</span>
+              )}
+            </div>
+          </div>
+
           <span className="vsd-scroll-cue">
             ✦ Horizontal Scroll / Swipe to browse all 7 screens ➔
           </span>

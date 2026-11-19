@@ -552,6 +552,12 @@
   position: relative;
 }
 
+.ws-viewport-frame.is-auto {
+  max-width: 100%;
+  border: none;
+  box-shadow: none;
+}
+
 .ws-viewport-frame.is-tablet {
   max-width: 768px;
   border: 10px solid #201e1b;

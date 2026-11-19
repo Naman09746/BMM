@@ -580,10 +580,30 @@ export default function OwnerDashboard({ defaultWorkspace }) {
   const { user } = useAuth();
   const [theme, setTheme] = useState(() => {
     if (typeof window !== "undefined") {
-      return localStorage.getItem("bds_admin_theme") || "dark";
+      const stored = localStorage.getItem("bds_admin_theme");
+      if (stored === "dark" || stored === "light") return stored;
+      // Auto-detect OS system color scheme preference!
+      if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) {
+        return "dark";
+      }
+      return "light";
     }
     return "dark";
   });
+
+  // Listen dynamically to OS dark/light mode changes
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const handleSystemThemeChange = (e) => {
+      // Auto-switch only if user hasn't locked in an explicit manual preference
+      if (!localStorage.getItem("bds_admin_theme")) {
+        setTheme(e.matches ? "dark" : "light");
+      }
+    };
+    mediaQuery.addEventListener("change", handleSystemThemeChange);
+    return () => mediaQuery.removeEventListener("change", handleSystemThemeChange);
+  }, []);
 
   const toggleTheme = useCallback(() => {
     setTheme((prev) => {
