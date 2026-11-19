@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { BedDouble, Boxes, Key, Loader2, LogOut, RefreshCw, ShieldCheck, Sparkles } from "lucide-react";
+import { BedDouble, Boxes, Key, Loader2, LogOut, RefreshCw, ShieldCheck, Sparkles, Sun, Moon } from "lucide-react";
 import { api, useAuth, resolveBackendMedia } from "../stays/store";
 import CatalogueManager from "./CatalogueManager";
 import StaysManager from "./StaysManager";
@@ -22,7 +22,7 @@ const fmtStamp = (iso) => {
 };
 const inr = (n) => (typeof n === "number" ? `₹${n.toLocaleString("en-IN")}` : null);
 
-export function OwnerLogin({ onSuccess }) {
+export function OwnerLogin({ onSuccess, theme = "dark", onToggleTheme }) {
   const { setUser } = useAuth();
   const [form, setForm] = useState({ email: "", password: "", totp_code: "" });
   const [mfaData, setMfaData] = useState(null); // { mfa_token, email }
@@ -119,7 +119,22 @@ export function OwnerLogin({ onSuccess }) {
 
   return (
     <div className="od-auth" data-testid="owner-login">
-      <p className="od-kicker">BDS Marvel · Owner</p>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+        <p className="od-kicker" style={{ margin: 0 }}>BDS Marvel · Owner</p>
+        {onToggleTheme && (
+          <button
+            type="button"
+            className="od-btn od-btn--theme"
+            onClick={onToggleTheme}
+            style={{ padding: "4px 10px", minHeight: "28px", fontSize: "11px" }}
+            title={theme === "dark" ? "Switch to Light Theme" : "Switch to Dark Theme"}
+            aria-label="Toggle theme"
+          >
+            {theme === "dark" ? <Sun size={12} /> : <Moon size={12} />}
+            <span>{theme === "dark" ? "Light" : "Dark"}</span>
+          </button>
+        )}
+      </div>
       <h1>Owner sign in</h1>
       <p>This area is private. Sign in with the owner account to manage bookings and enquiries.</p>
       <form onSubmit={submitPassword} noValidate data-testid="owner-login-form">
@@ -388,7 +403,7 @@ function SecurityManager() {
 
 const ENQUIRY_TYPES = ["All", "Quote request", "Contact", "Consultation", "Sample request", "Product inquiry"];
 
-function Dashboard({ initialWorkspace }) {
+function Dashboard({ initialWorkspace, theme, onToggleTheme }) {
   const { user, logout } = useAuth();
   const [data, setData] = useState({ overview: null, bookings: [], enquiries: [] });
   const [state, setState] = useState({ loading: true, error: "" });
@@ -464,7 +479,7 @@ function Dashboard({ initialWorkspace }) {
   };
 
   if (workspace === "studio") {
-    return <WebsiteStudio onSwitchWorkspace={setWorkspace} />;
+    return <WebsiteStudio onSwitchWorkspace={setWorkspace} theme={theme} onToggleTheme={onToggleTheme} />;
   }
 
   const ov = data.overview;
@@ -479,6 +494,17 @@ function Dashboard({ initialWorkspace }) {
       <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
         <WorkspaceSwitcher activeWorkspace="business" onSwitch={setWorkspace} />
         <div className="od-head__actions">
+          <button
+            type="button"
+            className="od-btn od-btn--theme"
+            onClick={onToggleTheme}
+            title={theme === "dark" ? "Switch to Light Theme" : "Switch to Dark Theme"}
+            data-testid="owner-theme-toggle"
+            aria-label="Toggle dark/light theme"
+          >
+            {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
+            <span>{theme === "dark" ? "Light" : "Dark"}</span>
+          </button>
           <button type="button" className="od-btn" onClick={load} data-testid="owner-refresh"><RefreshCw size={14} />Refresh</button>
           <button type="button" className="od-btn" onClick={logout} data-testid="owner-logout"><LogOut size={14} />Sign out</button>
         </div>
@@ -552,13 +578,28 @@ function Dashboard({ initialWorkspace }) {
 
 export default function OwnerDashboard({ defaultWorkspace }) {
   const { user } = useAuth();
+  const [theme, setTheme] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("bds_admin_theme") || "dark";
+    }
+    return "dark";
+  });
+
+  const toggleTheme = useCallback(() => {
+    setTheme((prev) => {
+      const next = prev === "dark" ? "light" : "dark";
+      try { localStorage.setItem("bds_admin_theme", next); } catch {}
+      return next;
+    });
+  }, []);
+
   useEffect(() => { document.title = "Owner dashboard · BDS Marvel"; }, []);
   let body;
   if (user === null) body = <div className="od-center" data-testid="owner-loading"><Loader2 size={26} className="od-spin" /></div>;
-  else if (!user) body = <OwnerLogin />;
+  else if (!user) body = <OwnerLogin theme={theme} onToggleTheme={toggleTheme} />;
   else if (user.role !== "admin") body = <AccessDenied name={user.name} />;
-  else body = <Dashboard initialWorkspace={defaultWorkspace} />;
-  return <main className="od-page" data-testid="owner-page">{body}</main>;
+  else body = <Dashboard initialWorkspace={defaultWorkspace} theme={theme} onToggleTheme={toggleTheme} />;
+  return <main className={`od-page theme-${theme}`} data-theme={theme} data-testid="owner-page">{body}</main>;
 }
 
 function AccessDenied({ name }) {

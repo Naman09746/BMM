@@ -23,7 +23,9 @@ import {
   Info,
   X,
   LogOut,
-  Layers
+  Layers,
+  Sun,
+  Moon
 } from "lucide-react";
 import { api, useAuth, resolveBackendMedia } from "../stays/store";
 import { publicAsset } from "../wordpress";
@@ -43,7 +45,7 @@ import PublishModal from "./PublishModal";
 import VisualScreenDirectory from "./VisualScreenDirectory";
 import "./websiteStudio.css";
 
-export function WebsiteStudio({ onSwitchWorkspace }) {
+export function WebsiteStudio({ onSwitchWorkspace, theme = "dark", onToggleTheme }) {
   const { user, logout } = useAuth();
 
   // Navigation & Viewport state
@@ -173,7 +175,7 @@ export function WebsiteStudio({ onSwitchWorkspace }) {
   };
 
   return (
-    <div className="ws-page" data-testid="website-studio">
+    <div className={`ws-page theme-${theme}`} data-theme={theme} data-testid="website-studio">
       {/* Top Main Navigation Header */}
       <header className="ws-header" data-testid="studio-header">
         {/* Left: Branding & Workspace Switcher */}
@@ -304,6 +306,21 @@ export function WebsiteStudio({ onSwitchWorkspace }) {
             <Rocket size={14} />
             <span>Publish Live</span>
           </button>
+
+          {/* Theme Toggle Button */}
+          {onToggleTheme && (
+            <button
+              type="button"
+              className="ws-btn ws-btn--secondary ws-btn--theme"
+              onClick={onToggleTheme}
+              title={theme === "dark" ? "Switch to Light Theme" : "Switch to Dark Theme"}
+              data-testid="studio-theme-toggle"
+              aria-label="Toggle dark/light theme"
+            >
+              {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
+              <span>{theme === "dark" ? "Light" : "Dark"}</span>
+            </button>
+          )}
 
           {/* Sign Out */}
           <button
