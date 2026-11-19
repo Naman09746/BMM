@@ -399,6 +399,22 @@ export function VisualScreenDirectory({ initialScreen = "home" }) {
     }
   };
 
+  const handleHeroVideoUpload = async (file) => {
+    if (!file) return;
+    setUploadingTarget({ id: "hero_video", field: "video" });
+    try {
+      const url = await handleFileUpload(file);
+      if (!url) return;
+      const nextHero = { ...siteContent.hero, video: url };
+      const updated = { ...siteContent, hero: nextHero };
+      await persistSiteContent(updated, "Homepage Hero Video");
+    } catch (err) {
+      alert("Failed to upload hero video: " + err.message);
+    } finally {
+      setUploadingTarget(null);
+    }
+  };
+
   const handlePillarImageUpload = async (index, file) => {
     if (!file) return;
     setUploadingTarget({ id: "approach", field: `pillar_${index}` });
@@ -762,16 +778,60 @@ export function VisualScreenDirectory({ initialScreen = "home" }) {
               </button>
             </div>
 
-            <div className="vsd-card-grid">
-              {/* Hero Media Box */}
-              <div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 18, marginBottom: 18 }}>
+              {/* Box 1: Hero Video Background */}
+              <div style={{ background: "var(--od-paper)", border: "1px solid var(--od-line)", borderRadius: 14, padding: 14 }}>
                 <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: "var(--od-gold-d)", marginBottom: 6 }}>
-                  1. Hero Poster / Background Image
+                  1. Hero Background Video (MP4)
                 </div>
-                <div className="vsd-aspect-banner">
+                <div style={{ position: "relative", borderRadius: 10, overflow: "hidden", background: "#000", marginBottom: 10, aspectRatio: "16/9" }}>
+                  <video
+                    src={siteContent.hero?.video ? resolveBackendMedia(siteContent.hero.video) : publicAsset("/videos/hero.mp4")}
+                    poster={siteContent.hero?.poster ? resolveBackendMedia(siteContent.hero.poster) : publicAsset("/hero/craftsmanship-poster.webp")}
+                    controls
+                    muted
+                    loop
+                    playsInline
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  />
+                  {uploadingTarget?.id === "hero_video" && (
+                    <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.65)", display: "grid", placeItems: "center", color: "#fff" }}>
+                      <Loader2 size={24} className="od-spin" />
+                      <span style={{ fontSize: 11, marginTop: 6 }}>Uploading MP4 Video...</span>
+                    </div>
+                  )}
+                </div>
+                <label className="od-btn" style={{ width: "100%", justifyContent: "center", padding: "8px 12px", fontSize: 12, cursor: "pointer", marginBottom: 8 }}>
+                  <input
+                    type="file"
+                    accept="video/mp4"
+                    onChange={(e) => handleHeroVideoUpload(e.target.files?.[0])}
+                    style={{ display: "none" }}
+                    disabled={uploadingTarget?.id === "hero_video"}
+                  />
+                  <Film size={13} /> {uploadingTarget?.id === "hero_video" ? "Uploading..." : "Upload & Replace Hero Video (MP4)"}
+                </label>
+                <label className="od-field" style={{ margin: 0 }}>
+                  <span style={{ fontSize: 10.5 }}>Video URL / Path</span>
+                  <input
+                    type="text"
+                    value={siteContent.hero?.video || ""}
+                    onChange={(e) => setSiteContent((prev) => ({ ...prev, hero: { ...prev.hero, video: e.target.value } }))}
+                    placeholder="/videos/hero.mp4"
+                    style={{ fontSize: 12, padding: "6px 10px" }}
+                  />
+                </label>
+              </div>
+
+              {/* Box 2: Hero Poster / Fallback Image */}
+              <div style={{ background: "var(--od-paper)", border: "1px solid var(--od-line)", borderRadius: 14, padding: 14 }}>
+                <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: "var(--od-gold-d)", marginBottom: 6 }}>
+                  2. Hero Poster Image (Fallback & Mobile)
+                </div>
+                <div className="vsd-aspect-banner" style={{ marginBottom: 10, aspectRatio: "16/9" }}>
                   <img
                     src={siteContent.hero?.poster ? resolveBackendMedia(siteContent.hero.poster) : publicAsset("/hero/craftsmanship-poster.webp")}
-                    alt="Homepage Hero"
+                    alt="Homepage Hero Poster"
                   />
                   {uploadingTarget?.id === "hero" && (
                     <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.6)", display: "grid", placeItems: "center", color: "#fff" }}>
@@ -779,7 +839,7 @@ export function VisualScreenDirectory({ initialScreen = "home" }) {
                     </div>
                   )}
                 </div>
-                <label className="od-btn" style={{ width: "100%", justifyContent: "center", padding: "8px 12px", fontSize: 12, cursor: "pointer" }}>
+                <label className="od-btn" style={{ width: "100%", justifyContent: "center", padding: "8px 12px", fontSize: 12, cursor: "pointer", marginBottom: 8 }}>
                   <input
                     type="file"
                     accept="image/*"
@@ -789,10 +849,18 @@ export function VisualScreenDirectory({ initialScreen = "home" }) {
                   />
                   <UploadCloud size={13} /> {uploadingTarget?.id === "hero" ? "Uploading..." : "Replace Hero Poster Image"}
                 </label>
-                <p style={{ margin: "6px 0 0", color: "var(--od-muted)", fontSize: 11, textAlign: "center" }}>
-                  Seen at the very top of BDS Marvel homepage
-                </p>
+                <label className="od-field" style={{ margin: 0 }}>
+                  <span style={{ fontSize: 10.5 }}>Poster Image URL / Key</span>
+                  <input
+                    type="text"
+                    value={siteContent.hero?.poster || ""}
+                    onChange={(e) => setSiteContent((prev) => ({ ...prev, hero: { ...prev.hero, poster: e.target.value } }))}
+                    placeholder="/hero/craftsmanship-poster.webp"
+                    style={{ fontSize: 12, padding: "6px 10px" }}
+                  />
+                </label>
               </div>
+            </div>
 
               {/* Hero Headline Copy Editor */}
               <div>
@@ -859,7 +927,6 @@ export function VisualScreenDirectory({ initialScreen = "home" }) {
                 </div>
               </div>
             </div>
-          </div>
 
           {/* Section 2: "How We Build" Craft Philosophy (All 5 Pillars) */}
           <div className="od-card" style={{ padding: 24, borderRadius: 18 }}>

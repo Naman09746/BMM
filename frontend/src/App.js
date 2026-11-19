@@ -355,11 +355,18 @@ function Home() {
           loop
           playsInline
           preload="metadata"
-          poster={publicAsset("/hero/craftsmanship-poster.webp")}
+          poster={hero?.poster ? resolveBackendMedia(hero.poster) : publicAsset("/hero/craftsmanship-poster.webp")}
           tabIndex={-1}
+          key={hero?.video || "default_hero_video"}
         >
-          <source src={publicAsset("/hero/craftsmanship.webm")} type="video/webm" />
-          <source src={publicAsset("/hero/craftsmanship.mp4")} type="video/mp4" />
+          {hero?.video ? (
+            <source src={resolveBackendMedia(hero.video)} type="video/mp4" />
+          ) : (
+            <>
+              <source src={publicAsset("/hero/craftsmanship.webm")} type="video/webm" />
+              <source src={publicAsset("/hero/craftsmanship.mp4")} type="video/mp4" />
+            </>
+          )}
         </video>
       </div>
       <div className="hero-headline-parallax" ref={headlineRef} style={{ transform: "none" }}>
