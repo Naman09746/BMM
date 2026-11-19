@@ -989,7 +989,7 @@ export function VisualScreenDirectory({ initialScreen = "home" }) {
                         next[idx] = { ...next[idx], title: e.target.value };
                         setSiteContent((prev) => ({ ...prev, approach: next }));
                       }}
-                      style={{ width: "100%", padding: "6px 8px", borderRadius: 6, border: "1px solid var(--od-line)", fontSize: 12, fontWeight: 700, marginBottom: 6 }}
+                      style={{ width: "100%", padding: "7px 10px", borderRadius: 8, border: "1px solid var(--od-line)", fontSize: 12, fontWeight: 700, marginBottom: 6, background: "var(--od-surface-subtle)", color: "var(--od-ink)" }}
                     />
                     <textarea
                       rows={2}
@@ -999,7 +999,7 @@ export function VisualScreenDirectory({ initialScreen = "home" }) {
                         next[idx] = { ...next[idx], text: e.target.value };
                         setSiteContent((prev) => ({ ...prev, approach: next }));
                       }}
-                      style={{ width: "100%", padding: "6px 8px", borderRadius: 6, border: "1px solid var(--od-line)", fontSize: 11.5 }}
+                      style={{ width: "100%", padding: "7px 10px", borderRadius: 8, border: "1px solid var(--od-line)", fontSize: 12, background: "var(--od-surface-subtle)", color: "var(--od-ink)", resize: "vertical" }}
                     />
                   </div>
                 );
@@ -2132,7 +2132,7 @@ export function VisualScreenDirectory({ initialScreen = "home" }) {
                         nextTeam[idx] = { ...nextTeam[idx], name: e.target.value };
                         setSiteContent((prev) => ({ ...prev, about: { ...prev.about, team: nextTeam } }));
                       }}
-                      style={{ width: "100%", padding: "6px 8px", borderRadius: 6, border: "1px solid var(--od-line)", fontSize: 12, fontWeight: 700, marginBottom: 6 }}
+                      style={{ width: "100%", padding: "7px 10px", borderRadius: 8, border: "1px solid var(--od-line)", fontSize: 12, fontWeight: 700, marginBottom: 6, background: "var(--od-surface-subtle)", color: "var(--od-ink)" }}
                     />
                     <input
                       type="text"
@@ -2142,7 +2142,7 @@ export function VisualScreenDirectory({ initialScreen = "home" }) {
                         nextTeam[idx] = { ...nextTeam[idx], role: e.target.value };
                         setSiteContent((prev) => ({ ...prev, about: { ...prev.about, team: nextTeam } }));
                       }}
-                      style={{ width: "100%", padding: "6px 8px", borderRadius: 6, border: "1px solid var(--od-line)", fontSize: 11.5, color: "var(--od-muted)" }}
+                      style={{ width: "100%", padding: "7px 10px", borderRadius: 8, border: "1px solid var(--od-line)", fontSize: 12, background: "var(--od-surface-subtle)", color: "var(--od-muted)" }}
                     />
                   </div>
                 );

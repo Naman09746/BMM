@@ -280,7 +280,7 @@
 
 .ws-viewport-switch {
   display: inline-flex;
-  background: #141311;
+  background: var(--ws-surface-subtle);
   border: 1px solid var(--ws-border);
   border-radius: 999px;
   padding: 2px;
@@ -302,18 +302,18 @@
 }
 
 .ws-vp-btn:hover {
-  color: #fff;
+  color: var(--ws-ink);
 }
 
 .ws-vp-btn.is-active {
-  background: var(--ws-surface-subtle);
+  background: var(--ws-surface);
   color: var(--ws-gold-light);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
 .ws-mode-switch {
   display: inline-flex;
-  background: #141311;
+  background: var(--ws-surface-subtle);
   border: 1px solid var(--ws-border);
   border-radius: 999px;
   padding: 2px;
@@ -335,8 +335,8 @@
 }
 
 .ws-mode-btn.is-active {
-  background: var(--ws-surface-subtle);
-  color: #fff;
+  background: var(--ws-surface);
+  color: var(--ws-ink);
 }
 
 /* Actions Right */
@@ -469,7 +469,7 @@
 
 /* --- Secondary Screen / Page Rail --- */
 .ws-page-rail {
-  background: #141311;
+  background: var(--ws-surface-subtle);
   border-bottom: 1px solid var(--ws-border);
   padding: 8px 20px;
   display: flex;
@@ -633,7 +633,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #141311;
+  background: var(--ws-surface-subtle);
   position: sticky;
   top: 0;
   z-index: 5;
@@ -642,7 +642,7 @@
 .ws-inspector-title {
   font-size: 14px;
   font-weight: 700;
-  color: #fff;
+  color: var(--ws-ink);
   margin: 0;
   display: flex;
   align-items: center;
@@ -657,7 +657,7 @@
 }
 
 .ws-inspector-section {
-  background: #141311;
+  background: var(--ws-surface-subtle);
   border: 1px solid var(--ws-border);
   border-radius: 12px;
   padding: 14px;
@@ -710,7 +710,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: #141311;
+  background: var(--ws-surface-subtle);
 }
 
 .ws-modal-icon-badge {
@@ -734,7 +734,7 @@
   font-size: 22px;
   margin: 0;
   font-weight: 600;
-  color: #fff;
+  color: var(--ws-ink);
 }
 
 .ws-modal-subtitle {
@@ -754,14 +754,14 @@
 }
 
 .ws-modal-close:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: #fff;
+  background: rgba(125, 125, 125, 0.1);
+  color: var(--ws-ink);
 }
 
 .ws-modal-footer {
   padding: 14px 24px;
   border-top: 1px solid var(--ws-border);
-  background: #141311;
+  background: var(--ws-surface-subtle);
   display: flex;
   justify-content: flex-end;
   gap: 10px;
@@ -780,7 +780,7 @@
   justify-content: space-between;
   align-items: center;
   gap: 16px;
-  background: #11100e;
+  background: var(--ws-surface-subtle);
 }
 
 .ws-media-search {
@@ -798,7 +798,7 @@
 .ws-media-search input {
   background: transparent;
   border: 0;
-  color: #fff;
+  color: var(--ws-ink);
   font-size: 13px;
   width: 100%;
   outline: none;
@@ -962,7 +962,7 @@
 .ws-seo-page-tabs {
   display: flex;
   overflow-x: auto;
-  background: #11100e;
+  background: var(--ws-surface-subtle);
   border-bottom: 1px solid var(--ws-border);
   padding: 6px 16px;
   gap: 6px;
@@ -1019,7 +1019,7 @@
 
 /* Google SERP Preview */
 .ws-seo-preview-pane {
-  background: #11100e;
+  background: var(--ws-surface-subtle);
   border: 1px solid var(--ws-border);
   border-radius: 14px;
   padding: 16px;
@@ -1159,7 +1159,7 @@
 
 .ws-timeline-content {
   flex: 1;
-  background: #141311;
+  background: var(--ws-surface-subtle);
   border: 1px solid var(--ws-border);
   border-radius: 12px;
   padding: 14px 16px;

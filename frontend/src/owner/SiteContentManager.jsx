@@ -465,7 +465,6 @@ export function SiteContentManager({ onJumpToTab }) {
                   rows={3}
                   value={hero.subtitle || ""}
                   onChange={(e) => handleHeroChange("subtitle", e.target.value)}
-                  style={{ width: "100%", padding: 12, borderRadius: 12, border: "1px solid var(--od-line)", fontFamily: "inherit", fontSize: 13.5 }}
                   placeholder="One design and build studio for marble and stone, flooring, turnkey construction and interior design."
                 />
               </label>
@@ -645,7 +644,6 @@ export function SiteContentManager({ onJumpToTab }) {
                       rows={4}
                       value={currentPillar.text || ""}
                       onChange={(e) => handleApproachChange(activePillarIdx, "text", e.target.value)}
-                      style={{ width: "100%", padding: 12, borderRadius: 12, border: "1px solid var(--od-line)", fontFamily: "inherit", fontSize: 13.5, resize: "vertical" }}
                       placeholder="Explain how BDS Marvel specifies and crafts the material..."
                     />
                   </label>

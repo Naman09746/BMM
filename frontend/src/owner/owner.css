@@ -675,6 +675,7 @@
 .od-field {
   display: block;
   margin-bottom: 14px;
+  width: 100%;
 }
 
 .od-field span {
@@ -684,22 +685,99 @@
   text-transform: uppercase;
   color: var(--od-muted);
   margin-bottom: 6px;
+  font-weight: 600;
 }
 
-.od-field input {
+/* =========================================================================
+   Universal Form Controls — Fluid Dimensions, 100% Width & Dual-Theme Contrast
+   ========================================================================= */
+.od-page input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.od-page textarea,
+.od-page select,
+.ws-page input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.ws-page textarea,
+.ws-page select,
+.od-field input,
+.od-field textarea,
+.od-field select,
+.cm-textarea,
+.cm-text-input,
+.cm-spec-k-input,
+.cm-spec-v-input,
+.brand-search-box input,
+.vsd-search-box input {
+  box-sizing: border-box;
   width: 100%;
   border: 1px solid var(--od-line);
   border-radius: 12px;
-  background: var(--od-surface-subtle);
-  padding: 12px 14px;
-  font: inherit;
-  font-size: 14px;
-  color: var(--od-ink);
+  background: var(--od-surface-subtle) !important;
+  padding: 11px 14px;
+  font-family: inherit;
+  font-size: clamp(13px, 1.05vw, 14px);
+  color: var(--od-ink) !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
 }
 
-.od-field input:focus {
+.od-page textarea,
+.ws-page textarea,
+.od-field textarea,
+.cm-textarea {
+  min-height: 84px;
+  line-height: 1.55;
+  resize: vertical;
+  display: block;
+}
+
+.od-page select,
+.ws-page select,
+.od-field select,
+.cm-inline-input select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding-right: 36px;
+}
+
+.od-page input:focus,
+.od-page textarea:focus,
+.od-page select:focus,
+.ws-page input:focus,
+.ws-page textarea:focus,
+.ws-page select:focus,
+.od-field input:focus,
+.od-field textarea:focus,
+.od-field select:focus,
+.cm-textarea:focus,
+.cm-text-input:focus,
+.cm-spec-k-input:focus,
+.cm-spec-v-input:focus,
+.brand-search-box input:focus,
+.vsd-search-box input:focus {
   border-color: var(--od-gold);
+  background: var(--od-surface) !important;
   outline: none;
+  box-shadow: 0 0 0 3px rgba(201, 162, 98, 0.2);
+}
+
+.od-page input::placeholder,
+.od-page textarea::placeholder,
+.ws-page input::placeholder,
+.ws-page textarea::placeholder,
+.od-field input::placeholder,
+.od-field textarea::placeholder,
+.cm-textarea::placeholder,
+.cm-text-input::placeholder {
+  color: var(--od-muted) !important;
+  opacity: 0.7;
+}
+
+/* Custom Text Selection across the Entire Website Studio & Admin */
+.od-page ::selection,
+.ws-page ::selection {
+  background: rgba(201, 162, 98, 0.35) !important;
+  color: inherit !important;
 }
 
 .od-auth .od-btn {
@@ -945,15 +1023,15 @@
 .cm-col-2{grid-column:span 2}
 .cm-inline-input{display:flex;gap:8px}
 .cm-inline-input select{flex:1}
-.cm-textarea{width:100%;border:1px solid var(--od-line);border-radius:12px;background:#fff;padding:10px 14px;font:inherit;font-size:13.5px;color:var(--od-ink);resize:vertical}
-.cm-textarea:focus{border-color:var(--od-gold);outline:none}
+.cm-textarea{width:100%;border:1px solid var(--od-line);border-radius:12px;background:var(--od-surface-subtle);padding:10px 14px;font:inherit;font-size:13.5px;color:var(--od-ink);resize:vertical}
+.cm-textarea:focus{border-color:var(--od-gold);outline:none;background:var(--od-surface)}
 
 .cm-section{margin-top:20px;padding-top:18px;border-top:1px solid var(--od-line)}
 .cm-section__header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
 .cm-section__title{font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:var(--od-gold-d);margin:0 0 12px}
 
 .cm-upload-grid{display:grid;grid-template-columns:180px 1fr;gap:16px;align-items:stretch}
-.cm-image-preview-wrap{width:180px;height:140px;border-radius:14px;overflow:hidden;background:#ebe5d9;border:1px solid var(--od-line);display:grid;place-items:center}
+.cm-image-preview-wrap{width:180px;height:140px;border-radius:14px;overflow:hidden;background:var(--od-surface-subtle);border:1px solid var(--od-line);display:grid;place-items:center}
 .cm-image-preview{width:100%;height:100%;object-fit:cover;display:block}
 .cm-image-preview-placeholder{display:flex;flex-direction:column;align-items:center;gap:6px;color:var(--od-muted);font-size:11px;text-align:center;padding:12px}
 
@@ -968,15 +1046,15 @@
 .cm-or-divider{display:flex;align-items:center;text-align:center;color:var(--od-muted);font-size:10px;letter-spacing:1px;font-weight:700}
 .cm-or-divider::before,.cm-or-divider::after{content:'';flex:1;border-bottom:1px solid var(--od-line)}
 .cm-or-divider span{padding:0 8px}
-.cm-text-input{width:100%;border:1px solid var(--od-line);border-radius:10px;background:#fff;padding:8px 12px;font:inherit;font-size:13px;color:var(--od-ink)}
-.cm-text-input:focus{border-color:var(--od-gold);outline:none}
+.cm-text-input{width:100%;border:1px solid var(--od-line);border-radius:10px;background:var(--od-surface-subtle);padding:8px 12px;font:inherit;font-size:13px;color:var(--od-ink)}
+.cm-text-input:focus{border-color:var(--od-gold);outline:none;background:var(--od-surface)}
 
 .cm-specs-editor{display:flex;flex-direction:column;gap:8px}
 .cm-spec-row{display:grid;grid-template-columns:1fr 1fr 36px;gap:8px;align-items:center}
-.cm-spec-k-input,.cm-spec-v-input{border:1px solid var(--od-line);border-radius:10px;background:#fff;padding:8px 12px;font:inherit;font-size:13px}
-.cm-spec-k-input:focus,.cm-spec-v-input:focus{border-color:var(--od-gold);outline:none}
+.cm-spec-k-input,.cm-spec-v-input{border:1px solid var(--od-line);border-radius:10px;background:var(--od-surface-subtle);padding:8px 12px;font:inherit;font-size:13px;color:var(--od-ink)}
+.cm-spec-k-input:focus,.cm-spec-v-input:focus{border-color:var(--od-gold);outline:none;background:var(--od-surface)}
 .cm-spec-del{background:none;border:none;color:var(--od-red);cursor:pointer;display:grid;place-items:center;height:34px;border-radius:8px}
-.cm-spec-del:hover{background:#f9ecea}
+.cm-spec-del:hover{background:rgba(198,40,40,0.1)}
 
 .cm-gallery-preview-grid{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}
 .cm-gallery-thumb{position:relative;width:80px;height:70px;border-radius:10px;overflow:hidden;border:1px solid var(--od-line)}
@@ -987,11 +1065,11 @@
 .cm-muted-note{font-size:12px;color:var(--od-muted);margin:6px 0}
 
 .sm-preset-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
-.sm-chip{border:1px solid var(--od-line);background:#fff;border-radius:999px;padding:5px 12px;font:inherit;font-size:12px;color:var(--od-ink);cursor:pointer;display:inline-flex;align-items:center;gap:5px;transition:border-color .15s,background-color .15s}
+.sm-chip{border:1px solid var(--od-line);background:var(--od-surface-subtle);border-radius:999px;padding:5px 12px;font:inherit;font-size:12px;color:var(--od-ink);cursor:pointer;display:inline-flex;align-items:center;gap:5px;transition:border-color .15s,background-color .15s}
 .sm-chip.is-selected{background:var(--od-ink);color:var(--od-paper);border-color:var(--od-ink)}
 .sm-add-custom-row{display:flex;gap:8px;margin-top:8px}
-.sm-add-custom-row input{flex:1;border:1px solid var(--od-line);border-radius:999px;padding:7px 14px;font:inherit;font-size:12.5px}
-.sm-add-custom-row input:focus{border-color:var(--od-gold);outline:none}
+.sm-add-custom-row input{flex:1;border:1px solid var(--od-line);border-radius:999px;padding:7px 14px;font:inherit;font-size:12.5px;background:var(--od-surface-subtle);color:var(--od-ink)}
+.sm-add-custom-row input:focus{border-color:var(--od-gold);outline:none;background:var(--od-surface)}
 
 .cm-active-toggle-wrap{margin-top:20px;padding:14px;background:var(--od-paper);border-radius:12px}
 .cm-checkbox-label{display:inline-flex;align-items:center;gap:10px;cursor:pointer;font-size:13.5px;font-weight:600}
@@ -1340,7 +1418,8 @@
   padding: 10px 14px 10px 38px;
   border-radius: 12px;
   border: 1px solid var(--od-line);
-  background: #fff;
+  background: var(--od-surface-subtle);
+  color: var(--od-ink);
   font-size: 13px;
   font-family: inherit;
 }
@@ -1381,7 +1460,7 @@
   width: 58px;
   height: 58px;
   border-radius: 10px;
-  background: #fff;
+  background: var(--od-surface-subtle);
   border: 1px solid var(--od-line);
   display: grid;
   placeItems: center;
@@ -1702,7 +1781,7 @@
   width: 100%;
   aspect-ratio: 16 / 9;
   max-height: 68px;
-  background: #fff;
+  background: var(--od-surface-subtle);
   border-radius: 8px;
   display: grid;
   place-items: center;

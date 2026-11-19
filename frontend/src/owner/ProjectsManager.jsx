@@ -621,7 +621,6 @@ export function ProjectsManager() {
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     placeholder="Short architectural summary..."
-                    style={{ width: "100%", padding: 12, border: "1px solid var(--od-line)", borderRadius: 12, fontFamily: "inherit" }}
                   />
                 </label>
 
@@ -632,7 +631,6 @@ export function ProjectsManager() {
                     value={formData.challenge}
                     onChange={(e) => setFormData({ ...formData, challenge: e.target.value })}
                     placeholder="What was the client's material or architectural problem?"
-                    style={{ width: "100%", padding: 12, border: "1px solid var(--od-line)", borderRadius: 12, fontFamily: "inherit" }}
                   />
                 </label>
 
@@ -643,7 +641,6 @@ export function ProjectsManager() {
                     value={formData.approach}
                     onChange={(e) => setFormData({ ...formData, approach: e.target.value })}
                     placeholder="How did the in-house studio solve it?"
-                    style={{ width: "100%", padding: 12, border: "1px solid var(--od-line)", borderRadius: 12, fontFamily: "inherit" }}
                   />
                 </label>
 
