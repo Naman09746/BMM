@@ -58,13 +58,15 @@ const EXTRA_IMAGES = {
 };
 
 export function buildMaterialGallery(item, detail, img) {
-  const spec = (i) => (detail.specs[i] || [])[1];
-  const ids = [...new Set([...(detail.gallery || []), ...(EXTRA_IMAGES[item.slug] || [])])];
+  const spec = (i) => (detail?.specs?.[i] || [])[1];
+  const userGallery = Array.isArray(item?.gallery) && item.gallery.length > 0 ? item.gallery : [];
+  const baseGallery = userGallery.length > 0 ? userGallery : (detail?.gallery || []);
+  const ids = [...new Set([...baseGallery, ...(EXTRA_IMAGES[item?.slug] || [])])];
   return ids.map((id, i) => ({
     src: img(id, 1200),
-    title: `${item.name}${i ? ` — view ${i + 1}` : ""}`,
-    material: spec(0) || item.material || "Natural material",
+    title: `${item?.name || "Material"}${i ? ` — view ${i + 1}` : ""}`,
+    material: spec(0) || item?.material || "Natural material",
     finish: spec(1) || "Finished to order",
-    use: item.application || spec(2) || "Interior",
+    use: item?.application || spec(2) || "Interior",
   }));
 }

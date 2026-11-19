@@ -498,6 +498,7 @@ _storage_key = None
 _MIME_TYPES = {
     "jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png", "gif": "image/gif",
     "webp": "image/webp", "heic": "image/heic", "pdf": "application/pdf", "mp4": "video/mp4",
+    "svg": "image/svg+xml",
 }
 
 
@@ -509,6 +510,9 @@ def _magic_ok(ext: str, data: bytes) -> bool:
         return data[:4] == b"RIFF" and data[8:12] == b"WEBP"
     if ext in ("heic", "mp4"):
         return len(data) >= 8 and data[4:8] == b"ftyp"
+    if ext == "svg":
+        prefix = data[:1024].lower().strip()
+        return (b"<svg" in prefix or b"<?xml" in prefix) and b"<script" not in data.lower()
     return any(data.startswith(m) for m in _MAGIC.get(ext, []))
 
 
@@ -2609,21 +2613,55 @@ async def rollback_studio_version(version_id: str, admin: dict = Depends(require
 
 @api_router.post("/admin/media/upload")
 async def admin_upload_media(file: UploadFile = File(...), admin: dict = Depends(require_admin), request: Request = None):
-    data = await file.read(15 * 1024 * 1024 + 1)
-    if len(data) > 15 * 1024 * 1024:
-        raise HTTPException(status_code=413, detail="File too large (max 15MB)")
+    data = await file.read(25 * 1024 * 1024 + 1)
+    if len(data) > 25 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="File too large (max 25MB)")
     filename = (file.filename or "upload")[-200:]
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
-    if ext not in ("jpg", "jpeg", "png", "webp", "gif", "mp4") or not _magic_ok(ext, data):
-        raise HTTPException(status_code=415, detail="Only JPG, PNG, WEBP, GIF, or MP4 files are allowed.")
-    media_id = f"img_{uuid.uuid4().hex[:12]}.{ext}"
+    if ext not in ("jpg", "jpeg", "png", "webp", "gif", "mp4", "svg") or not _magic_ok(ext, data):
+        raise HTTPException(status_code=415, detail="Only JPG, PNG, WEBP, GIF, SVG, or MP4 files are allowed.")
+
+    final_ext = ext
+    content_type = _MIME_TYPES[ext]
+
+    # High-tech clean resolution optimization:
+    # 1. SVGs retain lossless mathematical vector fidelity (infinite crisp resolution on all DPIs)
+    # 2. Raster images (PNG, JPG, WEBP) auto-correct EXIF orientation, scale down from >3840px with Lanczos,
+    #    and encode into pristine, ultra-clean high-fidelity WebP (quality 94, method 6) with full alpha preservation.
+    if ext in ("jpg", "jpeg", "png", "webp"):
+        try:
+            from PIL import Image, ImageOps
+            import io
+            im = Image.open(io.BytesIO(data))
+            im = ImageOps.exif_transpose(im)
+            
+            # Anti-aliased high-resolution bound (4K UHD)
+            max_dim = 3840
+            if im.width > max_dim or im.height > max_dim:
+                im.thumbnail((max_dim, max_dim), Image.Resampling.LANCZOS)
+            
+            buf = io.BytesIO()
+            if im.mode in ("RGBA", "LA") or (im.mode == "P" and "transparency" in im.info):
+                im = im.convert("RGBA")
+                im.save(buf, format="WEBP", quality=94, method=6)
+            else:
+                im = im.convert("RGB")
+                im.save(buf, format="WEBP", quality=94, method=6)
+            
+            data = buf.getvalue()
+            final_ext = "webp"
+            content_type = "image/webp"
+        except Exception as proc_err:
+            logger.warning("Image optimization fallback: %s", proc_err)
+
+    media_id = f"img_{uuid.uuid4().hex[:12]}.{final_ext}"
     saved_path = f"{APP_NAME}/media/{media_id}"
     try:
         (UPLOAD_DIR / media_id).write_bytes(data)
     except Exception as exc:
         logger.warning("Local media cache write failed: %s", exc)
     try:
-        put_object(saved_path, data, _MIME_TYPES[ext])
+        put_object(saved_path, data, content_type)
     except Exception as exc:
         logger.error("Media upload put_object failed: %s", exc)
 
@@ -2634,7 +2672,7 @@ async def admin_upload_media(file: UploadFile = File(...), admin: dict = Depends
         "original_name": filename,
         "url": url,
         "size": len(data),
-        "content_type": _MIME_TYPES[ext],
+        "content_type": content_type,
         "uploaded_at": datetime.now(timezone.utc).isoformat(),
         "uploaded_by": admin.get("email"),
     }
@@ -2644,7 +2682,7 @@ async def admin_upload_media(file: UploadFile = File(...), admin: dict = Depends
         logger.warning("Could not persist to db.media: %s", e)
 
     await log_admin_action(admin, "upload_media", f"media:{media_id}", {"filename": filename, "size": len(data)}, request=request)
-    return {"url": url, "filename": media_id, "size": len(data), "content_type": _MIME_TYPES[ext]}
+    return {"url": url, "filename": media_id, "size": len(data), "content_type": content_type}
 
 
 @api_router.get("/admin/media")

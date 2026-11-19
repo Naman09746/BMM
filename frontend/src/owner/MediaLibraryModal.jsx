@@ -144,7 +144,7 @@ export function MediaLibraryModal({ isOpen, onClose, onSelectMedia, currentSelec
             <label className="ws-btn ws-btn--primary ws-btn--upload" data-testid="media-upload-btn">
               <input
                 type="file"
-                accept="image/jpeg,image/png,image/webp,image/gif,video/mp4"
+                accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml,video/mp4,.svg"
                 onChange={(e) => handleUploadFile(e.target.files?.[0])}
                 style={{ display: "none" }}
                 disabled={uploading}

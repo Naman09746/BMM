@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { Bath, BedDouble, Car, Check, ChevronDown, ChevronLeft, ChevronRight, Clock, Flag, Flame, Grid3x3, KeyRound, Library, MapPin, MessageSquareHeart, Share, ShieldCheck, Sofa, Star, Tag, Trees, Users, UtensilsCrossed, Waves, Wifi } from "lucide-react";
 import { POLICIES, fmtRange, fromISO, getStay, getStays, guestCount, guestLabel, img, inr, nightsBetween, rangeFree } from "./data";
+import { useLiveStays } from "../contentStore";
 import { smoothScrollTo } from "@/lib/smoothScroll";
 import { SearchBar } from "./SearchBar";
 import { useAvailability, useIsMobile, useStays, useAuth } from "./store";
@@ -97,7 +98,9 @@ export function BookingPanel({ stay, booked, availabilityReady = true, onGo }) {
 
 export default function StayDetail() {
   const { slug } = useParams();
-  const stay = getStay(slug);
+  const liveStays = useLiveStays();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const stay = useMemo(() => getStay(slug), [slug, liveStays]);
   const navigate = useNavigate();
   const mobile = useIsMobile("(max-width: 900px)");
   const { search, setSearch } = useStays();

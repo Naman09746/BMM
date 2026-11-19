@@ -1434,3 +1434,36 @@ a.svc-cat-card{color:inherit;text-decoration:none}
 
 /* Keep the loading fallback styled before route CSS arrives. */
 .sx-page.sx-center[role="status"]{background:#f4efe6;color:#0d0b09;font-family:'Outfit',sans-serif;min-height:100vh;padding-bottom:80px;display:grid;place-items:center;padding-top:140px}
+
+/* =========================================================================
+   High-Tech Clean Resolution Image & Vector Optimizations
+   Ensures razor-sharp rendering on Retina, 4K/8K displays without pixelation
+   ========================================================================= */
+.client-logo img,
+.brand-logo img,
+.clients-grid img,
+.clients-marquee img,
+.vsd-client-logo img,
+.vsd-client-logo-preview img,
+img[src*=".svg"],
+img[src*="image%2Fsvg"],
+svg {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  shape-rendering: geometricPrecision;
+  text-rendering: geometricPrecision;
+}
+
+.bds-craftsmanship-media video,
+.work-image-wrap img,
+.mat-card__img img,
+.pdp-main img,
+.sx-photos img,
+.mini-work img,
+.vsd-cover-img,
+.vsd-photo-thumb img {
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+  image-rendering: -webkit-optimize-contrast;
+}

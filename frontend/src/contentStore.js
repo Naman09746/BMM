@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { publicAsset } from "./wordpress";
+import { registerStaysData } from "./stays/data";
 
 const BACKEND_URL = (process.env.REACT_APP_BACKEND_URL || (typeof window !== "undefined" ? window.location.origin : "")).replace(/\/$/, "");
 
@@ -127,33 +128,42 @@ export const DEFAULT_LIVING_STUDIO = {
 export const liveContentState = {
   hero: DEFAULT_HERO,
   projects: DEFAULT_PROJECTS,
-  approach: DEFAULT_APPROACH,
-  clients: DEFAULT_CLIENTS,
-  divisions: DEFAULT_DIVISIONS,
-  about: DEFAULT_ABOUT,
-  livingStudio: DEFAULT_LIVING_STUDIO
-};
-
-const ContentContext = createContext({
-  hero: DEFAULT_HERO,
-  projects: DEFAULT_PROJECTS,
+  stays: [],
+  catalogue: [],
   approach: DEFAULT_APPROACH,
   clients: DEFAULT_CLIENTS,
   divisions: DEFAULT_DIVISIONS,
   about: DEFAULT_ABOUT,
   livingStudio: DEFAULT_LIVING_STUDIO,
+  seo: {}
+};
+
+const ContentContext = createContext({
+  hero: DEFAULT_HERO,
+  projects: DEFAULT_PROJECTS,
+  stays: [],
+  catalogue: [],
+  approach: DEFAULT_APPROACH,
+  clients: DEFAULT_CLIENTS,
+  divisions: DEFAULT_DIVISIONS,
+  about: DEFAULT_ABOUT,
+  livingStudio: DEFAULT_LIVING_STUDIO,
+  seo: {},
   loading: false
 });
 
 export function ContentProvider({ children }) {
   const [projects, setProjects] = useState(DEFAULT_PROJECTS);
+  const [stays, setStays] = useState([]);
+  const [catalogue, setCatalogue] = useState([]);
   const [siteContent, setSiteContent] = useState({
     hero: DEFAULT_HERO,
     approach: DEFAULT_APPROACH,
     clients: DEFAULT_CLIENTS,
     divisions: DEFAULT_DIVISIONS,
     about: DEFAULT_ABOUT,
-    livingStudio: DEFAULT_LIVING_STUDIO
+    livingStudio: DEFAULT_LIVING_STUDIO,
+    seo: {}
   });
   const [loading, setLoading] = useState(true);
 
@@ -162,9 +172,11 @@ export function ContentProvider({ children }) {
 
     async function syncContent() {
       try {
-        const [projRes, contentRes] = await Promise.all([
+        const [projRes, contentRes, staysRes, catRes] = await Promise.all([
           fetch(`${BACKEND_URL}/api/projects`, { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
-          fetch(`${BACKEND_URL}/api/site-content?t=${Date.now()}`, { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).catch(() => null)
+          fetch(`${BACKEND_URL}/api/site-content?t=${Date.now()}`, { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+          fetch(`${BACKEND_URL}/api/stays?all=true`, { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+          fetch(`${BACKEND_URL}/api/catalogue?all=true`, { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
         ]);
 
         if (cancelled) return;
@@ -172,6 +184,17 @@ export function ContentProvider({ children }) {
         if (Array.isArray(projRes) && projRes.length > 0) {
           setProjects(projRes);
           liveContentState.projects = projRes;
+        }
+
+        if (Array.isArray(staysRes) && staysRes.length > 0) {
+          setStays(staysRes);
+          liveContentState.stays = staysRes;
+          registerStaysData({ stays: staysRes });
+        }
+
+        if (Array.isArray(catRes) && catRes.length > 0) {
+          setCatalogue(catRes);
+          liveContentState.catalogue = catRes;
         }
 
         if (contentRes && typeof contentRes === "object") {
@@ -217,6 +240,8 @@ export function ContentProvider({ children }) {
       value={{
         hero: siteContent.hero,
         projects,
+        stays,
+        catalogue,
         approach: siteContent.approach,
         clients: siteContent.clients,
         divisions: siteContent.divisions,
@@ -234,6 +259,16 @@ export function ContentProvider({ children }) {
 export function useProjects() {
   const ctx = useContext(ContentContext);
   return ctx?.projects || DEFAULT_PROJECTS;
+}
+
+export function useLiveStays() {
+  const ctx = useContext(ContentContext);
+  return ctx?.stays || [];
+}
+
+export function useCatalogue() {
+  const ctx = useContext(ContentContext);
+  return ctx?.catalogue || [];
 }
 
 export function useSiteContent() {

@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { getStays, getTiers } from "./data";
+import { useLiveStays } from "../contentStore";
 import { useStays } from "./store";
 import { SearchBar } from "./SearchBar";
 import { ListingCard } from "./Listing";
@@ -25,10 +26,12 @@ function Row({ title, sub, items, search, testId, more }) {
 
 export default function StaysHome({ initialTier = "all" }) {
   usePageTitle("Stays & BnBs | BDSM · BDS Marvel");
+  const liveStays = useLiveStays();
   const [params] = useSearchParams();
   const { search, favs } = useStays();
   const [tier, setTier] = useState(initialTier);
-  const all = useMemo(() => getStays(), []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const all = useMemo(() => getStays(), [liveStays]);
   const stayTiers = getTiers();
   const tiers = tier === "all" ? stayTiers : stayTiers.filter((t) => t.slug === tier);
   const saved = all.filter((s) => favs.includes(s.slug));

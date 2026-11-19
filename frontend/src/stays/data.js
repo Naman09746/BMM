@@ -60,7 +60,7 @@ export function getStays() {
     // image in WordPress, fill the detail gallery with the same related stay
     // photography used by the standalone preview. Once editors add multiple
     // images in WordPress, respect that curated gallery exactly.
-    const gallery = Array.isArray(stay.gallery) && stay.gallery.length > 1
+    const gallery = Array.isArray(stay.gallery) && stay.gallery.length > 0
       ? stay.gallery
       : [stay.hero, ...[1, 4, 7, 10].map((k) => heroes[(i + k) % heroes.length])].filter((id, index, all) => id && all.indexOf(id) === index);
     const reviews = Array.isArray(stay.reviews) ? stay.reviews : [0, 1, 2, 3].map((k) => {

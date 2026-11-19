@@ -10,7 +10,7 @@ import { registerStaysData } from "./stays/data";
 import "@/stays/stays.css";
 import { buildMaterialGallery } from "@/catalogueGallery";
 import { ContactTrigger, CountUp, SampleTrigger, approach, img, projects as staticProjects, segments, stayTiers, stays, tierSlugOf, useConsultation, useContact, useInquiry, usePageMeta, useSample } from "./App";
-import { useProjects, useSiteContent } from "./contentStore";
+import { useProjects, useSiteContent, useCatalogue, liveContentState } from "./contentStore";
 
 const catalogueContent = wordpressContent("catalogueItems", [
   // DrawStones — the signature product range
@@ -243,10 +243,21 @@ function ProjectsArchive() {
 
 function CataloguePage() {
   usePageMeta("Catalogue — BDSM · BDS Marvel", "Browse the BDSM material library — marble & stone, flooring and furniture, filterable by category and product.");
+  const liveCatalogue = useCatalogue();
+  const items = useMemo(() => {
+    if (Array.isArray(liveCatalogue) && liveCatalogue.length > 0) {
+      const liveSlugs = new Set(liveCatalogue.map((it) => it.slug));
+      const remaining = catalogueItems.filter((it) => !liveSlugs.has(it.slug));
+      return [...liveCatalogue, ...remaining];
+    }
+    return catalogueItems;
+  }, [liveCatalogue]);
+
   const [category, setCategory] = useState("All");
   const [product, setProduct] = useState("All");
   const [query, setQuery] = useState("");
-  const inCategory = useMemo(() => catalogueItems.filter((item) => category === "All" || categoryOf(item) === category), [category]);
+  const inCategory = useMemo(() => items.filter((item) => category === "All" || categoryOf(item) === category), [items, category]);
+  const categoriesFilter = useMemo(() => ["All", ...new Set(items.map((i) => i.category || "Marble & Stone"))], [items]);
   const productsFilter = useMemo(() => ["All", ...Array.from(new Set(inCategory.map((item) => item.product)))], [inCategory]);
   const chooseCategory = (option) => { setCategory(option); setProduct("All"); };
   const filtered = useMemo(() => inCategory.filter((item) => (product === "All" || item.product === product) && `${item.name} ${item.brand} ${item.material} ${item.product} ${categoryOf(item)} ${item.origin}`.toLowerCase().includes(query.toLowerCase())), [inCategory, product, query]);
@@ -287,8 +298,14 @@ function CataloguePage() {
   </main>;
 }
 
-const findCatalogueItem = (slug) => catalogueItems.find((entry) => entry.slug === slug)
-  || Object.values(serviceExtras).flatMap((extra) => extra.catalogue || []).find((entry) => entry.slug === slug);
+const findCatalogueItem = (slug, liveItems) => {
+  const pool = (Array.isArray(liveItems) && liveItems.length > 0)
+    ? liveItems
+    : (liveContentState?.catalogue?.length ? liveContentState.catalogue : catalogueItems);
+  return pool.find((entry) => entry.slug === slug)
+    || catalogueItems.find((entry) => entry.slug === slug)
+    || Object.values(serviceExtras).flatMap((extra) => extra.catalogue || []).find((entry) => entry.slug === slug);
+};
 
 function ProductGallery({ images, name }) {
   const [active, setActive] = useState(0);
@@ -382,8 +399,9 @@ function ProductQuoteModal({ open, onClose, details }) {
 function CatalogueProductPage() {
   const { slug, piece } = useParams();
   const location = useLocation();
-  const item = findCatalogueItem(slug);
-  const detail = item ? catalogueDetails[item.slug] : null;
+  const liveItems = useCatalogue();
+  const item = findCatalogueItem(slug, liveItems);
+  const detail = useMemo(() => item ? (catalogueDetails[item.slug] || { brand: item.brand, desc: item.origin || "", specs: [["Material", item.material || "Natural"], ["Application", item.application || "Interior"]], gallery: item.gallery || [item.image] }) : null, [item]);
   const gallery = useMemo(() => (item && detail ? buildMaterialGallery(item, detail, img) : []), [item, detail]);
   const index = Number(piece) - 1;
   const product = gallery[index];
@@ -449,10 +467,11 @@ function CatalogueProductPage() {
 function CatalogueItemPage() {
   const { slug } = useParams();
   const location = useLocation();
+  const liveItems = useCatalogue();
   const backTo = location.state?.from || "/catalogue";
   const backLabel = location.state?.fromLabel ? `BACK TO ${location.state.fromLabel.toUpperCase()}` : "BACK TO CATALOGUE";
-  const item = findCatalogueItem(slug);
-  const detail = item ? catalogueDetails[item.slug] : null;
+  const item = findCatalogueItem(slug, liveItems);
+  const detail = item ? (catalogueDetails[item.slug] || { brand: item.brand, desc: item.origin || "", specs: [["Material", item.material || "Natural"], ["Application", item.application || "Interior"]], gallery: item.gallery || [item.image] }) : null;
   const { openConsult } = useConsultation();
   usePageMeta(
     item ? `${item.name} | BDSM · BDS Marvel Catalogue` : "Catalogue | BDSM · BDS Marvel",
@@ -761,15 +780,18 @@ function ContactPage() {
 function AboutPage() {
   usePageMeta("About Us | BDSM · BDS Marvel", "One design and build company for stone, flooring, construction and interiors — 20+ years, 200+ projects, studios across India.");
   const { about: aboutContent } = useSiteContent();
-  const principles = wordpressContent("principles", [
+  const defaultPrinciples = [
     { number: "01", title: "Material comes first", text: "Before the drawing, we specify the stone or the surface. The rest of the project is designed around what the material actually wants to do." },
     { number: "02", title: "One accountable team", text: "Materials, flooring, construction and interiors all report into a single project lead. Fewer handovers, fewer things lost in translation." },
     { number: "03", title: "Detail is a discipline", text: "Every joint, threshold and reveal is drawn before it's built. Nothing is decided on site that could have been decided at the desk." },
     { number: "04", title: "Craft is not decorative", text: "Traditional cutting and finishing techniques are part of the engineering — not a nostalgia bolted on at the end." },
     { number: "05", title: "Experience over pitch", text: "Instead of a moodboard, we invite clients to stay in a space that uses our full palette. Specify from inside the reference." },
     { number: "06", title: "Long horizons", text: "We build for how a space looks in year ten, not the day it opens." },
-  ]);
-  const timeline = wordpressContent("timeline", [
+  ];
+  const principles = (Array.isArray(aboutContent?.principles) && aboutContent.principles.length > 0)
+    ? aboutContent.principles
+    : defaultPrinciples;
+  const defaultTimeline = [
     { year: "2003", event: "First quarry allocation in Kishangarh; workshop begins cutting and polishing." },
     { year: "2008", event: "Facade stone supply for the first hotel group project in Rajasthan." },
     { year: "2013", event: "Flooring line launched — contract SPC and hospitality-grade oak plank." },
@@ -777,7 +799,10 @@ function AboutPage() {
     { year: "2020", event: "Interiors studio established for full design + execution." },
     { year: "2023", event: "BDSM · BDS Marvel brings stone, flooring, construction and interior decor under one roof — the Drawstones, Renest, Formwork and Vignette teams." },
     { year: "2024", event: "BDSM Living Studio opens in Goa as our public reference and stayable showroom." },
-  ]);
+  ];
+  const timeline = (Array.isArray(aboutContent?.timeline) && aboutContent.timeline.length > 0)
+    ? aboutContent.timeline
+    : defaultTimeline;
   const defaultTeam = [
     { name: "Drawstones", role: "Materials & Sourcing", image: "photo-1618221195710-dd6b41faaea6" },
     { name: "Renest", role: "Specification & Distribution", image: "photo-1616486338812-3dadae4b4ace" },
