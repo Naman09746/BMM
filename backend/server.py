@@ -2769,6 +2769,9 @@ async def startup_auth():
         await db.rate_limits.create_index("expires_at", expireAfterSeconds=0)
         await db.bookings.create_index([("stay", 1), ("status", 1), ("check_in", 1), ("check_out", 1)])
         await db.bookings.create_index([("user_id", 1), ("created_at", -1)])
+        await db.media.create_index("filename", unique=True)
+        await db.media.create_index("uploaded_at")
+        await db.site_revisions.create_index("created_at")
     except Exception as exc:
         logger.warning("Startup database index notice: %s", exc)
 
