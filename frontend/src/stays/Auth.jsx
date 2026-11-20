@@ -1,7 +1,7 @@
 import { nativeWordPress } from "../wordpress";
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Loader2 } from "lucide-react";
+import { Loader2, Eye, EyeOff } from "lucide-react";
 import { api, useAuth } from "./store";
 
 const GoogleMark = () => <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z" /><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z" /><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z" /><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z" /></svg>;
@@ -10,6 +10,7 @@ export function AuthPanel({ onDone, returnTo }) {
   const { setUser } = useAuth();
   const [tab, setTab] = useState("login");
   const [form, setForm] = useState({ name: "", email: "", password: "" });
+  const [showPassword, setShowPassword] = useState(false);
   const [mfaData, setMfaData] = useState(null);
   const [totpCode, setTotpCode] = useState("");
   const [status, setStatus] = useState({ busy: false, error: "" });
@@ -115,7 +116,42 @@ export function AuthPanel({ onDone, returnTo }) {
     <form onSubmit={submit} noValidate className="sx-form">
       {tab === "register" && <label className="sx-field"><span>Full name</span><input value={form.name} onChange={update("name")} autoComplete="name" data-testid="auth-name-input" /></label>}
       <label className="sx-field"><span>Email</span><input type="email" value={form.email} onChange={update("email")} autoComplete="email" data-testid="auth-email-input" /></label>
-      <label className="sx-field"><span>Password</span><input type="password" value={form.password} onChange={update("password")} autoComplete={tab === "login" ? "current-password" : "new-password"} data-testid="auth-password-input" /></label>
+      <label className="sx-field">
+        <span>Password</span>
+        <div style={{ position: "relative", display: "flex", alignItems: "center", width: "100%" }}>
+          <input
+            type={showPassword ? "text" : "password"}
+            value={form.password}
+            onChange={update("password")}
+            autoComplete={tab === "login" ? "current-password" : "new-password"}
+            data-testid="auth-password-input"
+            style={{ width: "100%", paddingRight: 44 }}
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword((v) => !v)}
+            title={showPassword ? "Hide password" : "Show password"}
+            aria-label={showPassword ? "Hide password" : "Show password"}
+            data-testid="auth-password-toggle"
+            style={{
+              position: "absolute",
+              right: 10,
+              top: "50%",
+              transform: "translateY(-50%)",
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              padding: 6,
+              display: "grid",
+              placeItems: "center",
+              color: "#6f685c",
+              borderRadius: 8,
+            }}
+          >
+            {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+          </button>
+        </div>
+      </label>
       {status.error && <p className="sx-error" role="alert" data-testid="auth-error">{status.error}</p>}
       <button type="submit" className="sx-btn sx-btn--primary sx-btn--block" disabled={status.busy} data-testid="auth-submit">{status.busy ? <Loader2 size={16} className="sx-spin" /> : null}{tab === "login" ? "Continue" : "Create account"}</button>
     </form>

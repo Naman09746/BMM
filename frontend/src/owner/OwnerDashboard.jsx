@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { BedDouble, Boxes, Key, Loader2, LogOut, RefreshCw, ShieldCheck, Sparkles, Sun, Moon } from "lucide-react";
+import { BedDouble, Boxes, Key, Loader2, LogOut, RefreshCw, ShieldCheck, Sparkles, Sun, Moon, Eye, EyeOff } from "lucide-react";
 import { api, useAuth, resolveBackendMedia } from "../stays/store";
 import CatalogueManager from "./CatalogueManager";
 import StaysManager from "./StaysManager";
@@ -25,6 +25,7 @@ const inr = (n) => (typeof n === "number" ? `₹${n.toLocaleString("en-IN")}` : 
 export function OwnerLogin({ onSuccess, theme = "dark", onToggleTheme }) {
   const { setUser } = useAuth();
   const [form, setForm] = useState({ email: "", password: "", totp_code: "" });
+  const [showPassword, setShowPassword] = useState(false);
   const [mfaData, setMfaData] = useState(null); // { mfa_token, email }
   const [status, setStatus] = useState({ busy: false, error: "" });
 
@@ -139,7 +140,28 @@ export function OwnerLogin({ onSuccess, theme = "dark", onToggleTheme }) {
       <p>This area is private. Sign in with the owner account to manage bookings and enquiries.</p>
       <form onSubmit={submitPassword} noValidate data-testid="owner-login-form">
         <label className="od-field"><span>Email</span><input type="email" value={form.email} autoComplete="email" onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} data-testid="owner-email-input" /></label>
-        <label className="od-field"><span>Password</span><input type="password" value={form.password} autoComplete="current-password" onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))} data-testid="owner-password-input" /></label>
+        <label className="od-field">
+          <span>Password</span>
+          <div className="od-password-wrap">
+            <input
+              type={showPassword ? "text" : "password"}
+              value={form.password}
+              autoComplete="current-password"
+              onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+              data-testid="owner-password-input"
+            />
+            <button
+              type="button"
+              className="od-password-toggle"
+              onClick={() => setShowPassword((prev) => !prev)}
+              title={showPassword ? "Hide password" : "Show password"}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              data-testid="owner-password-toggle"
+            >
+              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </div>
+        </label>
         {status.error && <p className="od-form-error" role="alert" data-testid="owner-login-error">{status.error}</p>}
         <button type="submit" className="od-btn od-btn--primary" disabled={status.busy} data-testid="owner-login-submit">{status.busy && <Loader2 size={15} className="od-spin" />}Sign in</button>
       </form>

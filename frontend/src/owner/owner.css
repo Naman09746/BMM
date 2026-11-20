@@ -780,6 +780,45 @@
   color: inherit !important;
 }
 
+/* Password Input & Eye Toggle Button */
+.od-password-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.od-password-wrap input {
+  padding-right: 44px !important;
+}
+
+.od-password-toggle {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  display: grid;
+  place-items: center;
+  color: var(--od-muted);
+  border-radius: 8px;
+  transition: color 0.15s ease, background-color 0.15s ease;
+  line-height: 1;
+}
+
+.od-password-toggle:hover {
+  color: var(--od-ink);
+  background: rgba(125, 125, 125, 0.12);
+}
+
+.od-password-toggle:focus-visible {
+  outline: 2px solid var(--od-gold);
+  outline-offset: 2px;
+}
+
 .od-auth .od-btn {
   width: 100%;
   justify-content: center;
