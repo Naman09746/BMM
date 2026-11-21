@@ -203,6 +203,7 @@ function Header() {
       <div className="header-right">
         <Link className="header-work-link" to="/projects" data-testid="header-work-link">PROJECTS</Link>
         <Link className="header-work-link" to="/catalogue" data-testid="header-catalogue-link">CATALOGUE</Link>
+        <Link className="header-work-link" to="/stays" data-testid="header-stays-link">AIR BNB</Link>
         <Link className="header-work-link" to="/contact" data-testid="header-contact-link">CONTACT</Link>
         {onStays && <Link className="header-profile" to="/stays/account" aria-label={user && user !== false ? "My account" : "Sign in"} data-testid="header-profile">
           {user && user !== false ? (user.picture ? <img src={user.picture} alt="" /> : <span className="header-profile__initials">{accountInitials}</span>) : <User size={18} strokeWidth={1.75} />}

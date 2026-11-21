@@ -549,7 +549,18 @@ function Dashboard({ initialWorkspace, theme, onToggleTheme }) {
             <button type="button" role="tab" aria-selected={tab === "requests"} className={`od-tab ${tab === "requests" ? "is-on" : ""}`} onClick={() => setTab("requests")} data-testid="owner-tab-requests">Night requests{requests.length > 0 && <span className="od-tab__count">{requests.length}</span>}</button>
             <button type="button" role="tab" aria-selected={tab === "bookings"} className={`od-tab ${tab === "bookings" ? "is-on" : ""}`} onClick={() => setTab("bookings")} data-testid="owner-tab-bookings">All bookings</button>
             <button type="button" role="tab" aria-selected={tab === "enquiries"} className={`od-tab ${tab === "enquiries" ? "is-on" : ""}`} onClick={() => setTab("enquiries")} data-testid="owner-tab-enquiries">Enquiries</button>
+            <button type="button" role="tab" aria-selected={tab === "stays"} className={`od-tab ${tab === "stays" ? "is-on" : ""}`} onClick={() => setTab("stays")} data-testid="owner-tab-stays">
+              <BedDouble size={14} style={{ display: "inline-block", marginRight: 5, verticalAlign: "middle" }} />Stays & Rooms (Airbnb)
+            </button>
             
+            <span className="od-tab-group-label" style={{ marginLeft: 8 }}>INVENTORY:</span>
+            <button type="button" role="tab" aria-selected={tab === "catalogue"} className={`od-tab ${tab === "catalogue" ? "is-on" : ""}`} onClick={() => setTab("catalogue")} data-testid="owner-tab-catalogue">
+              <Boxes size={14} style={{ display: "inline-block", marginRight: 5, verticalAlign: "middle" }} />Catalogue
+            </button>
+            <button type="button" role="tab" aria-selected={tab === "projects"} className={`od-tab ${tab === "projects" ? "is-on" : ""}`} onClick={() => setTab("projects")} data-testid="owner-tab-projects">
+              Projects
+            </button>
+
             <span className="od-tab-group-label" style={{ marginLeft: 8 }}>WEBSITE & CMS:</span>
             <button type="button" className="od-tab" onClick={() => setWorkspace("studio")} style={{ color: "var(--od-gold-d)", fontWeight: 700 }} data-testid="owner-tab-goto-studio">
               <Sparkles size={13} style={{ display: "inline-block", marginRight: 5, verticalAlign: "middle" }} />Website Studio (Visual CMS)
@@ -585,13 +596,13 @@ function Dashboard({ initialWorkspace, theme, onToggleTheme }) {
           : enquiries.map((e) => e.type === "Quote request" ? <QuoteCard key={`${e.type}-${e.id}`} item={e} /> : <EnquiryCard key={`${e.type}-${e.id}`} item={e} />)}
       </section>}
 
-      {tab === "catalogue" && <section data-testid="owner-catalogue"><VisualScreenDirectory initialScreen="catalogue" /></section>}
+      {tab === "stays" && <section data-testid="owner-stays"><StaysManager /></section>}
 
-      {tab === "projects" && <section data-testid="owner-projects"><VisualScreenDirectory initialScreen="projects" /></section>}
+      {tab === "catalogue" && <section data-testid="owner-catalogue"><CatalogueManager /></section>}
 
-      {tab === "content" && <section data-testid="owner-content"><VisualScreenDirectory initialScreen="home" /></section>}
+      {tab === "projects" && <section data-testid="owner-projects"><ProjectsManager /></section>}
 
-      {tab === "stays" && <section data-testid="owner-stays"><VisualScreenDirectory initialScreen="stays" /></section>}
+      {tab === "content" && <section data-testid="owner-content"><SiteContentManager /></section>}
 
       {tab === "security" && <section data-testid="owner-security"><SecurityManager /></section>}
     </>}
