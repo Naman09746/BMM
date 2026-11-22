@@ -1,5 +1,26 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { BedDouble, Boxes, Key, Loader2, LogOut, RefreshCw, ShieldCheck, Sparkles, Sun, Moon, Eye, EyeOff } from "lucide-react";
+import {
+  BedDouble,
+  Boxes,
+  Calendar,
+  CheckCircle,
+  Clock,
+  Eye,
+  EyeOff,
+  Filter,
+  Key,
+  Loader2,
+  LogOut,
+  Mail,
+  Moon,
+  Phone,
+  RefreshCw,
+  Search,
+  ShieldCheck,
+  Sparkles,
+  Sun,
+  XCircle,
+} from "lucide-react";
 import { api, useAuth, resolveBackendMedia } from "../stays/store";
 import CatalogueManager from "./CatalogueManager";
 import StaysManager from "./StaysManager";
@@ -169,52 +190,243 @@ export function OwnerLogin({ onSuccess, theme = "dark", onToggleTheme }) {
   );
 }
 
-function BookingCard({ booking, onAction, busyId, actionError }) {
+function NightRequestCard({ booking, onAction, busyId, actionError }) {
   const b = booking;
   const busy = busyId === b.id;
   const total = inr(b.total);
-  return <article className="od-card" data-testid={`booking-card-${b.id}`}>
-    <div className="od-card__top">
-      <div>
-        {b.reference && <span className="od-ref">{b.reference}{b.mode ? ` · ${b.mode === "instant" ? "Instant book" : "Request"}` : ""}</span>}
-        <h3 className="od-card__stay">{b.stay}</h3>
-        <p className="od-card__meta">
-          <span>{fmtDate(b.check_in)} → {fmtDate(b.check_out)}{b.nights ? ` · ${b.nights} night${b.nights === 1 ? "" : "s"}` : ""}</span>
-          <span>{b.guests} guest{b.guests === 1 ? "" : "s"}</span>
-          {total && <span>{total}</span>}
-          <span>Booked {fmtStamp(b.created_at)}</span>
-        </p>
+  return (
+    <article
+      className="od-card"
+      style={{
+        borderLeft: "4px solid var(--od-gold-d)",
+        position: "relative",
+      }}
+      data-testid={`booking-card-${b.id}`}
+    >
+      <div className="od-card__top">
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+            <span className="od-pill od-pill--requested">Awaiting Owner Approval</span>
+            {b.reference && <span className="od-ref">#{b.reference}</span>}
+          </div>
+          <h3 className="od-card__stay">{b.stay}</h3>
+          <p className="od-card__meta">
+            <span style={{ fontWeight: 600, color: "var(--od-ink)" }}>
+              📅 {fmtDate(b.check_in)} → {fmtDate(b.check_out)}
+              {b.nights ? ` · ${b.nights} night${b.nights === 1 ? "" : "s"}` : ""}
+            </span>
+            <span>👥 {b.guests} guest{b.guests === 1 ? "" : "s"}</span>
+            {total && <span style={{ fontWeight: 600, color: "var(--od-ink)" }}>💰 {total}</span>}
+            <span>Requested {fmtStamp(b.created_at)}</span>
+          </p>
+        </div>
       </div>
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-        <span className={`od-pill od-pill--${b.status}`} data-testid={`booking-status-${b.id}`}>{b.status}</span>
-        {b.payment_status && b.payment_status !== "not_required" && (
-          <span className={`od-pill od-pill--${b.payment_status === "paid" ? "confirmed" : b.payment_status === "refunded" ? "cancelled" : "requested"}`} data-testid={`booking-payment-${b.id}`}>
-            {b.payment_status === "paid" ? "Paid Online" : b.payment_status === "refunded" ? "Refunded" : b.payment_status === "paid_conflict" ? "Paid Conflict" : b.payment_status}
-          </span>
+
+      <div
+        style={{
+          background: "var(--od-surface-subtle)",
+          border: "1px solid var(--od-line)",
+          borderRadius: 12,
+          padding: "12px 16px",
+          marginTop: 14,
+        }}
+      >
+        <p className="od-card__guest" style={{ margin: 0, fontWeight: 500 }} data-testid={`booking-guest-${b.id}`}>
+          <strong style={{ fontSize: 14 }}>{b.name}</strong>
+          <a href={`mailto:${b.email}`}>✉️ {b.email}</a>
+          {b.phone && <a href={`tel:${b.phone}`}>📞 {b.phone}</a>}
+        </p>
+        {b.message && (
+          <p style={{ margin: "8px 0 0", fontSize: 13, color: "var(--od-ink)", fontStyle: "italic" }}>
+            “{b.message}”
+          </p>
         )}
       </div>
-    </div>
-    <p className="od-card__guest" data-testid={`booking-guest-${b.id}`}>
-      <strong>{b.name}</strong>
-      <a href={`mailto:${b.email}`}>{b.email}</a>
-      {b.phone && <a href={`tel:${b.phone}`}>{b.phone}</a>}
-    </p>
-    {b.message && <p className="od-card__msg">“{b.message}”</p>}
-    {actionError?.id === b.id && <p className="od-form-error" role="alert" data-testid={`booking-error-${b.id}`}>{actionError.message}</p>}
-    <div className="od-card__actions">
-      {b.status === "requested" && <>
-        <button type="button" className="od-btn od-btn--approve" disabled={busy} onClick={() => onAction(b, "confirmed")} data-testid={`approve-btn-${b.id}`}>{busy ? <Loader2 size={14} className="od-spin" /> : null}Approve</button>
-        <button type="button" className="od-btn od-btn--decline" disabled={busy} onClick={() => onAction(b, "declined")} data-testid={`decline-btn-${b.id}`}>Decline</button>
-      </>}
-      {b.status === "confirmed" && <button type="button" className="od-btn od-btn--decline" disabled={busy} onClick={() => onAction(b, "cancelled")} data-testid={`cancel-btn-${b.id}`}>{busy ? <Loader2 size={14} className="od-spin" /> : null}Cancel booking</button>}
-      {(b.payment_status === "paid" || b.payment_status === "paid_conflict") && (
-        <button type="button" className="od-btn od-btn--decline" disabled={busy} onClick={() => onAction(b, "refund")} data-testid={`refund-btn-${b.id}`}>
-          {busy ? <Loader2 size={14} className="od-spin" /> : null}Issue Refund & Cancel
-        </button>
+
+      {actionError?.id === b.id && (
+        <p className="od-form-error" role="alert" data-testid={`booking-error-${b.id}`}>
+          {actionError.message}
+        </p>
       )}
-    </div>
-  </article>;
+
+      <div className="od-card__actions" style={{ marginTop: 16 }}>
+        <button
+          type="button"
+          className="od-btn od-btn--approve"
+          style={{ fontWeight: 700 }}
+          disabled={busy}
+          onClick={() => onAction(b, "confirmed")}
+          data-testid={`approve-btn-${b.id}`}
+        >
+          {busy ? <Loader2 size={14} className="od-spin" /> : <CheckCircle size={14} style={{ display: "inline-block", marginRight: 4, verticalAlign: "middle" }} />}
+          Approve & Confirm Stay
+        </button>
+        <button
+          type="button"
+          className="od-btn od-btn--decline"
+          disabled={busy}
+          onClick={() => onAction(b, "declined")}
+          data-testid={`decline-btn-${b.id}`}
+        >
+          <XCircle size={14} style={{ display: "inline-block", marginRight: 4, verticalAlign: "middle" }} />
+          Decline Request
+        </button>
+      </div>
+    </article>
+  );
 }
+
+function MasterBookingCard({ booking, onAction, busyId, actionError }) {
+  const b = booking;
+  const busy = busyId === b.id;
+  const total = inr(b.total);
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const isPast = Boolean(b.check_out && b.check_out < todayStr);
+  const isCompleted = b.status === "confirmed" && isPast;
+
+  return (
+    <article
+      className="od-card"
+      style={{
+        borderLeft: `4px solid ${
+          isCompleted
+            ? "var(--od-muted)"
+            : b.status === "confirmed"
+            ? "var(--od-green)"
+            : b.status === "requested"
+            ? "var(--od-gold-d)"
+            : "var(--od-line)"
+        }`,
+      }}
+      data-testid={`booking-card-${b.id}`}
+    >
+      <div className="od-card__top">
+        <div>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 4 }}>
+            <span className="od-ref">
+              {b.reference ? `#${b.reference}` : `REF: ${b.id.slice(0, 8)}`}
+              {b.mode ? ` · ${b.mode === "instant" ? "Instant book" : "Request to book"}` : ""}
+            </span>
+          </div>
+          <h3 className="od-card__stay">{b.stay}</h3>
+          <p className="od-card__meta">
+            <span>
+              {fmtDate(b.check_in)} → {fmtDate(b.check_out)}
+              {b.nights ? ` · ${b.nights} night${b.nights === 1 ? "" : "s"}` : ""}
+            </span>
+            <span>{b.guests} guest{b.guests === 1 ? "" : "s"}</span>
+            {total && <span style={{ fontWeight: 600 }}>{total}</span>}
+            <span>Created {fmtStamp(b.created_at)}</span>
+          </p>
+        </div>
+
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+          {isCompleted ? (
+            <span className="od-pill" style={{ background: "var(--od-surface-subtle)", color: "var(--od-muted)" }} data-testid={`booking-status-${b.id}`}>
+              Completed Stay
+            </span>
+          ) : (
+            <span className={`od-pill od-pill--${b.status}`} data-testid={`booking-status-${b.id}`}>
+              {b.status === "requested" ? "Pending Request" : b.status}
+            </span>
+          )}
+
+          {b.payment_status && b.payment_status !== "not_required" && (
+            <span
+              className={`od-pill od-pill--${
+                b.payment_status === "paid" ? "confirmed" : b.payment_status === "refunded" ? "cancelled" : "requested"
+              }`}
+              data-testid={`booking-payment-${b.id}`}
+            >
+              {b.payment_status === "paid"
+                ? "Paid Online"
+                : b.payment_status === "refunded"
+                ? "Refunded"
+                : b.payment_status === "paid_conflict"
+                ? "Paid Conflict"
+                : b.payment_status}
+            </span>
+          )}
+        </div>
+      </div>
+
+      <p className="od-card__guest" data-testid={`booking-guest-${b.id}`}>
+        <strong>{b.name}</strong>
+        <a href={`mailto:${b.email}`}>✉️ {b.email}</a>
+        {b.phone && <a href={`tel:${b.phone}`}>📞 {b.phone}</a>}
+      </p>
+
+      {b.message && <p className="od-card__msg">“{b.message}”</p>}
+
+      {actionError?.id === b.id && (
+        <p className="od-form-error" role="alert" data-testid={`booking-error-${b.id}`}>
+          {actionError.message}
+        </p>
+      )}
+
+      <div className="od-card__actions">
+        {b.status === "requested" && (
+          <>
+            <button
+              type="button"
+              className="od-btn od-btn--approve"
+              disabled={busy}
+              onClick={() => onAction(b, "confirmed")}
+              data-testid={`approve-btn-${b.id}`}
+            >
+              {busy ? <Loader2 size={14} className="od-spin" /> : <CheckCircle size={14} style={{ display: "inline-block", marginRight: 4, verticalAlign: "middle" }} />}
+              Approve
+            </button>
+            <button
+              type="button"
+              className="od-btn od-btn--decline"
+              disabled={busy}
+              onClick={() => onAction(b, "declined")}
+              data-testid={`decline-btn-${b.id}`}
+            >
+              Decline
+            </button>
+          </>
+        )}
+
+        {b.status === "confirmed" && !isPast && (
+          <button
+            type="button"
+            className="od-btn od-btn--decline"
+            disabled={busy}
+            onClick={() => onAction(b, "cancelled")}
+            data-testid={`cancel-btn-${b.id}`}
+          >
+            {busy && <Loader2 size={14} className="od-spin" />}Cancel booking
+          </button>
+        )}
+
+        {(b.payment_status === "paid" || b.payment_status === "paid_conflict") && (
+          <button
+            type="button"
+            className="od-btn od-btn--decline"
+            disabled={busy}
+            onClick={() => onAction(b, "refund")}
+            data-testid={`refund-btn-${b.id}`}
+          >
+            {busy && <Loader2 size={14} className="od-spin" />}Issue Refund & Cancel
+          </button>
+        )}
+
+        <a
+          href={`mailto:${b.email}?subject=Regarding your booking at ${encodeURIComponent(b.stay)}`}
+          className="od-btn"
+          style={{ textDecoration: "none" }}
+        >
+          <Mail size={13} style={{ display: "inline-block", marginRight: 4, verticalAlign: "middle" }} />
+          Email Guest
+        </a>
+      </div>
+    </article>
+  );
+}
+
+const BookingCard = MasterBookingCard;
 
 function EnquiryCard({ item }) {
   const summary = item.message || item.requirements || item.notes || [item.product, item.brand].filter(Boolean).join(" · ");
@@ -460,6 +672,9 @@ function Dashboard({ initialWorkspace, theme, onToggleTheme }) {
     return "requests";
   });
   const [filter, setFilter] = useState("All");
+  const [bookingFilter, setBookingFilter] = useState("All");
+  const [bookingSearch, setBookingSearch] = useState("");
+  const [bookingSort, setBookingSort] = useState("newest");
   const [busyId, setBusyId] = useState("");
   const [actionError, setActionError] = useState(null);
 
@@ -486,6 +701,52 @@ function Dashboard({ initialWorkspace, theme, onToggleTheme }) {
 
   const requests = useMemo(() => data.bookings.filter((b) => b.status === "requested"), [data.bookings]);
   const enquiries = useMemo(() => filter === "All" ? data.enquiries : data.enquiries.filter((e) => e.type === filter), [data.enquiries, filter]);
+
+  const bookingCounts = useMemo(() => {
+    const all = data.bookings.length;
+    const requested = data.bookings.filter((b) => b.status === "requested").length;
+    const confirmed = data.bookings.filter((b) => b.status === "confirmed").length;
+    const cancelled = data.bookings.filter((b) => b.status === "cancelled" || b.status === "declined").length;
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const completed = data.bookings.filter((b) => b.status === "confirmed" && b.check_out && b.check_out < todayStr).length;
+    return { all, requested, confirmed, cancelled, completed };
+  }, [data.bookings]);
+
+  const filteredBookings = useMemo(() => {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    let list = [...data.bookings];
+
+    if (bookingFilter === "Requested") {
+      list = list.filter((b) => b.status === "requested");
+    } else if (bookingFilter === "Confirmed") {
+      list = list.filter((b) => b.status === "confirmed");
+    } else if (bookingFilter === "Completed") {
+      list = list.filter((b) => b.status === "confirmed" && b.check_out && b.check_out < todayStr);
+    } else if (bookingFilter === "Cancelled") {
+      list = list.filter((b) => b.status === "cancelled" || b.status === "declined");
+    }
+
+    if (bookingSearch.trim()) {
+      const q = bookingSearch.trim().toLowerCase();
+      list = list.filter((b) =>
+        (b.name && b.name.toLowerCase().includes(q)) ||
+        (b.email && b.email.toLowerCase().includes(q)) ||
+        (b.stay && b.stay.toLowerCase().includes(q)) ||
+        (b.phone && b.phone.toLowerCase().includes(q)) ||
+        (b.reference && b.reference.toLowerCase().includes(q))
+      );
+    }
+
+    if (bookingSort === "newest") {
+      list.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+    } else if (bookingSort === "upcoming") {
+      list.sort((a, b) => (a.check_in || "").localeCompare(b.check_in || ""));
+    } else if (bookingSort === "stay") {
+      list.sort((a, b) => (a.stay || "").localeCompare(b.stay || ""));
+    }
+
+    return list;
+  }, [data.bookings, bookingFilter, bookingSearch, bookingSort]);
 
   const act = async (booking, status) => {
     setBusyId(booking.id);
@@ -546,8 +807,12 @@ function Dashboard({ initialWorkspace, theme, onToggleTheme }) {
         <HorizontalScrollArea scrollAmount={280}>
           <div className="od-tabs" role="tablist" style={{ borderBottom: "none", marginBottom: 0, paddingBottom: 0 }}>
             <span className="od-tab-group-label">BOOKINGS & ENQUIRIES:</span>
-            <button type="button" role="tab" aria-selected={tab === "requests"} className={`od-tab ${tab === "requests" ? "is-on" : ""}`} onClick={() => setTab("requests")} data-testid="owner-tab-requests">Night requests{requests.length > 0 && <span className="od-tab__count">{requests.length}</span>}</button>
-            <button type="button" role="tab" aria-selected={tab === "bookings"} className={`od-tab ${tab === "bookings" ? "is-on" : ""}`} onClick={() => setTab("bookings")} data-testid="owner-tab-bookings">All bookings</button>
+            <button type="button" role="tab" aria-selected={tab === "requests"} className={`od-tab ${tab === "requests" ? "is-on" : ""}`} onClick={() => setTab("requests")} data-testid="owner-tab-requests">
+              Night requests{requests.length > 0 && <span className="od-tab__count">{requests.length}</span>}
+            </button>
+            <button type="button" role="tab" aria-selected={tab === "bookings"} className={`od-tab ${tab === "bookings" ? "is-on" : ""}`} onClick={() => setTab("bookings")} data-testid="owner-tab-bookings">
+              All bookings{data.bookings.length > 0 && <span className="od-tab__count" style={{ background: "var(--od-surface-subtle)", color: "var(--od-ink)" }}>{data.bookings.length}</span>}
+            </button>
             <button type="button" role="tab" aria-selected={tab === "enquiries"} className={`od-tab ${tab === "enquiries" ? "is-on" : ""}`} onClick={() => setTab("enquiries")} data-testid="owner-tab-enquiries">Enquiries</button>
             <button type="button" role="tab" aria-selected={tab === "stays"} className={`od-tab ${tab === "stays" ? "is-on" : ""}`} onClick={() => setTab("stays")} data-testid="owner-tab-stays">
               <BedDouble size={14} style={{ display: "inline-block", marginRight: 5, verticalAlign: "middle" }} />Stays & Rooms (Airbnb)
@@ -575,17 +840,150 @@ function Dashboard({ initialWorkspace, theme, onToggleTheme }) {
 
       {tab === "screens" && <section data-testid="owner-screens"><VisualScreenDirectory initialScreen="home" /></section>}
 
-      {tab === "requests" && <section data-testid="owner-requests">
-        {requests.length === 0
-          ? <div className="od-empty" data-testid="owner-requests-empty">No pending night requests. New “Request a night” bookings will appear here.</div>
-          : requests.map((b) => <BookingCard key={b.id} booking={b} onAction={act} busyId={busyId} actionError={actionError} />)}
-      </section>}
+      {tab === "requests" && (
+        <section data-testid="owner-requests">
+          <div style={{ marginBottom: 16 }}>
+            <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+              <Clock size={18} style={{ color: "var(--od-gold-d)" }} />
+              Pending Night Requests
+              {requests.length > 0 && <span className="od-pill od-pill--requested" style={{ fontSize: 11, padding: "2px 8px" }}>{requests.length} Awaiting Approval</span>}
+            </h2>
+            <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--od-muted)" }}>
+              Guest reservation requests awaiting owner review. Confirm or decline to update calendar availability.
+            </p>
+          </div>
+          {requests.length === 0 ? (
+            <div className="od-empty" data-testid="owner-requests-empty">
+              <CheckCircle size={28} style={{ margin: "0 auto 10px", color: "var(--od-green)", display: "block" }} />
+              <strong style={{ display: "block", fontSize: 15, marginBottom: 4 }}>All Caught Up!</strong>
+              <span>No pending night requests. When visitors use “Request a night” on any stay, their request will appear here for one-click approval.</span>
+            </div>
+          ) : (
+            requests.map((b) => (
+              <NightRequestCard key={b.id} booking={b} onAction={act} busyId={busyId} actionError={actionError} />
+            ))
+          )}
+        </section>
+      )}
 
-      {tab === "bookings" && <section data-testid="owner-bookings">
-        {data.bookings.length === 0
-          ? <div className="od-empty" data-testid="owner-bookings-empty">No bookings yet.</div>
-          : data.bookings.map((b) => <BookingCard key={b.id} booking={b} onAction={act} busyId={busyId} actionError={actionError} />)}
-      </section>}
+      {tab === "bookings" && (
+        <section data-testid="owner-bookings">
+          <div style={{ marginBottom: 16 }}>
+            <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+              <Calendar size={18} style={{ color: "var(--od-gold-d)" }} />
+              Master Reservations Ledger
+              <span className="od-pill" style={{ background: "var(--od-surface-subtle)", color: "var(--od-ink)", fontSize: 11, padding: "2px 8px" }}>
+                {data.bookings.length} Total
+              </span>
+            </h2>
+            <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--od-muted)" }}>
+              Comprehensive register of all guest bookings with status breakdown, guest contact details, and booking management.
+            </p>
+          </div>
+
+          {/* Quick Metrics Bar */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 10, marginBottom: 16 }}>
+            <div className="od-stat" style={{ padding: "10px 14px", margin: 0 }}>
+              <b style={{ fontSize: 18 }}>{data.bookings.length}</b>
+              <span style={{ fontSize: 11 }}>Total Bookings</span>
+            </div>
+            <div className="od-stat" style={{ padding: "10px 14px", margin: 0 }}>
+              <b style={{ fontSize: 18, color: "var(--od-green)" }}>{bookingCounts.confirmed}</b>
+              <span style={{ fontSize: 11 }}>Confirmed</span>
+            </div>
+            <div className="od-stat" style={{ padding: "10px 14px", margin: 0 }}>
+              <b style={{ fontSize: 18, color: bookingCounts.requested > 0 ? "var(--od-gold-d)" : "inherit" }}>{bookingCounts.requested}</b>
+              <span style={{ fontSize: 11 }}>Pending Approval</span>
+            </div>
+            <div className="od-stat" style={{ padding: "10px 14px", margin: 0 }}>
+              <b style={{ fontSize: 18, color: "var(--od-muted)" }}>{bookingCounts.cancelled}</b>
+              <span style={{ fontSize: 11 }}>Cancelled</span>
+            </div>
+          </div>
+
+          {/* Filters, Search & Sort */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 16 }}>
+            <div className="od-filters" style={{ margin: 0 }}>
+              {[
+                { id: "All", label: `All (${bookingCounts.all})` },
+                { id: "Confirmed", label: `Confirmed (${bookingCounts.confirmed})` },
+                { id: "Requested", label: `Pending (${bookingCounts.requested})` },
+                { id: "Completed", label: `Completed (${bookingCounts.completed})` },
+                { id: "Cancelled", label: `Cancelled (${bookingCounts.cancelled})` },
+              ].map((f) => (
+                <button
+                  key={f.id}
+                  type="button"
+                  className={`od-chip ${bookingFilter === f.id ? "is-on" : ""}`}
+                  onClick={() => setBookingFilter(f.id)}
+                  data-testid={`booking-filter-${f.id.toLowerCase()}`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <div style={{ position: "relative", minWidth: 200 }}>
+                <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--od-muted)" }} />
+                <input
+                  type="text"
+                  placeholder="Search guest, stay, ref..."
+                  value={bookingSearch}
+                  onChange={(e) => setBookingSearch(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "6px 12px 6px 30px",
+                    borderRadius: 999,
+                    border: "1px solid var(--od-line)",
+                    background: "var(--od-surface)",
+                    color: "var(--od-ink)",
+                    fontSize: 12,
+                  }}
+                  data-testid="booking-search-input"
+                />
+              </div>
+
+              <select
+                value={bookingSort}
+                onChange={(e) => setBookingSort(e.target.value)}
+                style={{
+                  padding: "6px 10px",
+                  borderRadius: 999,
+                  border: "1px solid var(--od-line)",
+                  background: "var(--od-surface)",
+                  color: "var(--od-ink)",
+                  fontSize: 12,
+                  cursor: "pointer",
+                }}
+                data-testid="booking-sort-select"
+              >
+                <option value="newest">Sort: Newest</option>
+                <option value="upcoming">Sort: Check-in Date</option>
+                <option value="stay">Sort: Stay Name</option>
+              </select>
+            </div>
+          </div>
+
+          {filteredBookings.length === 0 ? (
+            <div className="od-empty" data-testid="owner-bookings-empty">
+              {data.bookings.length === 0
+                ? "No bookings yet."
+                : `No reservations match the “${bookingFilter}” filter${bookingSearch ? ` or search “${bookingSearch}”` : ""}.`}
+            </div>
+          ) : (
+            filteredBookings.map((b) => (
+              <MasterBookingCard
+                key={b.id}
+                booking={b}
+                onAction={act}
+                busyId={busyId}
+                actionError={actionError}
+              />
+            ))
+          )}
+        </section>
+      )}
 
       {tab === "enquiries" && <section data-testid="owner-enquiries">
         <div className="od-filters">
