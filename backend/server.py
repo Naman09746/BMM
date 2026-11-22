@@ -2422,6 +2422,7 @@ async def admin_delete_project(identifier: str, _: dict = Depends(require_admin)
 
 # --- Site content endpoints ---
 
+@api_router.get("/content")
 @api_router.get("/site-content")
 async def get_site_content(response: Response):
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"

@@ -1089,6 +1089,15 @@ function AppRoutes() {
       </PageShell>;
 }
 
+function AppContent() {
+  const location = useLocation();
+  return (
+    <SecondaryLoadBoundary key={location.pathname}>
+      <AppRoutes />
+    </SecondaryLoadBoundary>
+  );
+}
+
 function App() {
   useEffect(() => {
     const backendUrl = (process.env.REACT_APP_BACKEND_URL || (typeof window !== "undefined" ? window.location.origin : "")).replace(/\/$/, "");
@@ -1110,7 +1119,7 @@ function App() {
       <ConsultationProvider>
       <SampleProvider>
       <InquiryProvider>
-      <SecondaryLoadBoundary><AppRoutes /></SecondaryLoadBoundary>
+        <AppContent />
       </InquiryProvider>
       </SampleProvider>
       </ConsultationProvider>
@@ -1132,14 +1141,23 @@ function loadSecondaryPages() {
     secondaryPagePromise = (async () => {
       const config = window.BDS_WORDPRESS;
       if (config?.deferredContent) {
-        const response = await apiFetch(apiPath('/content'));
-        if (!response.ok) throw new Error('Unable to load website content');
-        const content = await response.json();
-        config.content = { ...config.content, ...content };
-        config.deferredContent = false;
+        try {
+          const response = await apiFetch(apiPath('/site-content'));
+          if (response.ok) {
+            const content = await response.json();
+            config.content = { ...config.content, ...content };
+            config.deferredContent = false;
+          }
+        } catch (err) {
+          console.warn('Deferred content load failed, using local content:', err);
+        }
       }
       return import('./SecondaryPages');
-    })().catch(error => { secondaryPagePromise = undefined; throw error; });
+    })().catch((error) => {
+      secondaryPagePromise = undefined;
+      console.error('Failed to import SecondaryPages:', error);
+      throw error;
+    });
   }
   return secondaryPagePromise;
 }
@@ -1167,10 +1185,31 @@ const DeferredInquiryModal = lazy(() => loadSecondaryPages().then(module => ({de
 function InquiryModal() { const {open} = useInquiry(); return open ? <Suspense fallback={null}><DeferredInquiryModal /></Suspense> : null; }
 
 class SecondaryLoadBoundary extends Component {
-  state = { failed: false };
-  static getDerivedStateFromError() { return { failed: true }; }
+  state = { failed: false, error: null };
+  static getDerivedStateFromError(error) { return { failed: true, error }; }
+  componentDidCatch(error, errorInfo) {
+    console.error("SecondaryLoadBoundary caught error:", error, errorInfo);
+  }
   render() {
-    if (this.state.failed) return <main className="sx-page sx-center" role="alert"><div><p>This page could not be loaded. Please try again.</p><button type="button" onClick={() => window.location.reload()}>Reload page</button></div></main>;
+    if (this.state.failed) {
+      return (
+        <main className="sx-page sx-center" role="alert" style={{ minHeight: "60vh", display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", padding: "60px 20px" }}>
+          <div>
+            <h2 style={{ fontSize: "24px", marginBottom: "12px", fontFamily: "var(--font-serif, serif)" }}>This page could not be loaded.</h2>
+            <p style={{ color: "var(--od-muted, #777)", marginBottom: "20px" }}>Please try reloading the page, or return to the homepage.</p>
+            {this.state.error && process.env.NODE_ENV !== "production" && (
+              <pre style={{ maxWidth: 640, margin: "0 auto 20px", textAlign: "left", background: "rgba(0,0,0,0.04)", padding: 12, borderRadius: 8, fontSize: 12, color: "#e11d48", overflowX: "auto" }}>
+                {this.state.error.toString()}
+              </pre>
+            )}
+            <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
+              <button type="button" className="np-btn np-btn--solid" onClick={() => { this.setState({ failed: false, error: null }); window.location.reload(); }}>Reload page</button>
+              <a href="/" className="np-btn np-btn--ghost" onClick={() => { this.setState({ failed: false, error: null }); }}>Go to Homepage</a>
+            </div>
+          </div>
+        </main>
+      );
+    }
     return this.props.children;
   }
 }

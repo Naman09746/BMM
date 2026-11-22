@@ -7,11 +7,12 @@ let snap = null;
 // Idempotent — safe to call from any component effect; child effects run before parent ones
 export function initSmoothScroll() {
   if (lenis) return { lenis, snap };
-  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const hasMatchMedia = typeof window !== "undefined" && typeof window.matchMedia === "function";
+  const reduced = hasMatchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)").matches : false;
   // Mobile/small viewports: plain native scrolling — no smooth-scroll loop, no panel
   // snap (the "sticky" card behaviour is a desktop-only experience). This also removes
   // the per-frame Lenis work that made mobile scroll feel laggy.
-  if (reduced || window.matchMedia("(max-width: 900px)").matches) return { lenis: null, snap: null };
+  if (reduced || (hasMatchMedia && window.matchMedia("(max-width: 900px)").matches)) return { lenis: null, snap: null };
   // Clearly-sideways gestures over [data-hscroll] rows scroll the row natively; everything else scrolls the page.
   const virtualScroll = ({ deltaX, deltaY, event }) => {
     if (event?.target?.closest?.("[data-lenis-prevent], .cm-modal, .cm-modal-overlay, [role='dialog'], [aria-modal='true']")) return false;

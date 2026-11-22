@@ -102,7 +102,26 @@ export function useAvailability(stayName) {
 }
 
 export function useIsMobile(query = "(max-width: 768px)") {
-  const [match, setMatch] = useState(() => window.matchMedia(query).matches);
-  useEffect(() => { const mq = window.matchMedia(query); const on = () => setMatch(mq.matches); mq.addEventListener("change", on); return () => mq.removeEventListener("change", on); }, [query]);
+  const [match, setMatch] = useState(() => {
+    if (typeof window !== "undefined" && typeof window.matchMedia === "function") {
+      try { return window.matchMedia(query).matches; } catch { return false; }
+    }
+    return false;
+  });
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return undefined;
+    try {
+      const mq = window.matchMedia(query);
+      const on = () => setMatch(mq.matches);
+      if (typeof mq.addEventListener === "function") {
+        mq.addEventListener("change", on);
+        return () => mq.removeEventListener("change", on);
+      } else if (typeof mq.addListener === "function") {
+        mq.addListener(on);
+        return () => mq.removeListener(on);
+      }
+    } catch {}
+    return undefined;
+  }, [query]);
   return match;
 }
