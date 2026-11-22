@@ -1682,6 +1682,19 @@
   right: 4px;
 }
 
+.h-scroll-wrap--dark .h-scroll-arrow {
+  background: #1c1813;
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+.h-scroll-wrap--dark .h-scroll-arrow:hover {
+  background: var(--od-gold);
+  color: #0d0b09;
+  border-color: var(--od-gold);
+}
+
 /* Screen Selector Step Pill */
 .vsd-screen-step {
   flex: 0 0 clamp(160px, 17vw, 210px);
@@ -1866,6 +1879,95 @@
   letter-spacing: 0.5px;
   margin-left: 6px;
 }
+
+/* =========================================================================
+   SCREEN 07 BRAND DIRECTORY CARDS & MODAL STYLES
+   ========================================================================= */
+.vsd-brand-card {
+  background: var(--od-paper);
+  border: 1px solid var(--od-line);
+  border-radius: 14px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  position: relative;
+}
+
+.vsd-brand-card:hover {
+  border-color: var(--od-gold-d);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+}
+
+.vsd-brand-order-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: rgba(13, 11, 9, 0.72);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  font-family: monospace;
+  padding: 2px 6px;
+  border-radius: 5px;
+  z-index: 2;
+  backdrop-filter: blur(4px);
+}
+
+.vsd-brand-order-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 6px;
+  border: 1px solid var(--od-line);
+  background: var(--od-surface);
+  color: var(--od-ink);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.vsd-brand-order-btn:hover:not(:disabled) {
+  background: var(--od-ink);
+  color: #fff;
+  border-color: var(--od-ink);
+}
+
+.vsd-brand-order-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.vsd-reel-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 7px;
+  font-size: 11.5px;
+  font-weight: 600;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.vsd-reel-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.35);
+  transform: translateY(-1px);
+}
+
+.vsd-reel-btn.is-active {
+  background: var(--od-gold);
+  color: #0d0b09;
+  border-color: var(--od-gold);
+}
+
 
 
 

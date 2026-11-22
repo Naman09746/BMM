@@ -23,6 +23,13 @@ import {
   CheckCircle2,
   Grid as GridIcon,
   Film,
+  ChevronLeft,
+  ChevronRight,
+  Play,
+  Pause,
+  Pencil,
+  X,
+  RotateCcw,
 } from "lucide-react";
 import { api, resolveBackendMedia } from "../stays/store";
 import { publicAsset } from "../wordpress";
@@ -62,6 +69,36 @@ export function VisualScreenDirectory({ initialScreen = "home" }) {
   const [uploadingTarget, setUploadingTarget] = useState(null); // { id, field, index }
   const [toast, setToast] = useState("");
   const [searchFilter, setSearchFilter] = useState("");
+
+  // Reel Preview State (07.1)
+  const reelRef = useRef(null);
+  const [isAutoScrolling, setIsAutoScrolling] = useState(false);
+
+  // Brand Management State (07.2)
+  const [editingClientIdx, setEditingClientIdx] = useState(null);
+  const [editingClientName, setEditingClientName] = useState("");
+  const [isAddLogoModalOpen, setIsAddLogoModalOpen] = useState(false);
+  const [newLogoName, setNewLogoName] = useState("");
+  const [newLogoFile, setNewLogoFile] = useState(null);
+  const [newLogoPreview, setNewLogoPreview] = useState("");
+  const [newLogoSubmitting, setNewLogoSubmitting] = useState(false);
+  const [brandFilterMode, setBrandFilterMode] = useState("all"); // "all" | "with_logo" | "no_logo"
+
+  // Continuous Marquee Auto-Scroll Simulator
+  useEffect(() => {
+    if (!isAutoScrolling) return;
+    const el = reelRef.current?.getElement?.();
+    if (!el) return;
+    const interval = setInterval(() => {
+      if (!el) return;
+      if (el.scrollLeft >= el.scrollWidth - el.clientWidth - 4) {
+        el.scrollLeft = 0;
+      } else {
+        el.scrollLeft += 1.8;
+      }
+    }, 24);
+    return () => clearInterval(interval);
+  }, [isAutoScrolling]);
 
   const showToast = (msg) => {
     setToast(msg);
@@ -553,16 +590,71 @@ export function VisualScreenDirectory({ initialScreen = "home" }) {
     }
   };
 
-  const handleAddClientLogo = async (file, name) => {
-    if (!file || !name.trim()) return;
+  const handleStartEditClient = (idx, currentName) => {
+    setEditingClientIdx(idx);
+    setEditingClientName(currentName);
+  };
+
+  const handleSaveEditClient = async (idx) => {
+    if (!editingClientName.trim()) return;
+    const nextClients = [...siteContent.clients];
+    const oldName = nextClients[idx].name;
+    const newName = editingClientName.trim();
+    nextClients[idx] = { ...nextClients[idx], name: newName };
+    const updated = { ...siteContent, clients: nextClients };
+    setEditingClientIdx(null);
+    await persistSiteContent(updated, `Renamed "${oldName}" to "${newName}"`);
+  };
+
+  const handleCancelEditClient = () => {
+    setEditingClientIdx(null);
+    setEditingClientName("");
+  };
+
+  const handleReorderClient = async (idx, direction) => {
+    const targetIdx = idx + direction;
+    if (targetIdx < 0 || targetIdx >= siteContent.clients.length) return;
+    const nextClients = [...siteContent.clients];
+    const temp = nextClients[idx];
+    nextClients[idx] = nextClients[targetIdx];
+    nextClients[targetIdx] = temp;
+    const updated = { ...siteContent, clients: nextClients };
+    await persistSiteContent(updated, `Reordered Brand: "${temp.name}"`);
+  };
+
+  const handleRestoreDefaultClients = async () => {
+    if (!window.confirm("Restore the brand directory to the original 24 curated partner brands? This will reset custom brand changes.")) return;
+    const updated = { ...siteContent, clients: DEFAULT_CLIENTS };
+    await persistSiteContent(updated, "Restored 24 Curated Partner Brands");
+  };
+
+  const handleAddBrandSubmit = async (e) => {
+    e?.preventDefault?.();
+    if (!newLogoName.trim()) {
+      alert("Please enter a company or brand name.");
+      return;
+    }
+    setNewLogoSubmitting(true);
     try {
-      const url = await handleFileUpload(file);
-      if (!url) return;
-      const nextClients = [{ name: name.trim(), logo: url }, ...siteContent.clients];
+      let uploadedUrl = "";
+      if (newLogoFile) {
+        uploadedUrl = await handleFileUpload(newLogoFile);
+      }
+      const newBrand = {
+        name: newLogoName.trim(),
+        logo: uploadedUrl || "",
+      };
+      const nextClients = [newBrand, ...siteContent.clients];
       const updated = { ...siteContent, clients: nextClients };
-      await persistSiteContent(updated, `New Brand Logo: "${name.trim()}"`);
+      await persistSiteContent(updated, `Added Brand: "${newBrand.name}"`);
+      setIsAddLogoModalOpen(false);
+      setNewLogoName("");
+      setNewLogoFile(null);
+      setNewLogoPreview("");
     } catch (err) {
       alert("Failed to add brand logo: " + err.message);
+    } finally {
+      setNewLogoSubmitting(false);
     }
   };
 
@@ -2233,7 +2325,7 @@ export function VisualScreenDirectory({ initialScreen = "home" }) {
          ========================================================================= */}
       {activeScreen === "clients" && (
         <div style={{ display: "grid", gap: 24 }}>
-          {/* Section 1: Live Animated Marquee Reel with Smooth Horizontal Scroll & Dark Edge Fades */}
+          {/* Section 1: Live Animated Marquee Reel with Smooth Horizontal Scroll & Interactive Controls */}
           <div className="od-card" style={{ padding: 24, borderRadius: 18 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, borderBottom: "1px solid var(--od-line)", paddingBottom: 10, flexWrap: "wrap", gap: 10 }}>
               <div>
@@ -2256,36 +2348,109 @@ export function VisualScreenDirectory({ initialScreen = "home" }) {
             </div>
 
             <div style={{ background: "#0a0806", padding: "20px 16px", borderRadius: 14, overflow: "hidden" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", fontFamily: "monospace", textTransform: "uppercase" }}>
-                  Interactive Reel Preview · {siteContent.clients.length} Partner Brands
-                </span>
-                <span style={{ fontSize: 11, color: "var(--od-gold)" }}>
-                  ✦ Drag / Scroll to inspect logos ➔
-                </span>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, flexWrap: "wrap", gap: 10 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", fontFamily: "monospace", textTransform: "uppercase" }}>
+                    Interactive Reel Preview · {siteContent.clients.length} Partner Brands
+                  </span>
+                  <span style={{ fontSize: 11, color: "var(--od-gold)", background: "rgba(201,162,98,0.12)", padding: "2px 8px", borderRadius: 4 }}>
+                    ✦ Drag, roll wheel, or use arrows
+                  </span>
+                </div>
+
+                {/* Explicit Navigation & Playback Toolbar */}
+                <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                  <button
+                    type="button"
+                    className={`vsd-reel-btn ${isAutoScrolling ? "is-active" : ""}`}
+                    onClick={() => setIsAutoScrolling((prev) => !prev)}
+                    title={isAutoScrolling ? "Pause continuous scroll simulation" : "Simulate live site continuous marquee"}
+                  >
+                    {isAutoScrolling ? <Pause size={12} /> : <Play size={12} />}
+                    {isAutoScrolling ? "Pause Marquee" : "Auto-Scroll"}
+                  </button>
+                  <button
+                    type="button"
+                    className="vsd-reel-btn"
+                    onClick={() => reelRef.current?.scrollBy(-320)}
+                    title="Scroll left by 3 logos"
+                  >
+                    <ChevronLeft size={13} /> Prev
+                  </button>
+                  <button
+                    type="button"
+                    className="vsd-reel-btn"
+                    onClick={() => reelRef.current?.scrollBy(320)}
+                    title="Scroll right by 3 logos"
+                  >
+                    Next <ChevronRight size={13} />
+                  </button>
+                  <button
+                    type="button"
+                    className="vsd-reel-btn"
+                    onClick={() => reelRef.current?.scrollToStart()}
+                    title="Jump to first logo"
+                    style={{ padding: "5px 8px" }}
+                  >
+                    ⏮
+                  </button>
+                  <button
+                    type="button"
+                    className="vsd-reel-btn"
+                    onClick={() => reelRef.current?.scrollToEnd()}
+                    title="Jump to last logo"
+                    style={{ padding: "5px 8px" }}
+                  >
+                    ⏭
+                  </button>
+                </div>
               </div>
 
-              <HorizontalScrollArea dark={true} scrollAmount={300}>
+              <HorizontalScrollArea ref={reelRef} dark={true} scrollAmount={300}>
                 {siteContent.clients.map((c, i) => {
                   const logoUrl = c.logo?.startsWith("http") || c.logo?.startsWith("/") ? resolveBackendMedia(c.logo) : publicAsset(c.logo);
                   return (
                     <div
                       key={i}
                       style={{
-                        flex: "0 0 130px",
-                        height: 54,
+                        flex: "0 0 140px",
+                        height: 56,
                         background: "#fff",
-                        borderRadius: 8,
+                        borderRadius: 9,
                         display: "grid",
                         placeItems: "center",
-                        padding: "4px 10px",
+                        padding: "6px 12px",
                         scrollSnapAlign: "start",
+                        position: "relative",
+                        userSelect: "none",
+                        boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
                       }}
+                      title={`${i + 1}. ${c.name}`}
                     >
+                      <span
+                        style={{
+                          position: "absolute",
+                          top: 2,
+                          left: 4,
+                          fontSize: 9,
+                          color: "#888",
+                          fontFamily: "monospace",
+                          fontWeight: 700,
+                        }}
+                      >
+                        #{i + 1}
+                      </span>
                       {logoUrl ? (
-                        <img src={logoUrl} alt={c.name} style={{ maxHeight: 38, maxWidth: "100%", objectFit: "contain" }} />
+                        <img
+                          src={logoUrl}
+                          alt={c.name}
+                          draggable={false}
+                          style={{ maxHeight: 38, maxWidth: "100%", objectFit: "contain", pointerEvents: "none" }}
+                        />
                       ) : (
-                        <span style={{ fontSize: 11, fontWeight: 700, color: "#111", textAlign: "center" }}>{c.name}</span>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: "#111", textAlign: "center", lineHeight: 1.2 }}>
+                          {c.name}
+                        </span>
                       )}
                     </div>
                   );
@@ -2296,7 +2461,7 @@ export function VisualScreenDirectory({ initialScreen = "home" }) {
 
           {/* Section 2: Searchable & Editable Directory of all 24+ Brand Logos */}
           <div className="od-card" style={{ padding: 24, borderRadius: 18 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, borderBottom: "1px solid var(--od-line)", paddingBottom: 10, flexWrap: "wrap", gap: 12 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, borderBottom: "1px solid var(--od-line)", paddingBottom: 12, flexWrap: "wrap", gap: 12 }}>
               <div>
                 <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: "var(--od-gold-d)" }}>
                   07.2 Brand Directory
@@ -2304,110 +2469,391 @@ export function VisualScreenDirectory({ initialScreen = "home" }) {
                 <h3 style={{ margin: "2px 0 0", fontSize: 20 }}>
                   Manage All 24+ Client Brand Logos ({siteContent.clients.length} Total)
                 </h3>
+                <p style={{ margin: "2px 0 0", color: "var(--od-muted)", fontSize: 12 }}>
+                  Edit company names, replace logos, arrange marquee order sequence, or add new partner institutions.
+                </p>
               </div>
 
               <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                <div className="vsd-search-box">
-                  <input
-                    type="text"
-                    placeholder="Search logo (e.g. Taj)..."
-                    value={searchFilter}
-                    onChange={(e) => setSearchFilter(e.target.value)}
-                  />
-                  <Search size={13} style={{ position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)", color: "var(--od-muted)" }} />
-                </div>
-
-                <label className="od-btn od-btn--primary" style={{ padding: "6px 12px", fontSize: 12, cursor: "pointer" }}>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      const name = window.prompt("Enter company or brand name for this logo:");
-                      if (name) handleAddClientLogo(file, name);
-                    }}
-                    style={{ display: "none" }}
-                  />
+                <button
+                  type="button"
+                  className="od-btn od-btn--primary"
+                  onClick={() => setIsAddLogoModalOpen(true)}
+                  style={{ padding: "7px 14px", fontSize: 12 }}
+                >
                   <Plus size={13} /> Add Brand Logo
-                </label>
+                </button>
+
+                <button
+                  type="button"
+                  className="od-btn"
+                  onClick={handleRestoreDefaultClients}
+                  title="Reset to 24 curated default brand partners"
+                  style={{ padding: "7px 12px", fontSize: 12 }}
+                >
+                  <RotateCcw size={12} /> Reset to Curated 24
+                </button>
 
                 <button
                   type="button"
                   className="od-btn"
                   onClick={() => persistSiteContent(siteContent, "Brand Logos")}
                   disabled={savingSection === "Brand Logos"}
-                  style={{ padding: "6px 14px", fontSize: 12 }}
+                  style={{ padding: "7px 14px", fontSize: 12 }}
                 >
                   {savingSection === "Brand Logos" && <Loader2 size={13} className="od-spin" />} Save Brand Directory
                 </button>
               </div>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(clamp(150px, 18vw, 210px), 1fr))", gap: 14 }}>
-              {siteContent.clients
-                .map((client, originalIdx) => ({ client, originalIdx }))
-                .filter(({ client }) => !searchFilter || client.name.toLowerCase().includes(searchFilter.toLowerCase()))
-                .map(({ client, originalIdx }) => {
-                  const logoUrl = client.logo?.startsWith("http") || client.logo?.startsWith("/") ? resolveBackendMedia(client.logo) : publicAsset(client.logo);
-                  const isUploading = uploadingTarget?.id === "client_logo" && uploadingTarget?.field === `logo_${originalIdx}`;
-
-                  return (
-                    <div
-                      key={originalIdx}
-                      style={{
-                        background: "var(--od-paper)",
-                        border: "1px solid var(--od-line)",
-                        borderRadius: 12,
-                        padding: 12,
-                        display: "flex",
-                        flexDirection: "column",
-                        justifyContent: "space-between",
-                      }}
+            {/* Filter and Search Bar */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
+              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                <div className="vsd-search-box" style={{ maxWidth: 300 }}>
+                  <input
+                    type="text"
+                    placeholder="Search brand (e.g. Taj, L&T, ITC)..."
+                    value={searchFilter}
+                    onChange={(e) => setSearchFilter(e.target.value)}
+                  />
+                  <Search size={13} style={{ position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)", color: "var(--od-muted)" }} />
+                  {searchFilter && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchFilter("")}
+                      style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--od-muted)", padding: 2 }}
                     >
-                      <div className="vsd-brand-logo-tile">
-                        {logoUrl ? (
-                          <img src={logoUrl} alt={client.name} style={{ maxHeight: 44, maxWidth: "100%", objectFit: "contain" }} />
-                        ) : (
-                          <span style={{ fontSize: 11, fontWeight: 700, color: "#111" }}>{client.name}</span>
-                        )}
-                        {isUploading && (
-                          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.6)", display: "grid", placeItems: "center", color: "#fff", borderRadius: 8 }}>
-                            <Loader2 size={18} className="od-spin" />
+                      <X size={12} />
+                    </button>
+                  )}
+                </div>
+
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button
+                    type="button"
+                    className={`od-chip ${brandFilterMode === "all" ? "is-on" : ""}`}
+                    onClick={() => setBrandFilterMode("all")}
+                    style={{ fontSize: 11, padding: "4px 10px" }}
+                  >
+                    All ({siteContent.clients.length})
+                  </button>
+                  <button
+                    type="button"
+                    className={`od-chip ${brandFilterMode === "with_logo" ? "is-on" : ""}`}
+                    onClick={() => setBrandFilterMode("with_logo")}
+                    style={{ fontSize: 11, padding: "4px 10px" }}
+                  >
+                    With Image ({siteContent.clients.filter((c) => Boolean(c.logo)).length})
+                  </button>
+                  <button
+                    type="button"
+                    className={`od-chip ${brandFilterMode === "no_logo" ? "is-on" : ""}`}
+                    onClick={() => setBrandFilterMode("no_logo")}
+                    style={{ fontSize: 11, padding: "4px 10px" }}
+                  >
+                    Text Only ({siteContent.clients.filter((c) => !c.logo).length})
+                  </button>
+                </div>
+              </div>
+
+              <span style={{ fontSize: 12, color: "var(--od-muted)" }}>
+                Showing {siteContent.clients
+                  .map((client, originalIdx) => ({ client, originalIdx }))
+                  .filter(({ client }) => {
+                    const matchesSearch = !searchFilter.trim() || client.name.toLowerCase().includes(searchFilter.trim().toLowerCase());
+                    if (!matchesSearch) return false;
+                    if (brandFilterMode === "with_logo") return Boolean(client.logo);
+                    if (brandFilterMode === "no_logo") return !client.logo;
+                    return true;
+                  }).length} of {siteContent.clients.length} brand partners
+              </span>
+            </div>
+
+            {/* Grid of Brand Logo Cards */}
+            {siteContent.clients
+              .map((client, originalIdx) => ({ client, originalIdx }))
+              .filter(({ client }) => {
+                const matchesSearch = !searchFilter.trim() || client.name.toLowerCase().includes(searchFilter.trim().toLowerCase());
+                if (!matchesSearch) return false;
+                if (brandFilterMode === "with_logo") return Boolean(client.logo);
+                if (brandFilterMode === "no_logo") return !client.logo;
+                return true;
+              }).length === 0 ? (
+              <div className="od-empty" style={{ padding: 40, textAlign: "center", borderRadius: 12, border: "1px dashed var(--od-line)" }}>
+                <p style={{ margin: "0 0 10px", color: "var(--od-muted)" }}>No brand partners match your search criteria.</p>
+                <button
+                  type="button"
+                  className="od-btn"
+                  onClick={() => { setSearchFilter(""); setBrandFilterMode("all"); }}
+                  style={{ fontSize: 12 }}
+                >
+                  Clear Filters
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(clamp(160px, 18vw, 220px), 1fr))", gap: 14 }}>
+                {siteContent.clients
+                  .map((client, originalIdx) => ({ client, originalIdx }))
+                  .filter(({ client }) => {
+                    const matchesSearch = !searchFilter.trim() || client.name.toLowerCase().includes(searchFilter.trim().toLowerCase());
+                    if (!matchesSearch) return false;
+                    if (brandFilterMode === "with_logo") return Boolean(client.logo);
+                    if (brandFilterMode === "no_logo") return !client.logo;
+                    return true;
+                  })
+                  .map(({ client, originalIdx }) => {
+                    const logoUrl = client.logo?.startsWith("http") || client.logo?.startsWith("/") ? resolveBackendMedia(client.logo) : publicAsset(client.logo);
+                    const isUploading = uploadingTarget?.id === "client_logo" && uploadingTarget?.field === `logo_${originalIdx}`;
+                    const isEditingName = editingClientIdx === originalIdx;
+
+                    return (
+                      <div key={originalIdx} className="vsd-brand-card">
+                        {/* Order sequence badge */}
+                        <span className="vsd-brand-order-badge">#{originalIdx + 1}</span>
+
+                        {/* Reorder Buttons (Move earlier / later in marquee) */}
+                        <div style={{ position: "absolute", top: 8, right: 8, display: "flex", gap: 3, zIndex: 2 }}>
+                          <button
+                            type="button"
+                            className="vsd-brand-order-btn"
+                            onClick={() => handleReorderClient(originalIdx, -1)}
+                            disabled={originalIdx === 0}
+                            title="Move earlier in marquee reel"
+                          >
+                            <ChevronLeft size={13} />
+                          </button>
+                          <button
+                            type="button"
+                            className="vsd-brand-order-btn"
+                            onClick={() => handleReorderClient(originalIdx, 1)}
+                            disabled={originalIdx === siteContent.clients.length - 1}
+                            title="Move later in marquee reel"
+                          >
+                            <ChevronRight size={13} />
+                          </button>
+                        </div>
+
+                        {/* Logo Display Tile */}
+                        <div className="vsd-brand-logo-tile" style={{ marginTop: 18 }}>
+                          {logoUrl ? (
+                            <img src={logoUrl} alt={client.name} style={{ maxHeight: 44, maxWidth: "100%", objectFit: "contain" }} />
+                          ) : (
+                            <span style={{ fontSize: 11, fontWeight: 700, color: "#111", textAlign: "center" }}>{client.name}</span>
+                          )}
+                          {isUploading && (
+                            <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.6)", display: "grid", placeItems: "center", color: "#fff", borderRadius: 8 }}>
+                              <Loader2 size={18} className="od-spin" />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Brand Name (With Inline Editing) */}
+                        <div style={{ margin: "6px 0 10px" }}>
+                          {isEditingName ? (
+                            <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                              <input
+                                type="text"
+                                value={editingClientName}
+                                onChange={(e) => setEditingClientName(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") handleSaveEditClient(originalIdx);
+                                  if (e.key === "Escape") handleCancelEditClient();
+                                }}
+                                autoFocus
+                                style={{
+                                  flex: 1,
+                                  fontSize: 11.5,
+                                  padding: "4px 6px",
+                                  borderRadius: 5,
+                                  border: "1px solid var(--od-gold)",
+                                  background: "var(--od-surface)",
+                                  color: "var(--od-ink)",
+                                }}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleSaveEditClient(originalIdx)}
+                                style={{ background: "var(--od-gold)", border: "none", borderRadius: 5, padding: "4px 6px", cursor: "pointer", color: "#000" }}
+                                title="Save Name"
+                              >
+                                <Check size={12} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handleCancelEditClient}
+                                style={{ background: "var(--od-line)", border: "none", borderRadius: 5, padding: "4px 6px", cursor: "pointer", color: "var(--od-ink)" }}
+                                title="Cancel"
+                              >
+                                <X size={12} />
+                              </button>
+                            </div>
+                          ) : (
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 6 }}>
+                              <span
+                                style={{
+                                  fontSize: 12,
+                                  fontWeight: 700,
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  whiteSpace: "nowrap",
+                                  flex: 1,
+                                }}
+                                title={client.name}
+                              >
+                                {client.name}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleStartEditClient(originalIdx, client.name)}
+                                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--od-muted)", padding: 2 }}
+                                title="Rename Brand"
+                              >
+                                <Pencil size={11} />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Action buttons (Replace logo, Delete logo) */}
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <label className="od-btn" style={{ flex: 1, justifyContent: "center", fontSize: 11, padding: "5px", cursor: "pointer" }} title="Replace Logo Image">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => handleClientLogoUpload(originalIdx, e.target.files?.[0])}
+                              style={{ display: "none" }}
+                              disabled={isUploading}
+                            />
+                            <UploadCloud size={11} /> Replace
+                          </label>
+                          <button
+                            type="button"
+                            className="od-btn"
+                            onClick={() => handleDeleteClientLogo(originalIdx)}
+                            style={{ color: "#d9534f", padding: "5px 8px" }}
+                            title="Delete Logo"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            )}
+          </div>
+
+          {/* Add Brand Logo Modal */}
+          {isAddLogoModalOpen && (
+            <div className="cm-modal-overlay" onClick={() => setIsAddLogoModalOpen(false)}>
+              <div className="cm-modal cm-modal--sm" onClick={(e) => e.stopPropagation()}>
+                <div className="cm-modal__head">
+                  <h3 className="cm-modal__title">Add Partner Brand Logo</h3>
+                  <button type="button" className="cm-modal__close" onClick={() => setIsAddLogoModalOpen(false)}>
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <form onSubmit={handleAddBrandSubmit}>
+                  <div className="cm-form">
+                    <div style={{ marginBottom: 16 }}>
+                      <label style={{ display: "block", fontSize: 12, fontWeight: 700, marginBottom: 6 }}>
+                        Company / Brand Name <span style={{ color: "#d9534f" }}>*</span>
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Oberoi Hotels & Resorts, DLF, Taj..."
+                        value={newLogoName}
+                        onChange={(e) => setNewLogoName(e.target.value)}
+                        required
+                        style={{
+                          width: "100%",
+                          padding: "9px 12px",
+                          borderRadius: 8,
+                          border: "1px solid var(--od-line)",
+                          fontSize: 13,
+                          background: "var(--od-surface)",
+                          color: "var(--od-ink)",
+                        }}
+                      />
+                    </div>
+
+                    <div style={{ marginBottom: 16 }}>
+                      <label style={{ display: "block", fontSize: 12, fontWeight: 700, marginBottom: 6 }}>
+                        Brand Logo Image (PNG, WEBP, or SVG recommended)
+                      </label>
+                      <div
+                        style={{
+                          border: "2px dashed var(--od-line)",
+                          borderRadius: 10,
+                          padding: 16,
+                          textAlign: "center",
+                          background: "var(--od-surface-subtle)",
+                          position: "relative",
+                        }}
+                      >
+                        {newLogoPreview ? (
+                          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+                            <div style={{ background: "#fff", padding: "8px 16px", borderRadius: 8, border: "1px solid var(--od-line)", display: "grid", placeItems: "center", minHeight: 60 }}>
+                              <img src={newLogoPreview} alt="Preview" style={{ maxHeight: 50, maxWidth: "100%", objectFit: "contain" }} />
+                            </div>
+                            <button
+                              type="button"
+                              className="od-btn"
+                              onClick={() => { setNewLogoFile(null); setNewLogoPreview(""); }}
+                              style={{ fontSize: 11, padding: "4px 8px" }}
+                            >
+                              <Trash2 size={11} /> Remove Selected Image
+                            </button>
                           </div>
+                        ) : (
+                          <label style={{ cursor: "pointer", display: "block" }}>
+                            <UploadCloud size={24} style={{ color: "var(--od-gold-d)", margin: "0 auto 6px", display: "block" }} />
+                            <span style={{ fontSize: 12, fontWeight: 600, display: "block", color: "var(--od-ink)" }}>
+                              Click or Drag & Drop to Upload Logo
+                            </span>
+                            <span style={{ fontSize: 11, color: "var(--od-muted)", display: "block", marginTop: 2 }}>
+                              Transparent PNG, WEBP, or SVG formats look best on the marquee
+                            </span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                setNewLogoFile(file);
+                                setNewLogoPreview(URL.createObjectURL(file));
+                              }}
+                              style={{ display: "none" }}
+                            />
+                          </label>
                         )}
-                      </div>
-
-                      <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 8, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {client.name}
-                      </div>
-
-                      <div style={{ display: "flex", gap: 6 }}>
-                        <label className="od-btn" style={{ flex: 1, justifyContent: "center", fontSize: 11, padding: "5px", cursor: "pointer" }} title="Replace Logo">
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => handleClientLogoUpload(originalIdx, e.target.files?.[0])}
-                            style={{ display: "none" }}
-                            disabled={isUploading}
-                          />
-                          <UploadCloud size={11} /> Replace
-                        </label>
-                        <button
-                          type="button"
-                          className="od-btn"
-                          onClick={() => handleDeleteClientLogo(originalIdx)}
-                          style={{ color: "#d9534f", padding: "5px 8px" }}
-                          title="Delete Logo"
-                        >
-                          <Trash2 size={12} />
-                        </button>
                       </div>
                     </div>
-                  );
-                })}
+                  </div>
+
+                  <div className="cm-modal__footer">
+                    <button
+                      type="button"
+                      className="od-btn"
+                      onClick={() => setIsAddLogoModalOpen(false)}
+                      disabled={newLogoSubmitting}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="od-btn od-btn--primary"
+                      disabled={newLogoSubmitting || !newLogoName.trim()}
+                    >
+                      {newLogoSubmitting && <Loader2 size={13} className="od-spin" />}
+                      Add Brand to Marquee
+                    </button>
+                  </div>
+                </form>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
     </div>
