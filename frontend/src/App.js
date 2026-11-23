@@ -441,7 +441,7 @@ function ProjectsSlideshow() {
     </Reveal>
     <div className="work-slideshow__stage" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} data-testid="work-slideshow-stage">
       <Link to={`/projects/${project.slug}`} key={project.slug} className="work-slideshow__frame" data-testid="work-slideshow-frame">
-        <img src={img(project.image, 1600)} alt={project.title} />
+        <img src={img(project.image, 1600)} alt={project.title} loading="lazy" decoding="async" />
         <span className="work-slideshow__meta">{project.category} · {project.location}</span>
       </Link>
       <div className="work-slideshow__bar">
@@ -760,6 +760,13 @@ function PageShell({ children }) {
   const lastY = useRef(0);
   const navLock = useRef(0);
   useEffect(() => { initSmoothScroll(); }, []);
+  useEffect(() => {
+    if (location.pathname.startsWith("/owner")) {
+      stopSmoothScroll();
+    } else {
+      startSmoothScroll();
+    }
+  }, [location.pathname]);
   // Persistent listener. lastY lags the synchronous scroll-clamp that happens when a
   // shorter page mounts, so it still holds the real pre-navigation position. During a
   // brief lock after each route change we ignore nav-induced reset scrolls.

@@ -165,7 +165,7 @@ function SegmentPage() {
   const projectsFirst = segment.slug === "interior-designing";
   const workSection = <section className="detail-work">
     <div className="detail-intro"><span className="section-index">{projectsFirst ? "01" : extra?.catalogue ? "03" : "02"} — SELECTED PROJECTS</span><h2>Work in the<br /><em>material.</em></h2></div>
-    <div className="mini-work-grid">{(related.length ? related : projects.slice(0, 2)).map((work) => <Link to={`/projects/${work.slug}`} className="mini-work" key={work.title} data-testid={`agency-work-${work.slug}`}><img src={img(work.image, 1200)} alt="" /><div><div className="mini-work__text"><span>{work.category} · {work.year}</span><h3>{work.title}</h3></div><ArrowUpRight size={18} /></div></Link>)}</div>
+    <div className="mini-work-grid">{(related.length ? related : projects.slice(0, 2)).map((work) => <Link to={`/projects/${work.slug}`} className="mini-work" key={work.title} data-testid={`agency-work-${work.slug}`}><img src={img(work.image, 1200)} alt="" loading="lazy" decoding="async" /><div><div className="mini-work__text"><span>{work.category} · {work.year}</span><h3>{work.title}</h3></div><ArrowUpRight size={18} /></div></Link>)}</div>
   </section>;
   return <main className={`detail-page detail-page--${segment.tone}`} data-testid="agency-detail-page">
     <section className="detail-hero" style={{ backgroundImage: `linear-gradient(160deg, rgba(10,8,6,.78), rgba(10,8,6,.42)), url(${img(segment.hero)})` }}>
@@ -212,9 +212,9 @@ function ProjectPage() {
   usePageMeta(project ? `${project.title} | BDSM · BDS Marvel Projects` : "Projects", project?.description || "Projects");
   if (!project) return <Navigate to="/projects" replace />;
   return <main className={`case-study-page case-study-page--${segment?.tone || "sand"}`} data-testid="case-study-page">
-    <section className="case-study-hero"><div className="detail-kicker"><span>{project.segment.toUpperCase()} · {project.year}</span><Link to="/projects" state={{ restore: true }} data-testid="case-study-back-link">BACK TO PROJECTS</Link></div><div className="case-study-hero-copy"><span className="section-index">{project.category.toUpperCase()} · {project.location}</span><h1>{project.title}<span className="hero-dot">.</span></h1><p>{project.description}</p></div><div className="case-study-hero-image"><img src={img(project.image)} alt="" data-testid="case-study-hero-image" /></div></section>
+    <section className="case-study-hero"><div className="detail-kicker"><span>{project.segment.toUpperCase()} · {project.year}</span><Link to="/projects" state={{ restore: true }} data-testid="case-study-back-link">BACK TO PROJECTS</Link></div><div className="case-study-hero-copy"><span className="section-index">{project.category.toUpperCase()} · {project.location}</span><h1>{project.title}<span className="hero-dot">.</span></h1><p>{project.description}</p></div><div className="case-study-hero-image"><img src={img(project.image)} alt="" data-testid="case-study-hero-image" loading="lazy" decoding="async" /></div></section>
     <section className="case-study-overview"><div className="case-study-overview-label"><span className="section-index">01 — THE BRIEF</span><Link to={`/businesses/${segment?.slug || "marble-and-stone"}`} data-testid="case-study-agency-link">VIEW {project.segment.toUpperCase()} <ArrowUpRight size={15} /></Link></div><div className="case-study-story"><div><span className="story-label">THE CHALLENGE</span><h2>{project.challenge}</h2></div><div><span className="story-label">THE APPROACH</span><p>{project.approach}</p></div></div></section>
-    <section className="case-study-gallery"><div className="case-study-gallery-heading"><span className="section-index">02 — IN PLACE</span><h2>Detail in<br /><em>the material.</em></h2></div><div className="case-study-images">{project.gallery.map((image, index) => <figure className={`case-study-image case-study-image--${index + 1}`} key={image}><img src={img(image, 1200)} alt={`${project.title} view ${index + 1}`} data-testid={`case-study-gallery-image-${index + 1}`} /><figcaption>0{index + 1} / {project.category.toUpperCase()}</figcaption></figure>)}</div></section>
+    <section className="case-study-gallery"><div className="case-study-gallery-heading"><span className="section-index">02 — IN PLACE</span><h2>Detail in<br /><em>the material.</em></h2></div><div className="case-study-images">{project.gallery.map((image, index) => <figure className={`case-study-image case-study-image--${index + 1}`} key={image}><img src={img(image, 1200)} alt={`${project.title} view ${index + 1}`} data-testid={`case-study-gallery-image-${index + 1}`} loading="lazy" decoding="async" /><figcaption>0{index + 1} / {project.category.toUpperCase()}</figcaption></figure>)}</div></section>
     <section className="case-study-results"><div><span className="section-index">03 — OUTCOMES</span><h2>Proof in<br /><em>the numbers.</em></h2></div><div className="result-grid">{project.outcomes.map(([value, label]) => <div className="result-stat" key={label}><CountUp value={value} /><span>{label}</span></div>)}</div></section>
     <section className="case-study-credits"><div><span className="section-index">04 — CREDITS</span><h2>Built by<br /><em>one team.</em></h2></div><div className="credits-list">{project.credits.map((credit, index) => <div key={credit}><span>0{index + 1}</span><p>{credit}</p></div>)}</div></section>
     <section className="case-study-next"><span className="section-index">UP NEXT</span><Link to={`/projects/${nextProject.slug}`} data-testid="next-case-study-link"><span>{nextProject.segment} · {nextProject.category}</span><h2>{nextProject.title}<ArrowUpRight size={27} /></h2></Link></section>
@@ -236,7 +236,7 @@ function ProjectsArchive() {
         <select value={filter} onChange={(event) => setFilter(event.target.value)} aria-label="Filter by business" data-testid="work-agency-filter">{filterOptions.map((option) => <option key={option}>{option}</option>)}</select>
         <span className="work-count" data-testid="work-result-count">{filtered.length.toString().padStart(2, "0")} PROJECTS</span>
       </div>
-      <div className="work-grid">{filtered.map((work, index) => <Link to={`/projects/${work.slug}`} className="work-card" key={work.title} data-testid={`work-card-${index + 1}`}><div className="work-image-wrap"><img src={img(work.image, 1200)} alt="" /><span>{work.year}</span></div><div className="work-card-copy"><div><span>{work.segment} · {work.category} · {work.location}</span><h2>{work.title}</h2><p>{work.description}</p></div><ArrowUpRight size={21} /></div></Link>)}{filtered.length === 0 && <div className="empty-work" data-testid="work-empty-state">No projects match. Try a different search.</div>}</div>
+      <div className="work-grid">{filtered.map((work, index) => <Link to={`/projects/${work.slug}`} className="work-card" key={work.title} data-testid={`work-card-${index + 1}`}><div className="work-image-wrap"><img src={img(work.image, 1200)} alt="" loading="lazy" decoding="async" /><span>{work.year}</span></div><div className="work-card-copy"><div><span>{work.segment} · {work.category} · {work.location}</span><h2>{work.title}</h2><p>{work.description}</p></div><ArrowUpRight size={21} /></div></Link>)}{filtered.length === 0 && <div className="empty-work" data-testid="work-empty-state">No projects match. Try a different search.</div>}</div>
     </section>
   </main>;
 }
@@ -284,7 +284,7 @@ function CataloguePage() {
     <section className="catalogue-grid" data-testid="catalogue-grid">
       {filtered.map((item, index) => <article className="catalogue-card" key={item.slug} data-testid={`catalogue-card-${index + 1}`}>
         <Link to={`/catalogue/${item.slug}`} className="catalogue-card__link" data-testid={`catalogue-card-link-${index + 1}`}>
-          <div className="catalogue-card__image"><img src={img(item.image, 900)} alt={item.name} /></div>
+          <div className="catalogue-card__image"><img src={img(item.image, 900)} alt={item.name} loading="lazy" decoding="async" /></div>
           <div className="catalogue-card__body">
             <div className="catalogue-card__meta"><span>{item.brand}</span><span>{categoryOf(item)} · {item.product}</span></div>
             <h3>{item.name}</h3>
@@ -312,9 +312,9 @@ function ProductGallery({ images, name }) {
   useEffect(() => setActive(0), [images]);
   const go = (step) => setActive((current) => (current + step + images.length) % images.length);
   return <div className="pdp-gallery" data-testid="product-gallery">
-    <div className="pdp-thumbs">{images.map((src, index) => <button type="button" key={src} className={`pdp-thumb ${index === active ? "pdp-thumb--active" : ""}`} onClick={() => setActive(index)} data-testid={`product-thumb-${index + 1}`}><img src={src} alt={`${name} view ${index + 1}`} /></button>)}</div>
+    <div className="pdp-thumbs">{images.map((src, index) => <button type="button" key={src} className={`pdp-thumb ${index === active ? "pdp-thumb--active" : ""}`} onClick={() => setActive(index)} data-testid={`product-thumb-${index + 1}`}><img src={src} alt={`${name} view ${index + 1}`} loading="lazy" decoding="async" /></button>)}</div>
     <div className="pdp-main">
-      <img key={images[active]} src={images[active]} alt={name} data-testid="product-main-image" />
+      <img key={images[active]} src={images[active]} alt={name} data-testid="product-main-image" decoding="async" />
       <button type="button" className="pdp-arrow pdp-arrow--prev" onClick={() => go(-1)} aria-label="Previous image" data-testid="product-image-prev"><ChevronLeft size={20} /></button>
       <button type="button" className="pdp-arrow pdp-arrow--next" onClick={() => go(1)} aria-label="Next image" data-testid="product-image-next"><ChevronRight size={20} /></button>
       <span className="pdp-counter" data-testid="product-image-counter">{active + 1} / {images.length}</span>
@@ -855,7 +855,7 @@ function AboutPage() {
       <div className="about-section-heading"><span className="section-index">03 — THE PEOPLE</span><h2>People behind<br /><em>the work.</em></h2></div>
       <div className="team-grid">
         {team.map((member, index) => <article key={member.name} className="team-card" data-testid={`team-${index + 1}`}>
-          <div className="team-card__image"><img src={img(member.image, 900)} alt="" /></div>
+          <div className="team-card__image"><img src={img(member.image, 900)} alt="" loading="lazy" decoding="async" /></div>
           <div className="team-card__body"><span>{member.role}</span><h3>{member.name}</h3></div>
         </article>)}
       </div>

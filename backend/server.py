@@ -1,5 +1,6 @@
 from fastapi import FastAPI, APIRouter, HTTPException, UploadFile, File, Request, Depends
-from fastapi.responses import Response
+from fastapi.responses import Response, FileResponse
+import asyncio
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -2422,34 +2423,54 @@ async def admin_delete_project(identifier: str, _: dict = Depends(require_admin)
 
 # --- Site content endpoints ---
 
+_site_content_cache = None
+_site_content_seed = None
+
+def _get_site_content_seed():
+    global _site_content_seed
+    if _site_content_seed is None:
+        try:
+            _site_content_seed = json.loads((ROOT_DIR / "site_content_seed.json").read_text())
+        except Exception:
+            _site_content_seed = {}
+    return _site_content_seed
+
+
 @api_router.get("/content")
 @api_router.get("/site-content")
 async def get_site_content(response: Response):
-    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-    seed = {}
-    try:
-        seed = json.loads((ROOT_DIR / "site_content_seed.json").read_text())
-    except Exception:
-        pass
+    global _site_content_cache
+    if _site_content_cache is not None:
+        response.headers["Cache-Control"] = "public, max-age=60, stale-while-revalidate=300"
+        return dict(_site_content_cache)
+    seed = _get_site_content_seed()
     doc = await db.site_content.find_one({"id": "global_site_content"}, {"_id": 0})
     if not doc:
-        return seed or {"hero": {}, "approach": [], "clients": [], "divisions": [], "about": {}, "living_studio": {}, "seo": {}}
+        result = seed or {"hero": {}, "approach": [], "clients": [], "divisions": [], "about": {}, "living_studio": {}, "seo": {}}
+        _site_content_cache = result
+        response.headers["Cache-Control"] = "public, max-age=60, stale-while-revalidate=300"
+        return result
     for k, v in seed.items():
         if k not in doc or doc[k] is None:
             doc[k] = v
     if "seo" not in doc:
         doc["seo"] = {}
+    _site_content_cache = doc
+    response.headers["Cache-Control"] = "public, max-age=60, stale-while-revalidate=300"
     return doc
 
 
 @api_router.put("/admin/site-content")
 async def update_site_content(payload: SiteContentIn, _: dict = Depends(require_admin), request: Request = None):
+    global _site_content_cache
     data = payload.model_dump()
     data["id"] = "global_site_content"
     data["updated_at"] = datetime.now(timezone.utc).isoformat()
     await db.site_content.update_one({"id": "global_site_content"}, {"$set": data}, upsert=True)
     await log_admin_action(_, "update_site_content", "site_content:global", request=request)
-    return await db.site_content.find_one({"id": "global_site_content"}, {"_id": 0})
+    saved = await db.site_content.find_one({"id": "global_site_content"}, {"_id": 0})
+    _site_content_cache = saved
+    return saved
 
 
 # --- Website Studio (CMS) endpoints ---
@@ -2612,6 +2633,28 @@ async def rollback_studio_version(version_id: str, admin: dict = Depends(require
 
 # --- Media upload & serving endpoints ---
 
+def _process_image_worker(data: bytes):
+    from PIL import Image, ImageOps
+    import io
+    im = Image.open(io.BytesIO(data))
+    im = ImageOps.exif_transpose(im)
+    
+    # Anti-aliased high-resolution bound (4K UHD)
+    max_dim = 3840
+    if im.width > max_dim or im.height > max_dim:
+        im.thumbnail((max_dim, max_dim), Image.Resampling.LANCZOS)
+    
+    buf = io.BytesIO()
+    if im.mode in ("RGBA", "LA") or (im.mode == "P" and "transparency" in im.info):
+        im = im.convert("RGBA")
+        im.save(buf, format="WEBP", quality=94, method=6)
+    else:
+        im = im.convert("RGB")
+        im.save(buf, format="WEBP", quality=94, method=6)
+    
+    return buf.getvalue(), "webp", "image/webp"
+
+
 @api_router.post("/admin/media/upload")
 async def admin_upload_media(file: UploadFile = File(...), admin: dict = Depends(require_admin), request: Request = None):
     data = await file.read(25 * 1024 * 1024 + 1)
@@ -2629,29 +2672,10 @@ async def admin_upload_media(file: UploadFile = File(...), admin: dict = Depends
     # 1. SVGs retain lossless mathematical vector fidelity (infinite crisp resolution on all DPIs)
     # 2. Raster images (PNG, JPG, WEBP) auto-correct EXIF orientation, scale down from >3840px with Lanczos,
     #    and encode into pristine, ultra-clean high-fidelity WebP (quality 94, method 6) with full alpha preservation.
+    #    Offloaded to worker thread (asyncio.to_thread) to prevent blocking the async event loop.
     if ext in ("jpg", "jpeg", "png", "webp"):
         try:
-            from PIL import Image, ImageOps
-            import io
-            im = Image.open(io.BytesIO(data))
-            im = ImageOps.exif_transpose(im)
-            
-            # Anti-aliased high-resolution bound (4K UHD)
-            max_dim = 3840
-            if im.width > max_dim or im.height > max_dim:
-                im.thumbnail((max_dim, max_dim), Image.Resampling.LANCZOS)
-            
-            buf = io.BytesIO()
-            if im.mode in ("RGBA", "LA") or (im.mode == "P" and "transparency" in im.info):
-                im = im.convert("RGBA")
-                im.save(buf, format="WEBP", quality=94, method=6)
-            else:
-                im = im.convert("RGB")
-                im.save(buf, format="WEBP", quality=94, method=6)
-            
-            data = buf.getvalue()
-            final_ext = "webp"
-            content_type = "image/webp"
+            data, final_ext, content_type = await asyncio.to_thread(_process_image_worker, data)
         except Exception as proc_err:
             logger.warning("Image optimization fallback: %s", proc_err)
 
@@ -2742,10 +2766,14 @@ async def get_media_file(filename: str):
     ct = _MIME_TYPES.get(ext, "image/jpeg")
     local_path = UPLOAD_DIR / filename
     if local_path.exists() and local_path.is_file():
-        return Response(content=local_path.read_bytes(), media_type=ct, headers={"Cache-Control": "public, max-age=86400, stale-while-revalidate=86400"})
+        return FileResponse(
+            str(local_path),
+            media_type=ct,
+            headers={"Cache-Control": "public, max-age=604800, stale-while-revalidate=86400"}
+        )
     try:
         data, content_type = get_object(f"{APP_NAME}/media/{filename}")
-        return Response(content=data, media_type=content_type, headers={"Cache-Control": "public, max-age=86400, stale-while-revalidate=86400"})
+        return Response(content=data, media_type=content_type, headers={"Cache-Control": "public, max-age=604800, stale-while-revalidate=86400"})
     except Exception:
         raise HTTPException(status_code=404, detail="Media file not found")
 
