@@ -2162,8 +2162,114 @@ class StudioPublishIn(BaseModel):
 
 # --- Catalogue inventory endpoints ---
 
+# Sutra Multi-Tenant Supabase Dynamic Bridge
+SUTRA_SUPABASE_URL = os.environ.get("SUTRA_SUPABASE_URL", "").rstrip("/")
+SUTRA_SUPABASE_KEY = os.environ.get("SUTRA_SUPABASE_KEY", "")
+SUTRA_TENANT_ID = os.environ.get("SUTRA_TENANT_ID", "")
+_sutra_catalogue_cache = {}
+_sutra_cache_time = 0
+
+async def fetch_sutra_catalogue(tenant_id: Optional[str] = None) -> list:
+    global _sutra_catalogue_cache, _sutra_cache_time
+    tid = tenant_id or SUTRA_TENANT_ID
+    if not SUTRA_SUPABASE_URL or not SUTRA_SUPABASE_KEY or not tid:
+        return []
+
+    now = time.time()
+    cache_key = f"tenant_{tid}"
+    if cache_key in _sutra_catalogue_cache and (now - _sutra_cache_time) < 30:
+        return _sutra_catalogue_cache[cache_key]
+
+    headers = {
+        "apikey": SUTRA_SUPABASE_KEY,
+        "Authorization": f"Bearer {SUTRA_SUPABASE_KEY}",
+    }
+    url = f"{SUTRA_SUPABASE_URL}/rest/v1/products?tenant_id=eq.{tid}&select=*,skus(*),brands(*),categories(*),product_media(*)"
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            res = await client.get(url, headers=headers)
+            if res.status_code != 200:
+                logger.warning("Sutra catalogue fetch status %d: %s", res.status_code, res.text[:200])
+                return _sutra_catalogue_cache.get(cache_key, [])
+            products = res.json()
+            items = []
+            for p in products:
+                name_val = p.get("name")
+                name = name_val.get("en") if isinstance(name_val, dict) else (name_val or "Unnamed Product")
+                brand_obj = p.get("brands") or {}
+                brand_name = brand_obj.get("name") or "DrawStones"
+                cat_obj = p.get("categories") or {}
+                cat_name_val = cat_obj.get("name") or {}
+                category = cat_name_val.get("en") if isinstance(cat_name_val, dict) else (cat_name_val or "Marble & Stone")
+                media = p.get("product_media", [])
+                image = media[0].get("url") if media else "photo-1600585154340-be6161a56a0c"
+                gallery = [m.get("url") for m in media if m.get("url")]
+                skus = p.get("skus", [])
+                sku = skus[0] if skus else {}
+                attrs = sku.get("attrs", {}) or {}
+                desc_val = p.get("description") or ""
+                desc = desc_val.get("en") if isinstance(desc_val, dict) else str(desc_val)
+                price = sku.get("sale_price") or sku.get("mrp")
+
+                base_slug = cat_obj.get("slug") or _slugify(name)
+                prod_slug = f"{base_slug}-{p.get('id')[:8]}"
+
+                items.append({
+                    "id": p.get("id"),
+                    "name": name,
+                    "slug": prod_slug,
+                    "brand": brand_name,
+                    "category": category,
+                    "material": attrs.get("material", "Marble"),
+                    "product": attrs.get("collection", "Artisanal Collection"),
+                    "application": "Interior & Architectural",
+                    "origin": "India",
+                    "image": image,
+                    "desc": desc,
+                    "gallery": gallery,
+                    "specs": attrs,
+                    "price": price,
+                    "is_active": p.get("is_active", True),
+                    "source": "sutra_ecosystem",
+                    "tenant_id": tid,
+                })
+            _sutra_catalogue_cache[cache_key] = items
+            _sutra_cache_time = now
+            return items
+    except Exception as exc:
+        logger.warning("Sutra catalogue sync exception: %s", exc)
+        return _sutra_catalogue_cache.get(cache_key, [])
+
+
 @api_router.get("/catalogue")
-async def list_catalogue(brand: Optional[str] = None, category: Optional[str] = None, q: Optional[str] = None, all: bool = False):
+async def list_catalogue(
+    brand: Optional[str] = None,
+    category: Optional[str] = None,
+    q: Optional[str] = None,
+    tenant_id: Optional[str] = None,
+    all: bool = False
+):
+    # Dynamic Multi-Tenant check from Sutra Supabase
+    sutra_items = await fetch_sutra_catalogue(tenant_id=tenant_id)
+    if sutra_items:
+        docs = sutra_items
+        if not all:
+            docs = [d for d in docs if d.get("is_active") is not False]
+        if brand and brand != "All":
+            docs = [d for d in docs if brand.lower() in d.get("brand", "").lower()]
+        if category and category != "All":
+            docs = [d for d in docs if category.lower() in d.get("category", "").lower()]
+        if q and q.strip():
+            term = q.strip().lower()
+            docs = [
+                d for d in docs if term in d.get("name", "").lower()
+                or term in d.get("slug", "").lower()
+                or term in d.get("desc", "").lower()
+                or term in d.get("material", "").lower()
+                or term in d.get("product", "").lower()
+            ]
+        return docs
+
     query = {}
     if not all:
         query["is_active"] = {"$ne": False}
@@ -2185,7 +2291,14 @@ async def list_catalogue(brand: Optional[str] = None, category: Optional[str] = 
 
 
 @api_router.get("/catalogue/{slug}")
-async def get_catalogue_item(slug: str):
+async def get_catalogue_item(slug: str, tenant_id: Optional[str] = None):
+    # Check Sutra dynamic catalogue first if configured
+    sutra_items = await fetch_sutra_catalogue(tenant_id=tenant_id)
+    if sutra_items:
+        match = next((item for item in sutra_items if item.get("slug") == slug or item.get("id") == slug), None)
+        if match:
+            return match
+
     doc = await db.catalogue.find_one({"$or": [{"slug": slug}, {"id": slug}]}, {"_id": 0})
     if not doc:
         try:
