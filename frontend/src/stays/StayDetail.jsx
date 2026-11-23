@@ -153,15 +153,19 @@ export default function StayDetail() {
     ...(stay.amenities.some((a) => /self check-in/i.test(a)) ? [[KeyRound, "Self check-in", "Check yourself in on arrival — details shared after booking."]] : []),
     [MessageSquareHeart, "Responsive hosting", "The BDS Marvel team replies within one working day."],
   ];
+  const photoCount = Array.isArray(stay.gallery) ? stay.gallery.length : 0;
+  const displayCount = Math.min(Math.max(photoCount, 1), 5);
+  const displayPhotos = Array.isArray(stay.gallery) && stay.gallery.length > 0 ? stay.gallery.slice(0, displayCount) : [stay.hero];
+
   return <main className="sx-page sx-page--detail" data-testid="stay-detail">
     <section className="sx-top sx-top--compact"><SearchBar compact /></section>
     <SectionNav visible={navOn && !mobile} stay={stay} nights={nights} />
     <div className="sx-wrap sx-wrap--detail">
       <div className="sx-detail__bar"><h1 className="sx-detail__title" data-testid="detail-title">{stay.name}</h1>
         <div className="sx-detail__acts"><button type="button" className="sx-link" onClick={share} data-testid="detail-share"><Share size={16} /> {shared || "Share"}</button><span className="sx-detail__save"><HeartButton slug={stay.slug} className="sx-heart--inline" /> Save</span></div></div>
-      <div className="sx-photos" id="sx-photos" ref={photosRef} data-testid="detail-photos">
-        {stay.gallery.slice(0, 5).map((id, k) => <button type="button" key={k} className={`sx-photos__cell sx-photos__cell--${k}`} onClick={() => setGallery({ open: true, start: k })} aria-label={`Open photo ${k + 1}`} data-testid={`detail-photo-${k}`}><img src={img(id, k === 0 ? 1400 : 700)} alt={k === 0 ? stay.name : ""} /></button>)}
-        <button type="button" className="sx-btn sx-btn--light sx-photos__all" onClick={() => setGallery({ open: true, start: 0 })} data-testid="detail-show-all-photos"><Grid3x3 size={15} /> Show all photos</button>
+      <div className={`sx-photos sx-photos--count-${displayCount}`} id="sx-photos" ref={photosRef} data-testid="detail-photos">
+        {displayPhotos.map((id, k) => <button type="button" key={k} className={`sx-photos__cell sx-photos__cell--${k}`} onClick={() => setGallery({ open: true, start: k })} aria-label={`Open photo ${k + 1}`} data-testid={`detail-photo-${k}`}><img src={img(id, k === 0 ? 1400 : 700)} alt={k === 0 ? stay.name : ""} /></button>)}
+        <button type="button" className="sx-photos__all" onClick={() => setGallery({ open: true, start: 0 })} data-testid="detail-show-all-photos"><Grid3x3 size={15} /> Show all {photoCount > 1 ? `${photoCount} photos` : "photos"}</button>
       </div>
       <div className="sx-detail__grid">
         <div className="sx-detail__main">

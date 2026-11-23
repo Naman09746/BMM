@@ -238,12 +238,44 @@
 .sx-detail__sub{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:15px;margin:0 0 22px}
 .sx-pilltag{display:inline-block;background:var(--sx-gold);color:var(--sx-ink);border-radius:999px;font-size:12px;font-weight:600;padding:3px 10px;vertical-align:middle}
 .sx-pilltag--muted{background:#e9e1d1;color:#5a5346}
-.sx-photos{position:relative;display:grid;grid-template-columns:2fr 1fr 1fr;grid-template-rows:236px 236px;gap:8px;border-radius:var(--sx-r);overflow:hidden;scroll-margin-top:90px}
-.sx-photos__cell{padding:0;border:0;cursor:pointer;overflow:hidden;background:#e6dece}
-.sx-photos__cell img{width:100%;height:100%;object-fit:cover;transition:filter .2s ease,transform .3s ease}
-.sx-photos__cell:hover img{filter:brightness(.85);transform:scale(1.02)}
-.sx-photos__cell--0{grid-row:1/3}
-.sx-photos__all{position:absolute;right:18px;bottom:18px;padding:8px 14px;font-size:14px;border-radius:10px}
+.sx-photos{position:relative!important;display:grid;gap:8px;border-radius:var(--sx-r);overflow:hidden;scroll-margin-top:90px;height:clamp(360px,46vw,480px);background:#e6dece}
+.sx-photos__cell{position:relative;padding:0;border:0;cursor:pointer;overflow:hidden;background:#e6dece;width:100%;height:100%;margin:0}
+.sx-photos__cell img{width:100%;height:100%;object-fit:cover;display:block;transition:filter .25s ease,transform .35s ease}
+.sx-photos__cell:hover img{filter:brightness(.88);transform:scale(1.025)}
+
+/* Dynamic photo layouts based on photo count */
+.sx-photos--count-1{grid-template-columns:1fr;grid-template-rows:1fr}
+.sx-photos--count-1 .sx-photos__cell--0{grid-column:1;grid-row:1}
+
+.sx-photos--count-2{grid-template-columns:1fr 1fr;grid-template-rows:1fr}
+.sx-photos--count-2 .sx-photos__cell--0{grid-column:1;grid-row:1}
+.sx-photos--count-2 .sx-photos__cell--1{grid-column:2;grid-row:1}
+
+/* 3 Photos: 60/40 Split — Large hero left, 2 stacked right (e.g. The Stone Pavilion) */
+.sx-photos--count-3{grid-template-columns:1.4fr 1fr;grid-template-rows:1fr 1fr}
+.sx-photos--count-3 .sx-photos__cell--0{grid-column:1;grid-row:1/3}
+.sx-photos--count-3 .sx-photos__cell--1{grid-column:2;grid-row:1}
+.sx-photos--count-3 .sx-photos__cell--2{grid-column:2;grid-row:2}
+
+/* 4 Photos: Hero left + Wide top right + 2 split bottom right */
+.sx-photos--count-4{grid-template-columns:1.3fr 1fr 1fr;grid-template-rows:1fr 1fr}
+.sx-photos--count-4 .sx-photos__cell--0{grid-column:1;grid-row:1/3}
+.sx-photos--count-4 .sx-photos__cell--1{grid-column:2/4;grid-row:1}
+.sx-photos--count-4 .sx-photos__cell--2{grid-column:2;grid-row:2}
+.sx-photos--count-4 .sx-photos__cell--3{grid-column:3;grid-row:2}
+
+/* 5+ Photos: Classic 5-photo luxury mosaic */
+.sx-photos--count-5{grid-template-columns:2fr 1fr 1fr;grid-template-rows:1fr 1fr}
+.sx-photos--count-5 .sx-photos__cell--0{grid-column:1;grid-row:1/3}
+.sx-photos--count-5 .sx-photos__cell--1{grid-column:2;grid-row:1}
+.sx-photos--count-5 .sx-photos__cell--2{grid-column:3;grid-row:1}
+.sx-photos--count-5 .sx-photos__cell--3{grid-column:2;grid-row:2}
+.sx-photos--count-5 .sx-photos__cell--4{grid-column:3;grid-row:2}
+
+/* Floating "Show all photos" luxury pill — strictly absolute, immune to button flow */
+.sx-photos__all{position:absolute!important;right:18px!important;bottom:18px!important;left:auto!important;top:auto!important;z-index:10!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:8px!important;padding:8px 16px!important;font-family:'Outfit',sans-serif!important;font-size:13.5px!important;font-weight:500!important;border-radius:8px!important;background:rgba(255,255,255,.94)!important;color:var(--sx-ink)!important;border:1px solid rgba(13,11,9,.18)!important;box-shadow:0 4px 14px rgba(13,11,9,.15)!important;backdrop-filter:blur(10px)!important;-webkit-backdrop-filter:blur(10px)!important;cursor:pointer!important;line-height:1!important;width:auto!important;height:auto!important;white-space:nowrap!important;margin:0!important;text-decoration:none!important;transition:transform .18s ease,background-color .18s ease,box-shadow .18s ease!important}
+.sx-photos__all:hover{background:#ffffff!important;transform:translateY(-1px) scale(1.02)!important;box-shadow:0 6px 20px rgba(13,11,9,.22)!important}
+.sx-photos__all svg{flex-shrink:0}
 .sx-detail__grid{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:clamp(30px,6vw,90px);margin-top:34px}
 .sx-detail__aside{position:relative}
 .sx-dsec{padding:30px 0;border-bottom:1px solid var(--sx-line)}
@@ -430,7 +462,8 @@
 /* Responsive */
 @media(max-width:1280px){.sx-row__track{grid-auto-columns:calc((100% - 4*16px)/5)}}
 @media(max-width:1100px){.sx-row__track{grid-auto-columns:calc((100% - 3*16px)/4)}.sx-split{grid-template-columns:minmax(0,1fr) minmax(0,.9fr)}.sx-co__grid{grid-template-columns:minmax(0,1fr) 360px}}
-@media(max-width:900px){.sx-detail__grid{grid-template-columns:1fr}.sx-photos{grid-template-columns:1fr 1fr;grid-template-rows:260px 140px}.sx-photos__cell--0{grid-row:auto;grid-column:1/3}.sx-photos__cell--3,.sx-photos__cell--4{display:none}.sx-know{grid-template-columns:1fr}.sx-co__grid{grid-template-columns:1fr}.sx-co__summary{position:static;order:-1}.sx-page--detail{padding-bottom:110px}.sx-row__track{grid-auto-columns:calc((100% - 2*16px)/3)}}
+@media(max-width:900px){.sx-detail__grid{grid-template-columns:1fr}.sx-photos{grid-template-columns:1fr 1fr!important;grid-template-rows:1fr!important;height:clamp(280px,46vw,360px)}.sx-photos__cell--0{grid-column:1!important;grid-row:1!important}.sx-photos__cell--1{grid-column:2!important;grid-row:1!important;display:block!important}.sx-photos__cell--2,.sx-photos__cell--3,.sx-photos__cell--4{display:none!important}.sx-know{grid-template-columns:1fr}.sx-co__grid{grid-template-columns:1fr}.sx-co__summary{position:static;order:-1}.sx-page--detail{padding-bottom:110px}.sx-row__track{grid-auto-columns:calc((100% - 2*16px)/3)}}
+@media(max-width:600px){.sx-photos{grid-template-columns:1fr!important;height:280px}.sx-photos__cell--1{display:none!important}.sx-photos__all{right:12px!important;bottom:12px!important;padding:6px 12px!important;font-size:12px!important}}
 @media(max-width:768px){.sx-fav{grid-template-columns:1fr auto auto;gap:14px;padding:18px}.sx-fav p{grid-column:1/-1;order:-1}.sx-fav__num--rev{padding-left:14px}.sx-detail__bar{flex-direction:column;align-items:flex-start;padding:20px 0 14px}.sx-top{padding:84px 18px 22px;gap:16px}.sx-cats{gap:22px}.sx-cat{font-size:12px}.sx-row__track{grid-auto-columns:72%}.sx-row__nav{display:none}.sx-grid{grid-template-columns:1fr}.sx-amen,.sx-reviews,.sx-similar{grid-template-columns:1fr}.sx-modal{place-items:end center}.sx-modal__panel{width:100vw;max-height:94vh;border-radius:22px 22px 0 0}.sx-modal__panel--full{width:100vw;height:100dvh;max-height:100dvh;border-radius:0}.sx-modal__panel--lg{width:100vw}.sx-frow{grid-template-columns:1fr}.sx-modeswitch{grid-template-columns:1fr}.sx-trip-card{grid-template-columns:1fr}.sx-trip-card img{min-height:200px;max-height:240px}.sx-detail__title{font-size:24px}.sx-gallery{grid-template-columns:1fr;height:auto}.sx-gallery__nav{display:none}.sx-cal__months{gap:24px}.sx-step header,.sx-step__body{padding-left:18px;padding-right:18px}}
 /* --- Mobile Airbnb-style pass (components render only in mobile branches; ≤768px tweaks guarded) --- */
 .sx-sheetcats{display:flex;justify-content:center;gap:34px;padding:0 0 18px}
