@@ -998,8 +998,8 @@ def _set_cookie(response: Response, key: str, value: str, max_age: int):
 
 
 def _issue_jwt(response: Response, user_id: str):
-    access = _jwt(user_id, "access", timedelta(minutes=15))
-    _set_cookie(response, "access_token", access, 900)
+    access = _jwt(user_id, "access", timedelta(days=1))
+    _set_cookie(response, "access_token", access, 86400)
     _set_cookie(response, "refresh_token", _jwt(user_id, "refresh", timedelta(days=7)), 604800)
     return access
 
@@ -1354,8 +1354,9 @@ async def auth_status(request: Request, response: Response):
             if payload.get("type") == "refresh":
                 user = await db.users.find_one({"user_id": payload["sub"]}, {"_id": 0, "password_hash": 0})
                 if user:
-                    _set_cookie(response, "access_token", _jwt(payload["sub"], "access", timedelta(minutes=15)), 900)
-                    return {"user": UserOut(**user).model_dump(), "payments_enabled": payments_enabled}
+                    access = _jwt(payload["sub"], "access", timedelta(days=1))
+                    _set_cookie(response, "access_token", access, 86400)
+                    return {"user": UserOut(**user).model_dump(), "payments_enabled": payments_enabled, "access_token": access}
         except jwt.InvalidTokenError:
             pass
     return {"user": None, "payments_enabled": payments_enabled}
@@ -1370,8 +1371,9 @@ async def refresh(request: Request, response: Response):
         raise HTTPException(status_code=401, detail="Invalid refresh token")
     if payload.get("type") != "refresh" or not await db.users.find_one({"user_id": payload["sub"]}, {"_id": 1}):
         raise HTTPException(status_code=401, detail="Invalid refresh token")
-    _set_cookie(response, "access_token", _jwt(payload["sub"], "access", timedelta(minutes=15)), 900)
-    return {"ok": True}
+    access = _jwt(payload["sub"], "access", timedelta(days=1))
+    _set_cookie(response, "access_token", access, 86400)
+    return {"ok": True, "access_token": access}
 
 
 @api_router.post("/auth/logout")

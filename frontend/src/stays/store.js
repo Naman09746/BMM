@@ -29,6 +29,18 @@ export function formatApiError(detail) {
   return String(detail);
 }
 
+let isRefreshing = false;
+let refreshSubscribers = [];
+
+function subscribeTokenRefresh(cb) {
+  refreshSubscribers.push(cb);
+}
+
+function onRefreshed(token) {
+  refreshSubscribers.forEach((cb) => cb(token));
+  refreshSubscribers = [];
+}
+
 export async function api(path, { method = "GET", body } = {}) {
   const isForm = typeof FormData !== "undefined" && body instanceof FormData;
   const token = typeof sessionStorage !== "undefined" ? (sessionStorage.getItem("bds_token") || localStorage.getItem("bds_token")) : null;
@@ -38,7 +50,49 @@ export async function api(path, { method = "GET", body } = {}) {
     ...authHeader
   };
   const payload = isForm ? body : (body ? JSON.stringify(body) : undefined);
-  const res = await fetch(`${API}/api${path}`, { method, credentials: "include", headers, body: payload });
+  let res = await fetch(`${API}/api${path}`, { method, credentials: "include", headers, body: payload });
+
+  // Silent automatic token refresh if token expired (401)
+  if (res.status === 401 && !path.startsWith("/auth/login") && !path.startsWith("/auth/refresh") && !path.startsWith("/auth/mfa-verify")) {
+    if (!isRefreshing) {
+      isRefreshing = true;
+      try {
+        const refreshRes = await fetch(`${API}/api/auth/refresh`, { method: "POST", credentials: "include" });
+        if (refreshRes.ok) {
+          const rdata = await refreshRes.json();
+          const newToken = rdata.access_token;
+          if (newToken) {
+            try {
+              sessionStorage.setItem("bds_token", newToken);
+              localStorage.setItem("bds_token", newToken);
+            } catch {}
+          }
+          isRefreshing = false;
+          onRefreshed(newToken);
+        } else {
+          isRefreshing = false;
+          onRefreshed(null);
+        }
+      } catch {
+        isRefreshing = false;
+        onRefreshed(null);
+      }
+    }
+
+    const retryToken = await new Promise((resolve) => {
+      subscribeTokenRefresh((t) => resolve(t));
+    });
+
+    if (retryToken) {
+      const retryAuth = { Authorization: `Bearer ${retryToken}` };
+      const retryHeaders = isForm ? retryAuth : {
+        ...(body ? { "Content-Type": "application/json" } : {}),
+        ...retryAuth
+      };
+      res = await fetch(`${API}/api${path}`, { method, credentials: "include", headers: retryHeaders, body: payload });
+    }
+  }
+
   const data = await res.json().catch(() => ({}));
   if (!res.ok) { const err = new Error(formatApiError(data.detail)); err.status = res.status; throw err; }
   return data;
