@@ -1594,6 +1594,15 @@
   padding: 4px 2px 14px;
 }
 
+.h-scroll-track.is-autoscrolling {
+  scroll-behavior: auto !important;
+  scroll-snap-type: none !important;
+}
+
+.h-scroll-track.is-autoscrolling > * {
+  scroll-snap-align: none !important;
+}
+
 .h-scroll-track::-webkit-scrollbar {
   height: 5px;
 }

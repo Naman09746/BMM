@@ -72,7 +72,8 @@ export function VisualScreenDirectory({ initialScreen = "home" }) {
 
   // Reel Preview State (07.1)
   const reelRef = useRef(null);
-  const [isAutoScrolling, setIsAutoScrolling] = useState(false);
+  const [isAutoScrolling, setIsAutoScrolling] = useState(true);
+  const [isHoverPaused, setIsHoverPaused] = useState(false);
 
   // Brand Management State (07.2)
   const [editingClientIdx, setEditingClientIdx] = useState(null);
@@ -86,19 +87,31 @@ export function VisualScreenDirectory({ initialScreen = "home" }) {
 
   // Continuous Marquee Auto-Scroll Simulator
   useEffect(() => {
-    if (!isAutoScrolling) return;
-    const el = reelRef.current?.getElement?.();
-    if (!el) return;
-    const interval = setInterval(() => {
-      if (!el) return;
-      if (el.scrollLeft >= el.scrollWidth - el.clientWidth - 4) {
-        el.scrollLeft = 0;
-      } else {
-        el.scrollLeft += 1.8;
+    if (!isAutoScrolling || isHoverPaused) return;
+    let animId;
+    let lastTime = performance.now();
+
+    const step = (now) => {
+      const delta = Math.min(now - lastTime, 50); // Prevent lag jumps
+      lastTime = now;
+      const el = reelRef.current?.getElement?.();
+      if (el) {
+        const maxScroll = el.scrollWidth - el.clientWidth;
+        if (maxScroll > 1) {
+          if (el.scrollLeft >= maxScroll - 1) {
+            el.scrollLeft = 0;
+          } else {
+            // ~60px per sec (silky smooth continuous motion)
+            el.scrollLeft += delta * 0.06;
+          }
+        }
       }
-    }, 24);
-    return () => clearInterval(interval);
-  }, [isAutoScrolling]);
+      animId = requestAnimationFrame(step);
+    };
+
+    animId = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(animId);
+  }, [isAutoScrolling, isHoverPaused, siteContent.clients]);
 
   const showToast = (msg) => {
     setToast(msg);
@@ -2362,12 +2375,15 @@ export function VisualScreenDirectory({ initialScreen = "home" }) {
                 <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                   <button
                     type="button"
-                    className={`vsd-reel-btn ${isAutoScrolling ? "is-active" : ""}`}
-                    onClick={() => setIsAutoScrolling((prev) => !prev)}
+                    className={`vsd-reel-btn ${isAutoScrolling && !isHoverPaused ? "is-active" : ""}`}
+                    onClick={() => {
+                      setIsAutoScrolling((prev) => !prev);
+                      setIsHoverPaused(false);
+                    }}
                     title={isAutoScrolling ? "Pause continuous scroll simulation" : "Simulate live site continuous marquee"}
                   >
-                    {isAutoScrolling ? <Pause size={12} /> : <Play size={12} />}
-                    {isAutoScrolling ? "Pause Marquee" : "Auto-Scroll"}
+                    {isAutoScrolling && !isHoverPaused ? <Pause size={12} /> : <Play size={12} />}
+                    {isAutoScrolling && !isHoverPaused ? "Pause Marquee" : "Auto-Scroll"}
                   </button>
                   <button
                     type="button"
@@ -2406,7 +2422,14 @@ export function VisualScreenDirectory({ initialScreen = "home" }) {
                 </div>
               </div>
 
-              <HorizontalScrollArea ref={reelRef} dark={true} scrollAmount={300}>
+              <HorizontalScrollArea
+                ref={reelRef}
+                dark={true}
+                scrollAmount={300}
+                isAutoScrolling={isAutoScrolling && !isHoverPaused}
+                onMouseEnter={() => setIsHoverPaused(true)}
+                onMouseLeave={() => setIsHoverPaused(false)}
+              >
                 {siteContent.clients.map((c, i) => {
                   const logoUrl = c.logo?.startsWith("http") || c.logo?.startsWith("/") ? resolveBackendMedia(c.logo) : publicAsset(c.logo);
                   return (

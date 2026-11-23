@@ -11,6 +11,9 @@ export const HorizontalScrollArea = forwardRef(function HorizontalScrollArea(
     dark = false,
     dragToScroll = true,
     wheelToScroll = true,
+    isAutoScrolling = false,
+    onMouseEnter,
+    onMouseLeave,
   },
   ref
 ) {
@@ -180,7 +183,7 @@ export const HorizontalScrollArea = forwardRef(function HorizontalScrollArea(
       {/* Scrollable Content Track */}
       <div
         ref={scrollRef}
-        className="h-scroll-track"
+        className={`h-scroll-track ${isAutoScrolling ? "is-autoscrolling" : ""}`}
         style={{
           cursor: isDragging ? "grabbing" : "grab",
           userSelect: isDragging ? "none" : "auto",
@@ -188,7 +191,11 @@ export const HorizontalScrollArea = forwardRef(function HorizontalScrollArea(
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseLeave}
+        onMouseLeave={(e) => {
+          handleMouseLeave(e);
+          onMouseLeave?.(e);
+        }}
+        onMouseEnter={onMouseEnter}
         onWheel={handleWheel}
       >
         {children}
